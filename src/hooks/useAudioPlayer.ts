@@ -12,7 +12,7 @@ export interface PlayerState {
   isMuted: boolean;
 }
 
-export function useAudioPlayer() {
+export function useAudioPlayer(skipSeconds: number) {
   const defaultTracks: Track[] = DEFAULT_TRACKS.map((t) => ({
     id: t.filename,
     title: t.title,
@@ -218,6 +218,20 @@ export function useAudioPlayer() {
     });
   }, []);
 
+  const skipForward = useCallback(() => {
+    const audio = audioRef.current;
+    const newTime = Math.min(audio.currentTime + skipSeconds, audio.duration || 0);
+    audio.currentTime = newTime;
+    setState((s) => ({ ...s, currentTime: newTime }));
+  }, [skipSeconds]);
+
+  const skipBackward = useCallback(() => {
+    const audio = audioRef.current;
+    const newTime = Math.max(audio.currentTime - skipSeconds, 0);
+    audio.currentTime = newTime;
+    setState((s) => ({ ...s, currentTime: newTime }));
+  }, [skipSeconds]);
+
   return {
     state,
     play,
@@ -231,5 +245,7 @@ export function useAudioPlayer() {
     addTracks,
     removeTrack,
     selectTrack,
+    skipForward,
+    skipBackward,
   };
 }
