@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import type { Track } from "../types";
+import { DEFAULT_TRACKS } from "../defaultTracks";
 
 export interface PlayerState {
   tracks: Track[];
@@ -12,11 +13,20 @@ export interface PlayerState {
 }
 
 export function useAudioPlayer() {
+  const defaultTracks: Track[] = DEFAULT_TRACKS.map((t) => ({
+    id: t.filename,
+    title: t.title,
+    artist: "Unknown Artist",
+    duration: 0,
+    url: `/music/${t.filename}`,
+    file: undefined,
+  }));
+
   const audioRef = useRef<HTMLAudioElement>(new Audio());
   const nextRef = useRef<() => void>(() => {});
   const [state, setState] = useState<PlayerState>({
-    tracks: [],
-    currentTrackIndex: -1,
+    tracks: defaultTracks,
+    currentTrackIndex: defaultTracks.length > 0 ? 0 : -1,
     isPlaying: false,
     currentTime: 0,
     duration: 0,
@@ -66,6 +76,15 @@ export function useAudioPlayer() {
   useEffect(() => {
     audioRef.current.volume = state.volume;
   }, [state.volume]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    const track = state.tracks[state.currentTrackIndex];
+    if (track && !audio.src) {
+      audio.src = track.url;
+      audio.load();
+    }
+  }, [state.tracks, state.currentTrackIndex]);
 
   const play = useCallback(() => {
     audioRef.current.play().then(() => setState((s) => ({ ...s, isPlaying: true }))).catch(() => {});
