@@ -100,6 +100,7 @@ export default function App() {
             currentTime={state.currentTime}
             duration={state.duration}
             onSeek={seek}
+            audioUrl={currentTrack?.url ?? null}
           />
           <div className="player-bottom">
             <PlayerControls
