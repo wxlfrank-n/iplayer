@@ -1,4 +1,4 @@
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useState } from "react";
 import { useAudioPlayer } from "./hooks/useAudioPlayer";
 import { NowPlaying } from "./components/NowPlaying";
 import { PlayerControls } from "./components/PlayerControls";
@@ -21,6 +21,7 @@ export default function App() {
     selectTrack,
   } = useAudioPlayer();
 
+  const [showPlaylist, setShowPlaylist] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
 
@@ -66,9 +67,16 @@ export default function App() {
     >
       <header className="app-header">
         <h1 className="app-title">{"\u{1F3B5}"} MyPlayer</h1>
+        <button
+          className={`playlist-toggle ${showPlaylist ? "playlist-toggle--active" : ""}`}
+          onClick={() => setShowPlaylist((v) => !v)}
+          title={showPlaylist ? "Hide playlist" : "Show playlist"}
+        >
+          {"\u{1F4CB}"} Playlist ({state.tracks.length})
+        </button>
       </header>
 
-      <div className="player-layout">
+      <div className={`player-layout ${showPlaylist ? "player-layout--with-playlist" : ""}`}>
         <div className="player-main">
           <NowPlaying track={currentTrack} />
           <ProgressBar
@@ -93,28 +101,30 @@ export default function App() {
           </div>
         </div>
 
-        <div className="playlist-section">
-          <div className="playlist-header">
-            <h2>Playlist ({state.tracks.length})</h2>
-            <button className="add-btn" onClick={() => fileInputRef.current?.click()}>
-              + Add Files
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="audio/*"
-              multiple
-              onChange={handleFileInput}
-              style={{ display: "none" }}
+        {showPlaylist && (
+          <div className="playlist-section">
+            <div className="playlist-header">
+              <h2>Playlist ({state.tracks.length})</h2>
+              <button className="add-btn" onClick={() => fileInputRef.current?.click()}>
+                + Add Files
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="audio/*"
+                multiple
+                onChange={handleFileInput}
+                style={{ display: "none" }}
+              />
+            </div>
+            <TrackList
+              tracks={state.tracks}
+              currentTrackIndex={state.currentTrackIndex}
+              onSelectTrack={selectTrack}
+              onRemoveTrack={removeTrack}
             />
           </div>
-          <TrackList
-            tracks={state.tracks}
-            currentTrackIndex={state.currentTrackIndex}
-            onSelectTrack={selectTrack}
-            onRemoveTrack={removeTrack}
-          />
-        </div>
+        )}
       </div>
     </div>
   );
