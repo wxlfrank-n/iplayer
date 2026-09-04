@@ -28,7 +28,8 @@ export function useWaveform(url: string | null) {
 
     async function extractPeaks() {
       try {
-        // Fetch audio file and decode into raw PCM samples
+        // Decode audio file into PCM samples (raw digital audio data).
+        // Each sample is a float between -1.0 and 1.0 representing waveform amplitude at a point in time.
         const response = await fetch(currentUrl!);
         const arrayBuffer = await response.arrayBuffer();
         const audioContext = new AudioContext();
