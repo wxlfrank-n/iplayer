@@ -1,10 +1,18 @@
 interface SettingsProps {
   skipSeconds: number;
   onSkipSecondsChange: (value: number) => void;
+  mergeSeconds: number;
+  onMergeSecondsChange: (value: number) => void;
   onClose: () => void;
 }
 
-export function Settings({ skipSeconds, onSkipSecondsChange, onClose }: SettingsProps) {
+export function Settings({
+  skipSeconds,
+  onSkipSecondsChange,
+  mergeSeconds,
+  onMergeSecondsChange,
+  onClose,
+}: SettingsProps) {
   return (
     <div className="settings-overlay" onClick={onClose}>
       <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
@@ -37,6 +45,20 @@ export function Settings({ skipSeconds, onSkipSecondsChange, onClose }: Settings
             onChange={(e) => {
               const v = parseInt(e.target.value, 10);
               if (v >= 1 && v <= 60) onSkipSecondsChange(v);
+            }}
+            className="settings-input"
+          />
+
+          <label className="settings-label">Merge sectors closer than (seconds)</label>
+          <input
+            type="number"
+            min={0}
+            max={10}
+            step={0.1}
+            value={mergeSeconds}
+            onChange={(e) => {
+              const v = parseFloat(e.target.value);
+              if (v >= 0 && v <= 10) onMergeSecondsChange(v);
             }}
             className="settings-input"
           />

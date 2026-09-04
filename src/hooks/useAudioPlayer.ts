@@ -232,6 +232,34 @@ export function useAudioPlayer(skipSeconds: number) {
     setState((s) => ({ ...s, currentTime: newTime }));
   }, [skipSeconds]);
 
+  // Plays the given time range [start, end] `repetitions` times sequentially,
+  // pausing at `end` after the last repetition. Calls onComplete when finished.
+  const playRange = useCallback((start: number, end: number, repetitions: number, onComplete?: () => void) => {
+    const audio = audioRef.current;
+    let count = 0;
+
+    const playOnce = () => {
+      audio.currentTime = start;
+      audio.play().then(() => setState((s) => ({ ...s, isPlaying: true }))).catch(() => {});
+    };
+
+    const onTimeUpdate = () => {
+      if (audio.currentTime >= end) {
+        audio.pause();
+        count++;
+        if (count < repetitions) {
+          playOnce();
+        } else {
+          audio.removeEventListener("timeupdate", onTimeUpdate);
+          onComplete?.();
+        }
+      }
+    };
+
+    audio.addEventListener("timeupdate", onTimeUpdate);
+    playOnce();
+  }, []);
+
   return {
     state,
     play,
@@ -247,5 +275,6 @@ export function useAudioPlayer(skipSeconds: number) {
     selectTrack,
     skipForward,
     skipBackward,
+    playRange,
   };
 }

@@ -14,6 +14,7 @@ export default function App() {
   const {
     state,
     togglePlay,
+    play,
     next,
     prev,
     seek,
@@ -24,6 +25,7 @@ export default function App() {
     selectTrack,
     skipForward,
     skipBackward,
+    playRange,
   } = useAudioPlayer(config.skipSeconds);
 
   const [showPlaylist, setShowPlaylist] = useState(true);
@@ -97,10 +99,14 @@ export default function App() {
         <div className="player-main">
           <NowPlaying track={currentTrack} />
           <ProgressBar
+            key={currentTrack?.url ?? "none"}
             currentTime={state.currentTime}
             duration={state.duration}
             onSeek={seek}
+            onPlay={play}
             audioUrl={currentTrack?.url ?? null}
+            mergeSeconds={config.sectorMergeSeconds}
+            onPlayRange={playRange}
           />
           <div className="player-bottom">
             <PlayerControls
@@ -152,6 +158,8 @@ export default function App() {
         <Settings
           skipSeconds={config.skipSeconds}
           onSkipSecondsChange={(v) => updateConfig({ skipSeconds: v })}
+          mergeSeconds={config.sectorMergeSeconds}
+          onMergeSecondsChange={(v) => updateConfig({ sectorMergeSeconds: v })}
           onClose={() => setShowSettings(false)}
         />
       )}

@@ -280,7 +280,6 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  width: 100%;
   max-width: 1000px;
 }
 
@@ -311,17 +310,47 @@ body {
 
 .waveform-bar {
   flex: 1;
-  height: 300px;
+  height: 75px;
   cursor: pointer;
   position: relative;
   border-radius: 4px;
   overflow: hidden;
 }
 
-.waveform-canvas {
+.waveform-svg {
   width: 100%;
   height: 100%;
   display: block;
+}
+
+.waveform-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #30363d;
+}
+
+.waveform-placeholder__filled {
+  height: 100%;
+  background: #58a6ff;
+}
+
+.waveform-sector {
+  cursor: pointer;
+  fill: rgba(88, 166, 255, 0.22);
+  transition: fill 0.15s ease;
+}
+
+.waveform-sector--alt {
+  fill: rgba(88, 166, 255, 0.32);
+}
+
+.waveform-sector:hover {
+  fill: rgba(88, 166, 255, 0.5);
 }
 
 .progress-bar__filled {

@@ -1,82 +1,113 @@
-import { useRef, useEffect } from "react";
+import { useState } from "react";
 import { useWaveform } from "../hooks/useWaveform";
+import { Sector } from "./Sector";
 
 interface ProgressBarProps {
   currentTime: number;
   duration: number;
   onSeek: (time: number) => void;
+  onPlay: () => void;
   audioUrl: string | null;
+  mergeSeconds: number;
+  onPlayRange: (start: number, end: number, repetitions: number) => void;
 }
 
-export function ProgressBar({ currentTime, duration, onSeek, audioUrl }: ProgressBarProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+const SILENCE_THRESHOLD = 0.02;
+const SEC_PER_PEAK = 0.02;
+const WINDOW_SECONDS = 30;
+const VB_W = 1000;
+const VB_H = 200;
+const PAD = 4;
+
+export function ProgressBar({ currentTime, duration, onSeek, onPlay, audioUrl, mergeSeconds, onPlayRange }: ProgressBarProps) {
   const peaks = useWaveform(audioUrl);
   const progress = duration > 0 ? currentTime / duration : 0;
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  const [anchorStartSec, setAnchorStartSec] = useState<number>(0);
+  const [prevTime, setPrevTime] = useState<number>(-1);
 
-    let raf: number;
-
-    function draw() {
-      const ctx = canvas!.getContext("2d");
-      if (!ctx) return;
-
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas!.getBoundingClientRect();
-      const w = rect.width;
-      const h = rect.height;
-
-      if (w === 0 || h === 0) {
-        raf = requestAnimationFrame(draw);
-        return;
-      }
-
-      canvas!.width = w * dpr;
-      canvas!.height = h * dpr;
-      ctx.scale(dpr, dpr);
-
-      ctx.clearRect(0, 0, w, h);
-
-      if (peaks.length === 0) {
-        ctx.fillStyle = "#30363d";
-        ctx.fillRect(0, h / 2 - 1, w, 2);
-        ctx.fillStyle = "#58a6ff";
-        ctx.fillRect(0, h / 2 - 1, w * progress, 2);
-      } else {
-        const barWidth = w / peaks.length;
-        const progressX = progress * w;
-
-        for (let i = 0; i < peaks.length; i++) {
-          const x = i * barWidth;
-          const barHeight = Math.max(1, peaks[i] * h * 0.9);
-          const y = (h - barHeight) / 2;
-
-          ctx.fillStyle = x < progressX ? "#58a6ff" : "#30363d";
-          ctx.fillRect(x, y, Math.max(1, barWidth - 0.5), barHeight);
-        }
-      }
-
-      raf = requestAnimationFrame(draw);
+  if (peaks.length > 0 && prevTime !== currentTime) {
+    setPrevTime(currentTime);
+    if (duration > 0 && currentTime >= anchorStartSec + WINDOW_SECONDS) {
+      setAnchorStartSec(Math.max(0, currentTime - WINDOW_SECONDS));
     }
+  }
 
-    raf = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(raf);
-  }, [peaks, progress]);
+  const innerH = VB_H - PAD * 2;
+  const windowStartSec = Math.max(0, Math.min(anchorStartSec, Math.max(0, duration - WINDOW_SECONDS)));
+  const windowEndSec = Math.min(duration, windowStartSec + WINDOW_SECONDS);
+  const windowLen = windowEndSec - windowStartSec;
 
-  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  const bars: { x: number; y: number; w: number; h: number }[] = [];
+  if (peaks.length > 0 && windowLen > 0) {
+    const startPeak = windowStartSec / SEC_PER_PEAK;
+    const endPeak = windowEndSec / SEC_PER_PEAK;
+    const firstPeak = Math.max(0, Math.floor(startPeak));
+    const lastPeak = Math.min(peaks.length, Math.ceil(endPeak));
+    const n = Math.max(1, lastPeak - firstPeak);
+    const stepW = VB_W / n;
+
+    for (let p = firstPeak; p < lastPeak; p++) {
+      const amp = peaks[p] ?? 0;
+      const amplitude = amp < SILENCE_THRESHOLD ? amp * 0.3 : amp;
+      const barHeight = Math.max(1, amplitude * innerH);
+      bars.push({
+        x: (p - firstPeak) * stepW,
+        y: (VB_H - barHeight) / 2,
+        w: Math.max(1, stepW - 0.5),
+        h: barHeight,
+      });
+    }
+  }
+
+  const fracPlayed = windowLen > 0 ? Math.min(1, Math.max(0, (currentTime - windowStartSec) / windowLen)) : 0;
+
+  const handleClick = (e: React.MouseEvent<HTMLElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
-    const percent = x / rect.width;
-    onSeek(percent * duration);
+    const frac = x / rect.width;
+    const seekTime = windowStartSec + frac * windowLen;
+    onSeek(Math.max(0, Math.min(seekTime, duration)));
+    onPlay();
   };
 
   return (
     <div className="progress-container">
       <span className="time-label">{formatTime(currentTime)}</span>
       <div className="waveform-bar" onClick={handleClick}>
-        <canvas ref={canvasRef} className="waveform-canvas" />
+        {peaks.length === 0 ? (
+          <div className="waveform-placeholder">
+            <div className="waveform-placeholder__filled" style={{ width: `${progress * 100}%` }} />
+          </div>
+        ) : (
+          <svg className="waveform-svg" viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="none">
+            <g>
+              {bars.map((b, i) => (
+                <rect key={i} x={b.x} y={b.y} width={b.w} height={b.h} fill="#30363d" />
+              ))}
+            </g>
+            <g clipPath="url(#playedClip)">
+              {bars.map((b, i) => (
+                <rect key={i} x={b.x} y={b.y} width={b.w} height={b.h} fill="#58a6ff" />
+              ))}
+            </g>
+            <defs>
+              <clipPath id="playedClip">
+                <rect x={0} y={0} width={Math.max(fracPlayed * VB_W, 1)} height={VB_H} />
+              </clipPath>
+            </defs>
+            <Sector
+              peaks={peaks}
+              mergeSeconds={mergeSeconds}
+              windowStartSec={windowStartSec}
+              windowLen={windowLen}
+              innerH={innerH}
+              vbW={VB_W}
+              vbH={VB_H}
+              onPlayRange={onPlayRange}
+            />
+          </svg>
+        )}
       </div>
       <span className="time-label">{formatTime(duration)}</span>
     </div>
