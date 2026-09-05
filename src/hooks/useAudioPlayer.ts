@@ -238,26 +238,23 @@ export function useAudioPlayer(skipSeconds: number) {
     const audio = audioRef.current;
     let count = 0;
 
-    const playOnce = () => {
-      audio.currentTime = start;
-      audio.play().then(() => setState((s) => ({ ...s, isPlaying: true }))).catch(() => {});
-    };
-
     const onTimeUpdate = () => {
+      if (audio.currentTime < start) return;
       if (audio.currentTime >= end) {
-        audio.pause();
         count++;
-        if (count < repetitions) {
-          playOnce();
-        } else {
+        if (count >= repetitions) {
+          audio.pause();
           audio.removeEventListener("timeupdate", onTimeUpdate);
           onComplete?.();
+          return;
         }
+        setTimeout(() => { audio.currentTime = start; }, 0);
       }
     };
 
     audio.addEventListener("timeupdate", onTimeUpdate);
-    playOnce();
+    audio.currentTime = start;
+    audio.play().then(() => setState((s) => ({ ...s, isPlaying: true }))).catch(() => {});
   }, []);
 
   return {
