@@ -1,10 +1,14 @@
 import type { Track } from "../types";
+import { useAudioMeta } from "../hooks/useAudioMeta";
 
 interface NowPlayingProps {
   track: Track | null;
+  audioUrl: string | null;
 }
 
-export function NowPlaying({ track }: NowPlayingProps) {
+export function NowPlaying({ track, audioUrl }: NowPlayingProps) {
+  const meta = useAudioMeta(audioUrl);
+
   if (!track) {
     return (
       <div className="now-playing now-playing--empty">
@@ -31,6 +35,13 @@ export function NowPlaying({ track }: NowPlayingProps) {
       <div className="now-playing__info">
         <span className="now-playing__title">{track.title}</span>
         <span className="now-playing__artist">{track.artist}</span>
+        {meta && (
+          <span className="now-playing__meta">
+            {meta.channels === 1 ? "Mono" : "Stereo"}{" · "}
+            {(meta.sampleRate / 1000).toFixed(1)} kHz{" · "}
+            {meta.bitrate} kbps
+          </span>
+        )}
       </div>
     </div>
   );

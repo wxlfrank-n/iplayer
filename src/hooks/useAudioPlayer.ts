@@ -151,7 +151,8 @@ export function useAudioPlayer(skipSeconds: number) {
   }, []);
 
   const addTracks = useCallback((files: FileList) => {
-    const newTracks: Track[] = Array.from(files).map((file) => ({
+    const mp3Files = Array.from(files).filter((f) => f.name.toLowerCase().endsWith(".mp3"));
+    const newTracks: Track[] = mp3Files.map((file) => ({
       id: crypto.randomUUID(),
       title: file.name.replace(/\.[^/.]+$/, ""),
       artist: "Unknown Artist",

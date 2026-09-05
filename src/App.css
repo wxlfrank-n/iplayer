@@ -276,6 +276,14 @@ body {
   text-overflow: ellipsis;
 }
 
+.now-playing__meta {
+  font-size: 0.72rem;
+  color: var(--text-tertiary, #8b949e);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .progress-container {
   display: flex;
   align-items: center;
@@ -315,6 +323,12 @@ body {
   position: relative;
   border-radius: 4px;
   overflow: hidden;
+  border: 1px solid transparent;
+  transition: border-color 0.15s ease;
+}
+
+.waveform-bar:hover {
+  border-color: rgba(139, 148, 158, 0.6);
 }
 
 .waveform-svg {
@@ -341,16 +355,67 @@ body {
 
 .waveform-sector {
   cursor: pointer;
-  fill: rgba(88, 166, 255, 0.22);
-  transition: fill 0.15s ease;
-}
-
-.waveform-sector--alt {
   fill: rgba(88, 166, 255, 0.32);
+  transition: fill 0.15s ease;
 }
 
 .waveform-sector:hover {
   fill: rgba(88, 166, 255, 0.5);
+}
+
+.waveform-sector--active {
+  fill: rgba(88, 166, 255, 0.65);
+}
+
+.waveform-sector-label {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translate(-50%, -50%);
+  padding-left: 3px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: rgba(13, 17, 23, 0.55);
+  border-radius: 2px;
+  line-height: 1;
+  padding: 1px 3px;
+  pointer-events: none;
+  user-select: none;
+}
+
+.waveform-sector-label--active {
+  color: #fff;
+  background: var(--accent);
+}
+
+.waveform-bar__guide {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.3);
+  pointer-events: none;
+}
+
+.waveform-bar__tooltip {
+  position: absolute;
+  top: 4px;
+  transform: translateX(-50%);
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(13, 17, 23, 0.9);
+  border: 1px solid rgba(139, 148, 158, 0.4);
+  border-radius: 3px;
+  padding: 1px 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+
+.waveform-bar__tooltip--edge {
+  transform: translateX(-100%);
 }
 
 .progress-bar__filled {
@@ -705,4 +770,19 @@ body {
     border-top: none;
     border-left: none;
   }
+}
+
+.app-notice {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  background: rgba(218, 54, 51, 0.15);
+  border: 1px solid rgba(248, 81, 73, 0.6);
+  color: #f85149;
+  font-size: 0.8rem;
+  padding: 8px 14px;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }

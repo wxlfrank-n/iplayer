@@ -17,7 +17,7 @@ export function TrackList({
     return (
       <div className="track-list track-list--empty">
         <p>No tracks loaded</p>
-        <p className="track-list__hint">Drop audio files here or use the button above</p>
+        <p className="track-list__hint">Drop MP3 files here or use the button above</p>
       </div>
     );
   }
