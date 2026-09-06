@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Sector } from "./Sector";
 import { WaveformBars } from "./Waveform";
 import { useSectors } from "../hooks/useSectors";
@@ -18,6 +18,11 @@ const WINDOW_SECONDS = 30;
 const VB_W = 1000;
 const VB_H = 200;
 const PAD = 4;
+const SWIPE_THRESHOLD_PX = 50;
+const SWIPE_DECIDE_PX = 8;
+const WHEEL_MIN_DX = 3;
+const WHEEL_BURST_MS = 100;
+const WHEEL_STEP_PX = 40;
 
 export function ProgressBar({ url, currentTime, duration, onSeek, onPlay, peaks, onPlayRange }: ProgressBarProps) {
   const { sectors, status: vadStatus } = useSectors(url, peaks);
@@ -50,6 +55,11 @@ export function ProgressBar({ url, currentTime, duration, onSeek, onPlay, peaks,
     .map((s, idx) => ({ start: s.start, end: s.end, idx }))
     .filter((s) => s.end > windowStartSec && s.start < windowStartSec + windowLen);
 
+  // Cursor for touch/wheel window navigation; kept in sync with the keyboard's
+  // active sector so mixed input stays consistent.
+  const navIndexRef = useRef(-1);
+
+  // Keyboard navigation keeps its original behavior: select and play the sector.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -60,6 +70,7 @@ export function ProgressBar({ url, currentTime, duration, onSeek, onPlay, peaks,
       setActiveSector((prev) => {
         let next = prev < 0 ? (e.key === "ArrowRight" ? 0 : sectors.length - 1) : prev + (e.key === "ArrowRight" ? 1 : -1);
         next = Math.max(0, Math.min(next, sectors.length - 1));
+        navIndexRef.current = next;
         const s = sectors[next];
         if (s) onPlayRange(s.start, s.end, 1);
         return next;
@@ -68,6 +79,129 @@ export function ProgressBar({ url, currentTime, duration, onSeek, onPlay, peaks,
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [sectors, onPlayRange]);
+
+  // Touch swipe and wheel navigation only move the viewing window.
+  const navigateSector = useCallback(
+    (direction: 1 | -1) => {
+      if (sectors.length === 0) return;
+      const prev = navIndexRef.current;
+      const next = prev < 0
+        ? direction > 0 ? 0 : sectors.length - 1
+        : Math.max(0, Math.min(prev + direction, sectors.length - 1));
+      navIndexRef.current = next;
+      const s = sectors[next];
+      if (!s) return;
+      // Only move the viewing window so the sector starts at the left edge.
+      setAnchorStartSec(Math.max(0, Math.min(s.start, Math.max(0, duration - WINDOW_SECONDS))));
+    },
+    [sectors, duration],
+  );
+
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const swipeActive = useRef(false);
+  const swipeFired = useRef(false);
+  const touchEnded = useRef(false);
+  const barRef = useRef<HTMLDivElement | null>(null);
+
+  const wheelLastMs = useRef(0);
+  const wheelAccum = useRef(0);
+
+  useEffect(() => {
+    const el = barRef.current;
+    if (!el) return;
+
+    const reset = () => {
+      touchStartX.current = null;
+      touchStartY.current = null;
+      swipeActive.current = false;
+      swipeFired.current = false;
+      touchEnded.current = false;
+    };
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      reset();
+      touchStartX.current = e.touches[0].clientX;
+      touchStartY.current = e.touches[0].clientY;
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (touchEnded.current) return;
+      if (touchStartX.current === null || touchStartY.current === null) return;
+      const dx = e.touches[0].clientX - touchStartX.current;
+      const dy = e.touches[0].clientY - touchStartY.current;
+      const ax = Math.abs(dx);
+      const ay = Math.abs(dy);
+
+      if (!swipeActive.current) {
+        if (ax <= SWIPE_DECIDE_PX && ay <= SWIPE_DECIDE_PX) return;
+        if (ax > ay) {
+          // Clearly horizontal: claim the gesture so the page never moves,
+          // but don't navigate until the swipe passes the threshold.
+          e.preventDefault();
+          swipeActive.current = true;
+        } else {
+          // Clearly vertical: hand the gesture back to the browser for scrolling.
+          touchEnded.current = true;
+          return;
+        }
+      }
+
+      if (!swipeFired.current && ax >= SWIPE_THRESHOLD_PX) {
+        swipeFired.current = true;
+        touchEnded.current = true;
+        navigateSector(dx < 0 ? -1 : 1);
+      }
+    };
+
+    const onTouchEnd = () => {
+      reset();
+    };
+
+    // Touchpads (Windows/macOS) don't fire touch events; a two-finger horizontal
+    // swipe arrives as `wheel` with deltaX. Claim every wheel event on the bar so
+    // it never pans the page, then navigate one sector per step so a continuous
+    // flick scrolls through sectors quickly.
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) return;
+      e.preventDefault();
+      const dx = e.deltaX;
+      const dy = e.deltaY;
+      const ax = Math.abs(dx);
+      const ay = Math.abs(dy);
+      if (ax < WHEEL_MIN_DX || ax <= ay) return;
+
+      const now = performance.now();
+      if (now - wheelLastMs.current > WHEEL_BURST_MS) {
+        wheelAccum.current = 0;
+      }
+      wheelLastMs.current = now;
+
+      // Normalize line/page-mode deltas to pixels.
+      const scale = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1;
+      wheelAccum.current += dx * scale;
+
+      const sign = Math.sign(wheelAccum.current);
+      while (Math.abs(wheelAccum.current) >= WHEEL_STEP_PX) {
+        navigateSector(sign > 0 ? 1 : -1);
+        wheelAccum.current -= sign * WHEEL_STEP_PX;
+      }
+    };
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd, { passive: true });
+    el.addEventListener("touchcancel", onTouchEnd, { passive: true });
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("touchcancel", onTouchEnd);
+      el.removeEventListener("wheel", onWheel);
+    };
+  }, [navigateSector]);
 
   const handleClick = (e: React.MouseEvent<HTMLElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -89,7 +223,13 @@ export function ProgressBar({ url, currentTime, duration, onSeek, onPlay, peaks,
   return (
     <div className="progress-container">
       <span className="time-label">{formatTime(currentTime)}</span>
-      <div className="waveform-bar" onClick={handleClick} onMouseMove={handleMouseMove} onMouseLeave={() => setHoverFrac(null)}>
+      <div
+        ref={barRef}
+        className="waveform-bar"
+        onClick={handleClick}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={() => setHoverFrac(null)}
+      >
         {vadStatus === "analyzing" && (
           <div className="waveform-status">Analyzing speech…</div>
         )}
@@ -117,7 +257,10 @@ export function ProgressBar({ url, currentTime, duration, onSeek, onPlay, peaks,
               vbH={VB_H}
               onPlayRange={onPlayRange}
               activeSector={activeSector}
-              onActivate={setActiveSector}
+              onActivate={(idx) => {
+                setActiveSector(idx);
+                navIndexRef.current = idx;
+              }}
             />
           </svg>
         )}
