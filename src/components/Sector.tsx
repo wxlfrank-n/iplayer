@@ -9,16 +9,17 @@ interface SectorProps {
   vbW: number;
   vbH: number;
   onPlayRange: (start: number, end: number, repetitions: number) => void;
+  repetitions: number;
   activeSector: number;
   onActivate: (idx: number) => void;
 }
 
-export function Sector({ sectors, windowStartSec, windowLen, innerH, vbW, vbH, onPlayRange, activeSector, onActivate }: SectorProps) {
+export function Sector({ sectors, windowStartSec, windowLen, innerH, vbW, vbH, onPlayRange, repetitions, activeSector, onActivate }: SectorProps) {
 
   const handleClick = (e: React.MouseEvent<SVGRectElement>, idx: number, start: number, end: number) => {
     e.stopPropagation();
     onActivate(idx);
-    onPlayRange(start, end, 3);
+    onPlayRange(start, end, repetitions);
   };
 
   const visible = (s: Sector) => s.end > windowStartSec && s.start < windowStartSec + windowLen;

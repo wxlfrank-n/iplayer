@@ -36,6 +36,7 @@ export function ProgressBar({ currentTime, duration, onSeek, onPlay, waveform, o
   const [activeSector, setActiveSector] = useState<number>(-1);
   const [hoverFrac, setHoverFrac] = useState<number | null>(null);
   const [mergeGap, setMergeGap] = useState(MERGE_GAP_SEC);
+  const [repetitions, setRepetitions] = useState(3);
 
   const gapValues = useMemo(() => sectorGaps(sectors), [sectors]);
   const displaySectors = useMemo(
@@ -82,13 +83,13 @@ export function ProgressBar({ currentTime, duration, onSeek, onPlay, waveform, o
         next = Math.max(0, Math.min(next, displaySectors.length - 1));
         navIndexRef.current = next;
         const s = displaySectors[next];
-        if (s) onPlayRange(s.start, s.end, 3);
+        if (s) onPlayRange(s.start, s.end, repetitions);
         return next;
       });
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [displaySectors, onPlayRange]);
+  }, [displaySectors, onPlayRange, repetitions]);
 
   // Touch swipe and wheel navigation only move the viewing window.
   const navigateSector = useCallback(
@@ -261,6 +262,7 @@ export function ProgressBar({ currentTime, duration, onSeek, onPlay, waveform, o
                 vbW={VB_W}
                 vbH={VB_H}
                 onPlayRange={onPlayRange}
+                repetitions={repetitions}
                 activeSector={activeSector}
                 onActivate={(idx) => {
                   setActiveSector(idx);
@@ -297,30 +299,52 @@ export function ProgressBar({ currentTime, duration, onSeek, onPlay, waveform, o
         <span className="time-label">{formatTime(duration)}</span>
       </div>
       {gapValues.length > 0 && (
-        <div className="sector-merge">
-          <input
-            type="range"
-            min={gapValues[0]}
-            max={gapValues[gapValues.length - 1]}
-            step={0.005}
-            value={mergeGap}
-            onChange={(e) => {
-              const raw = parseFloat(e.target.value);
-              let best = 0;
-              let bestDist = Infinity;
-              for (const g of gapValues) {
-                const d = Math.abs(g - raw);
-                if (d < bestDist) {
-                  bestDist = d;
-                  best = g;
+        <div className="sector-toolbar">
+          <div className="sector-merge">
+            <input
+              type="range"
+              min={gapValues[0]}
+              max={gapValues[gapValues.length - 1]}
+              step={0.005}
+              value={mergeGap}
+              onChange={(e) => {
+                const raw = parseFloat(e.target.value);
+                let best = 0;
+                let bestDist = Infinity;
+                for (const g of gapValues) {
+                  const d = Math.abs(g - raw);
+                  if (d < bestDist) {
+                    bestDist = d;
+                    best = g;
+                  }
                 }
-              }
-              setMergeGap(best);
-            }}
-          />
-          <span className="sector-merge__label">
-            Gap: {mergeGap.toFixed(2)}s · {displaySectors.length} sectors
-          </span>
+                setMergeGap(best);
+              }}
+            />
+            <span className="sector-merge__label">
+              {mergeGap.toFixed(2)}s · {displaySectors.length} sectors
+            </span>
+          </div>
+          <div className="sector-reps">
+            <span className="sector-reps__label">Repeat:</span>
+            <div className="sector-reps__stepper">
+              <button
+                type="button"
+                aria-label="Decrease repeats"
+                onClick={() => setRepetitions((r) => Math.max(1, r - 1))}
+              >
+                −
+              </button>
+              <span className="sector-reps__value">{repetitions}</span>
+              <button
+                type="button"
+                aria-label="Increase repeats"
+                onClick={() => setRepetitions((r) => Math.min(20, r + 1))}
+              >
+                +
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
