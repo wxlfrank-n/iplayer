@@ -4,13 +4,12 @@ import { NativeTypes } from "react-dnd-html5-backend";
 import { useAudioPlayer } from "./hooks/useAudioPlayer";
 import { useConfig } from "./hooks/useConfig";
 import { useWaveform } from "./hooks/useWaveform";
-import { isMp3File, toFileList } from "./utils/audioFiles";
 import { AppHeader } from "./components/AppHeader";
 import { NowPlaying } from "./components/NowPlaying";
 import { PlayerControls } from "./components/PlayerControls";
+import { Playlist } from "./components/Playlist";
 import { ProgressBar } from "./components/ProgressBar";
 import { VolumeControl } from "./components/VolumeControl";
-import { TrackList } from "./components/TrackList";
 import { Settings } from "./components/Settings";
 import "./App.css";
 
@@ -37,7 +36,6 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimerRef = useRef<number | undefined>(undefined);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentTrack =
     state.currentTrackIndex >= 0 ? state.tracks[state.currentTrackIndex] : null;
@@ -52,10 +50,7 @@ export default function App() {
 
   const handleFiles = useCallback(
     (files: FileList, playAfter: boolean = true) => {
-      const all = Array.from(files);
-      const mp3s = all.filter(isMp3File);
-      const skipped = all.length - mp3s.length;
-      if (mp3s.length > 0) addTracks(toFileList(mp3s), playAfter);
+      const { skipped } = addTracks(files, playAfter);
       if (skipped > 0) {
         showNotice(`Skipped ${skipped} non-MP3 file${skipped > 1 ? "s" : ""}. Only MP3 files are supported.`);
       }
@@ -127,28 +122,13 @@ export default function App() {
         </div>
 
         {showPlaylist && (
-          <div className="playlist-section">
-            <div className="playlist-header">
-              <h2>Playlist ({state.tracks.length})</h2>
-              <button className="add-btn" onClick={() => fileInputRef.current?.click()}>
-                + Add MP3
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".mp3,audio/mpeg"
-                multiple
-                onChange={handleFileInput}
-                style={{ display: "none" }}
-              />
-            </div>
-            <TrackList
-              tracks={state.tracks}
-              currentTrackIndex={state.currentTrackIndex}
-              onSelectTrack={selectTrack}
-              onRemoveTrack={removeTrack}
-            />
-          </div>
+          <Playlist
+            tracks={state.tracks}
+            currentTrackIndex={state.currentTrackIndex}
+            onSelectTrack={selectTrack}
+            onRemoveTrack={removeTrack}
+            onAddFiles={handleFileInput}
+          />
         )}
       </div>
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Sector } from "./Sector";
 import { WaveformBars } from "./Waveform";
 import { useSectors } from "../hooks/useSectors";
+import { formatTime } from "../utils/time";
 
 interface ProgressBarProps {
   url: string | null;
@@ -148,11 +149,4 @@ export function ProgressBar({ url, currentTime, duration, onSeek, onPlay, peaks,
       <span className="time-label">{formatTime(duration)}</span>
     </div>
   );
-}
-
-function formatTime(seconds: number): string {
-  if (!isFinite(seconds) || seconds < 0) return "0:00";
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, "0")}`;
 }

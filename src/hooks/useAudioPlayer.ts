@@ -34,17 +34,21 @@ export function useAudioPlayer(skipSeconds: number) {
     isMuted: false,
   });
 
+  // Point the audio element at a new source and start playing it.
+  const startTrack = useCallback((audio: HTMLAudioElement, url: string) => {
+    audio.src = url;
+    audio.load();
+    audio.play().then(() => setState((s) => ({ ...s, isPlaying: true }))).catch(() => {});
+  }, []);
+
   useEffect(() => {
     nextRef.current = () => {
       setState((s) => {
         if (s.tracks.length === 0) return s;
         const nextIndex = (s.currentTrackIndex + 1) % s.tracks.length;
-        const audio = audioRef.current;
         const track = s.tracks[nextIndex];
         if (!track) return s;
-        audio.src = track.url;
-        audio.load();
-        audio.play().then(() => setState((prev) => ({ ...prev, isPlaying: true }))).catch(() => {});
+        startTrack(audioRef.current, track.url);
         return { ...s, currentTrackIndex: nextIndex, currentTime: 0, duration: 0 };
       });
     };
@@ -123,12 +127,10 @@ export function useAudioPlayer(skipSeconds: number) {
         (s.currentTrackIndex - 1 + s.tracks.length) % s.tracks.length;
       const track = s.tracks[prevIndex];
       if (!track) return s;
-      audio.src = track.url;
-      audio.load();
-      audio.play().then(() => setState((prev) => ({ ...prev, isPlaying: true }))).catch(() => {});
+      startTrack(audio, track.url);
       return { ...s, currentTrackIndex: prevIndex, currentTime: 0, duration: 0 };
     });
-  }, []);
+  }, [startTrack]);
 
   const seek = useCallback((time: number) => {
     audioRef.current.currentTime = time;
@@ -150,40 +152,42 @@ export function useAudioPlayer(skipSeconds: number) {
     });
   }, []);
 
-  const addTracks = useCallback((files: FileList, playAfter: boolean = false) => {
-    const mp3Files = Array.from(files).filter((f) => f.name.toLowerCase().endsWith(".mp3"));
-    const newTracks: Track[] = mp3Files.map((file) => ({
-      id: crypto.randomUUID(),
-      title: file.name.replace(/\.[^/.]+$/, ""),
-      artist: "Unknown Artist",
-      duration: 0,
-      url: URL.createObjectURL(file),
-      file,
-    }));
-    if (newTracks.length === 0) return;
+  const addTracks = useCallback(
+    (files: FileList, playAfter: boolean = false) => {
+      const all = Array.from(files);
+      const mp3Files = all.filter((f) => f.name.toLowerCase().endsWith(".mp3"));
+      const skipped = all.length - mp3Files.length;
+      const newTracks: Track[] = mp3Files.map((file) => ({
+        id: crypto.randomUUID(),
+        title: file.name.replace(/\.[^/.]+$/, ""),
+        artist: "Unknown Artist",
+        duration: 0,
+        url: URL.createObjectURL(file),
+        file,
+      }));
+      if (newTracks.length === 0) return { added: 0, skipped };
 
-    setState((s) => {
-      const startIndex = s.tracks.length;
-      const updated = { ...s, tracks: [...s.tracks, ...newTracks] };
+      setState((s) => {
+        const startIndex = s.tracks.length;
+        const updated = { ...s, tracks: [...s.tracks, ...newTracks] };
 
-      if (playAfter || s.currentTrackIndex === -1) {
-        const track = newTracks[0];
-        if (track) {
-          setTimeout(() => {
-            const audio = audioRef.current;
-            audio.src = track.url;
-            audio.load();
-            audio.play().then(() => setState((prev) => ({ ...prev, isPlaying: true }))).catch(() => {});
-          }, 0);
-          updated.currentTrackIndex = startIndex;
-          updated.currentTime = 0;
-          updated.duration = 0;
+        if (playAfter || s.currentTrackIndex === -1) {
+          const track = newTracks[0];
+          if (track) {
+            setTimeout(() => startTrack(audioRef.current, track.url), 0);
+            updated.currentTrackIndex = startIndex;
+            updated.currentTime = 0;
+            updated.duration = 0;
+          }
         }
-      }
 
-      return updated;
-    });
-  }, []);
+        return updated;
+      });
+
+      return { added: newTracks.length, skipped };
+    },
+    [startTrack],
+  );
 
   const removeTrack = useCallback((index: number) => {
     setState((s) => {
@@ -199,11 +203,7 @@ export function useAudioPlayer(skipSeconds: number) {
         } else {
           newIndex = Math.min(index, newTracks.length - 1);
           const track = newTracks[newIndex];
-          if (track) {
-            audio.src = track.url;
-            audio.load();
-            audio.play().then(() => setState((prev) => ({ ...prev, isPlaying: true }))).catch(() => {});
-          }
+          if (track) startTrack(audio, track.url);
         }
       } else if (index < s.currentTrackIndex) {
         newIndex = s.currentTrackIndex - 1;
@@ -211,19 +211,17 @@ export function useAudioPlayer(skipSeconds: number) {
 
       return { ...s, tracks: newTracks, currentTrackIndex: newIndex };
     });
-  }, []);
+  }, [startTrack]);
 
   const selectTrack = useCallback((index: number) => {
     setState((s) => {
       const audio = audioRef.current;
       const track = s.tracks[index];
       if (!track) return s;
-      audio.src = track.url;
-      audio.load();
-      audio.play().then(() => setState((prev) => ({ ...prev, isPlaying: true }))).catch(() => {});
+      startTrack(audio, track.url);
       return { ...s, currentTrackIndex: index, currentTime: 0, duration: 0 };
     });
-  }, []);
+  }, [startTrack]);
 
   const skipForward = useCallback(() => {
     const audio = audioRef.current;

@@ -1,4 +1,5 @@
 import { type Sector } from "../utils/vad";
+import { formatTime } from "../utils/time";
 
 interface SectorProps {
   sectors: Sector[];
@@ -10,13 +11,6 @@ interface SectorProps {
   onPlayRange: (start: number, end: number, repetitions: number) => void;
   activeSector: number;
   onActivate: (idx: number) => void;
-}
-
-function formatTime(seconds: number): string {
-  if (!isFinite(seconds) || seconds < 0) return "0:00";
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
 export function Sector({ sectors, windowStartSec, windowLen, innerH, vbW, vbH, onPlayRange, activeSector, onActivate }: SectorProps) {
