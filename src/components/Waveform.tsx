@@ -13,6 +13,8 @@ interface WaveformBarsProps {
 
 const BASE_COLOR = "#30363d";
 const PLAYED_COLOR = "#58a6ff";
+const SILENT_COLOR = "#3d444d";
+const MIN_BAR_PX = 2;
 
 export function WaveformBars({
   data,
@@ -24,36 +26,76 @@ export function WaveformBars({
   vbH,
   fracPlayed,
 }: WaveformBarsProps) {
-  // One connecting line through the raw samples, capped to one point per
-  // horizontal pixel so the path stays small and cheap to rasterize.
-  const lineD = useMemo(() => {
-    if (data.length === 0 || windowLen <= 0) return "";
+  // One vertical bar per horizontal pixel "frame": each frame covers a slice of
+  // samples and the bar spans that slice's min..max sample amplitude, tracing
+  // the wave shape instead of a symmetric peak. A 3-tap smoothing pass on both
+  // edges keeps adjacent bars visually continuous. Sub-pixel (silent) frames get
+  // a dimmed min-height tick so silent stretches stay visible.
+  const { waveD, silentD } = useMemo(() => {
+    if (data.length === 0 || windowLen <= 0) return { waveD: "", silentD: "" };
     const i0 = Math.max(0, Math.floor(windowStartSec * sampleRate));
     const i1 = Math.min(data.length, Math.ceil((windowStartSec + windowLen) * sampleRate));
-    const count = Math.max(1, i1 - i0);
-    const stepX = vbW / count;
+    const total = Math.max(1, i1 - i0);
+    const frames = Math.max(1, Math.floor(vbW));
+    const perFrame = total / frames;
     const midY = vbH / 2;
     const scaleY = innerH / 2;
 
-    let d = "";
-    let xPrev = -1;
-    for (let s = i0; s < i1; s++) {
-      const px = Math.round((s - i0) * stepX);
-      if (px === xPrev) continue;
-      xPrev = px;
-      const y = midY - data[s] * scaleY;
-      d += (d ? "L" : "M") + px + " " + Math.round(y * 100) / 100;
+    const topPts: number[] = [];
+    const botPts: number[] = [];
+    for (let f = 0; f < frames; f++) {
+      const s0 = i0 + Math.floor(f * perFrame);
+      const s1 = Math.min(i1, i0 + Math.floor((f + 1) * perFrame));
+      let min = s0 < i1 ? data[s0] : 0;
+      let max = min;
+      for (let s = s0; s < s1; s++) {
+        const v = data[s];
+        if (v < min) min = v;
+        if (v > max) max = v;
+      }
+      topPts.push(midY - max * scaleY);
+      botPts.push(midY - min * scaleY);
     }
-    return d;
+
+    const smooth = (pts: number[]) => {
+      const out = new Array<number>(pts.length);
+      for (let f = 0; f < pts.length; f++) {
+        const a = pts[Math.max(0, f - 1)];
+        const b = pts[f];
+        const c = pts[Math.min(pts.length - 1, f + 1)];
+        out[f] = (a + 2 * b + c) / 4;
+      }
+      return out;
+    };
+    const topSm = smooth(topPts);
+    const botSm = smooth(botPts);
+
+    let waveD = "";
+    let silentD = "";
+    for (let f = 0; f < frames; f++) {
+      const top = topSm[f];
+      const bot = botSm[f];
+      if (bot - top >= MIN_BAR_PX) {
+        waveD += `M${f} ${top.toFixed(2)}L${f} ${bot.toFixed(2)}`;
+        continue;
+      }
+      const mid = (top + bot) / 2;
+      const half = MIN_BAR_PX / 2;
+      silentD += `M${f} ${((mid - half)).toFixed(2)}L${f} ${(mid + half).toFixed(2)}`;
+    }
+    return { waveD, silentD };
   }, [data, sampleRate, windowStartSec, windowLen, innerH, vbW, vbH]);
 
   const clipWidth = Math.max(fracPlayed * vbW, 1);
 
   return (
     <>
-      <path d={lineD} fill="none" stroke={BASE_COLOR} strokeWidth={1} vectorEffect="non-scaling-stroke" />
+      <path d={waveD} fill="none" stroke={BASE_COLOR} strokeWidth={1} vectorEffect="non-scaling-stroke" />
+      {silentD && (
+        <path d={silentD} fill="none" stroke={SILENT_COLOR} strokeWidth={1} vectorEffect="non-scaling-stroke" />
+      )}
       <path
-        d={lineD}
+        d={waveD}
         fill="none"
         stroke={PLAYED_COLOR}
         strokeWidth={1}
