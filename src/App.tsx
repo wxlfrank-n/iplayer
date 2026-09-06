@@ -1,4 +1,6 @@
 import { useRef, useCallback, useState } from "react";
+import { useDrop } from "react-dnd";
+import { NativeTypes } from "react-dnd-html5-backend";
 import { useAudioPlayer } from "./hooks/useAudioPlayer";
 import { useConfig } from "./hooks/useConfig";
 import { useWaveform } from "./hooks/useWaveform";
@@ -35,7 +37,6 @@ export default function App() {
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimerRef = useRef<number | undefined>(undefined);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const dropRef = useRef<HTMLDivElement>(null);
 
   const currentTrack =
     state.currentTrackIndex >= 0 ? state.tracks[state.currentTrackIndex] : null;
@@ -49,11 +50,11 @@ export default function App() {
   }, []);
 
   const handleFiles = useCallback(
-    (files: FileList) => {
+    (files: FileList, playAfter: boolean = true) => {
       const all = Array.from(files);
       const mp3s = all.filter(isMp3File);
       const skipped = all.length - mp3s.length;
-      if (mp3s.length > 0) addTracks(toFileList(mp3s));
+      if (mp3s.length > 0) addTracks(toFileList(mp3s), playAfter);
       if (skipped > 0) {
         showNotice(`Skipped ${skipped} non-MP3 file${skipped > 1 ? "s" : ""}. Only MP3 files are supported.`);
       }
@@ -62,35 +63,27 @@ export default function App() {
   );
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) handleFiles(e.target.files);
+    if (e.target.files) handleFiles(e.target.files, false);
     e.target.value = "";
   };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dropRef.current?.classList.remove("drag-over");
-    if (e.dataTransfer.files) handleFiles(e.dataTransfer.files);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dropRef.current?.classList.add("drag-over");
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    dropRef.current?.classList.remove("drag-over");
-  };
+  const [{ isOver }, drop] = useDrop(
+    () => ({
+      accept: [NativeTypes.FILE],
+      drop: (item: { files?: FileList }) => {
+        if (item.files && item.files.length > 0) handleFiles(item.files);
+      },
+      collect: (monitor) => ({ isOver: monitor.isOver() }),
+    }),
+    [handleFiles],
+  );
 
   return (
     <div
-      className="app"
-      ref={dropRef}
-      onDrop={handleDrop}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
+      className={`app ${isOver ? "drag-over" : ""}`}
+      ref={(node) => {
+        if (node) drop(node);
+      }}
     >
       <header className="app-header">
         <h1 className="app-title">{"\u{1F3B5}"} MyPlayer</h1>

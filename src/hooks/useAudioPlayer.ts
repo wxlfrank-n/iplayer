@@ -150,7 +150,7 @@ export function useAudioPlayer(skipSeconds: number) {
     });
   }, []);
 
-  const addTracks = useCallback((files: FileList) => {
+  const addTracks = useCallback((files: FileList, playAfter: boolean = false) => {
     const mp3Files = Array.from(files).filter((f) => f.name.toLowerCase().endsWith(".mp3"));
     const newTracks: Track[] = mp3Files.map((file) => ({
       id: crypto.randomUUID(),
@@ -160,21 +160,27 @@ export function useAudioPlayer(skipSeconds: number) {
       url: URL.createObjectURL(file),
       file,
     }));
+    if (newTracks.length === 0) return;
 
     setState((s) => {
+      const startIndex = s.tracks.length;
       const updated = { ...s, tracks: [...s.tracks, ...newTracks] };
-      if (s.currentTrackIndex === -1 && newTracks.length > 0) {
-        setTimeout(() => {
-          const audio = audioRef.current;
-          const track = newTracks[0];
-          if (track) {
+
+      if (playAfter || s.currentTrackIndex === -1) {
+        const track = newTracks[0];
+        if (track) {
+          setTimeout(() => {
+            const audio = audioRef.current;
             audio.src = track.url;
             audio.load();
             audio.play().then(() => setState((prev) => ({ ...prev, isPlaying: true }))).catch(() => {});
-            setState((prev) => ({ ...prev, currentTrackIndex: 0, currentTime: 0, duration: 0 }));
-          }
-        }, 0);
+          }, 0);
+          updated.currentTrackIndex = startIndex;
+          updated.currentTime = 0;
+          updated.duration = 0;
+        }
       }
+
       return updated;
     });
   }, []);
