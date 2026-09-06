@@ -119,12 +119,12 @@ export default function App() {
           <NowPlaying track={currentTrack} audioUrl={currentTrack?.url ?? null} />
           <ProgressBar
             key={currentTrack?.url ?? "none"}
+            url={currentTrack?.url ?? null}
             currentTime={state.currentTime}
             duration={state.duration}
             onSeek={seek}
             onPlay={play}
             peaks={peaks}
-            mergeSeconds={config.sectorMergeSeconds}
             onPlayRange={playRange}
           />
           <div className="player-bottom">
@@ -177,8 +177,6 @@ export default function App() {
         <Settings
           skipSeconds={config.skipSeconds}
           onSkipSecondsChange={(v) => updateConfig({ skipSeconds: v })}
-          mergeSeconds={config.sectorMergeSeconds}
-          onMergeSecondsChange={(v) => updateConfig({ sectorMergeSeconds: v })}
           onClose={() => setShowSettings(false)}
         />
       )}

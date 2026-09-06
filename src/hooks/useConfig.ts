@@ -4,12 +4,10 @@ const STORAGE_KEY = "myplayer_config";
 
 interface Config {
   skipSeconds: number;
-  sectorMergeSeconds: number;
 }
 
 const DEFAULT_CONFIG: Config = {
   skipSeconds: 10,
-  sectorMergeSeconds: 0.5,
 };
 
 function loadConfig(): Config {

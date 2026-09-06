@@ -1,9 +1,7 @@
-import { useMemo } from "react";
-import { detectSectors } from "../utils/sectors";
+import { type Sector } from "../utils/vad";
 
 interface SectorProps {
-  peaks: number[];
-  mergeSeconds: number;
+  sectors: Sector[];
   windowStartSec: number;
   windowLen: number;
   innerH: number;
@@ -21,11 +19,7 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-export function Sector({ peaks, mergeSeconds, windowStartSec, windowLen, innerH, vbW, vbH, onPlayRange, activeSector, onActivate }: SectorProps) {
-  const sectors = useMemo(
-    () => detectSectors(peaks, mergeSeconds),
-    [peaks, mergeSeconds],
-  );
+export function Sector({ sectors, windowStartSec, windowLen, innerH, vbW, vbH, onPlayRange, activeSector, onActivate }: SectorProps) {
 
   const handleClick = (e: React.MouseEvent<SVGRectElement>, idx: number, start: number, end: number) => {
     e.stopPropagation();
