@@ -1,6 +1,21 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import type { Track } from "../types";
 import { DEFAULT_TRACKS } from "../defaultTracks";
+import { decodeAudioBuffer } from "../utils/audio";
+import { audioBufferToWavBlob } from "../utils/wav";
+
+// When playback starts after a seek, the browser may begin slightly past the
+// requested position (preroll/seek settling), skipping the very beginning.
+// Snap the playhead back to `time` once rendering actually starts.
+function snatchToStart(audio: HTMLAudioElement, time: number) {
+  const onPlaying = () => {
+    if (Math.abs(audio.currentTime - time) > 0.08) {
+      audio.currentTime = time;
+    }
+    audio.removeEventListener("playing", onPlaying);
+  };
+  audio.addEventListener("playing", onPlaying);
+}
 
 export interface PlayerState {
   tracks: Track[];
@@ -24,6 +39,20 @@ export function useAudioPlayer(skipSeconds: number) {
 
   const audioRef = useRef<HTMLAudioElement>(new Audio());
   const nextRef = useRef<() => void>(() => {});
+  const expectedRawUrlRef = useRef<string | null>(null);
+  const wavBlobCacheRef = useRef<Map<string, string>>(new Map());
+
+  const getPlayableUrl = useCallback(async (url: string): Promise<string> => {
+    const cache = wavBlobCacheRef.current;
+    const cached = cache.get(url);
+    if (cached) return cached;
+
+    const buffer = await decodeAudioBuffer(url);
+    const blob = audioBufferToWavBlob(buffer);
+    const objectUrl = URL.createObjectURL(blob);
+    cache.set(url, objectUrl);
+    return objectUrl;
+  }, []);
   const [state, setState] = useState<PlayerState>({
     tracks: defaultTracks,
     currentTrackIndex: defaultTracks.length > 0 ? 0 : -1,
@@ -35,11 +64,26 @@ export function useAudioPlayer(skipSeconds: number) {
   });
 
   // Point the audio element at a new source and start playing it.
-  const startTrack = useCallback((audio: HTMLAudioElement, url: string) => {
-    audio.src = url;
-    audio.load();
-    audio.play().then(() => setState((s) => ({ ...s, isPlaying: true }))).catch(() => {});
-  }, []);
+  const startTrack = useCallback(async (audio: HTMLAudioElement, url: string) => {
+    expectedRawUrlRef.current = url;
+    try {
+      const playableUrl = await getPlayableUrl(url);
+      // Only update if this is still the expected URL
+      if (expectedRawUrlRef.current === url) {
+        audio.src = playableUrl;
+        audio.load();
+        audio.play().then(() => setState((s) => ({ ...s, isPlaying: true }))).catch(() => {});
+      }
+    } catch (error) {
+      console.error("Failed to decode audio for playback:", error);
+      // Fallback to raw URL if decoding fails
+      if (expectedRawUrlRef.current === url) {
+        audio.src = url;
+        audio.load();
+        audio.play().then(() => setState((s) => ({ ...s, isPlaying: true }))).catch(() => {});
+      }
+    }
+  }, [getPlayableUrl]);
 
   useEffect(() => {
     nextRef.current = () => {
@@ -85,10 +129,23 @@ export function useAudioPlayer(skipSeconds: number) {
     const audio = audioRef.current;
     const track = state.tracks[state.currentTrackIndex];
     if (track && !audio.src) {
-      audio.src = track.url;
-      audio.load();
+      expectedRawUrlRef.current = track.url;
+      getPlayableUrl(track.url)
+        .then((playableUrl) => {
+          if (expectedRawUrlRef.current === track.url && !audio.src) {
+            audio.src = playableUrl;
+            audio.load();
+          }
+        })
+        .catch((error) => {
+          console.error("Failed to decode initial audio:", error);
+          if (expectedRawUrlRef.current === track.url && !audio.src) {
+            audio.src = track.url;
+            audio.load();
+          }
+        });
     }
-  }, [state.tracks, state.currentTrackIndex]);
+  }, [state.tracks, state.currentTrackIndex, getPlayableUrl]);
 
   const play = useCallback(() => {
     audioRef.current.play().then(() => setState((s) => ({ ...s, isPlaying: true }))).catch(() => {});
@@ -133,7 +190,9 @@ export function useAudioPlayer(skipSeconds: number) {
   }, [startTrack]);
 
   const seek = useCallback((time: number) => {
-    audioRef.current.currentTime = time;
+    const audio = audioRef.current;
+    if (audio.paused) snatchToStart(audio, time);
+    audio.currentTime = time;
     setState((s) => ({ ...s, currentTime: time }));
   }, []);
 
@@ -258,7 +317,12 @@ export function useAudioPlayer(skipSeconds: number) {
     };
 
     audio.addEventListener("timeupdate", onTimeUpdate);
+    // Sync the playhead immediately; otherwise the wave keeps showing the old
+    // position until the first timeupdate fires (~250ms later). Snap back to
+    // `start` when playback actually begins so the opening is not skipped.
+    snatchToStart(audio, start);
     audio.currentTime = start;
+    setState((s) => ({ ...s, currentTime: start }));
     audio.play().then(() => setState((s) => ({ ...s, isPlaying: true }))).catch(() => {});
   }, []);
 

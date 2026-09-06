@@ -1,5 +1,5 @@
-import { type Sector } from "../utils/vad";
-import { formatTime } from "../utils/time";
+import { type Sector } from "../utils/sectors";
+import { formatTimePrecise } from "../utils/time";
 
 interface SectorProps {
   sectors: Sector[];
@@ -18,27 +18,33 @@ export function Sector({ sectors, windowStartSec, windowLen, innerH, vbW, vbH, o
   const handleClick = (e: React.MouseEvent<SVGRectElement>, idx: number, start: number, end: number) => {
     e.stopPropagation();
     onActivate(idx);
-    onPlayRange(start, end, 1);
+    onPlayRange(start, end, 3);
+  };
+
+  const visible = (s: Sector) => s.end > windowStartSec && s.start < windowStartSec + windowLen;
+  const rect = (s: Sector) => {
+    const x = Math.max(0, ((s.start - windowStartSec) / windowLen) * vbW);
+    const right = Math.min(((s.end - windowStartSec) / windowLen) * vbW, vbW);
+    return { x, w: Math.max(1, right - x) };
   };
 
   return (
     <>
       {sectors.map((s, idx) => {
-        if (!(s.end > windowStartSec && s.start < windowStartSec + windowLen)) return null;
-        const x = Math.max(0, ((s.start - windowStartSec) / windowLen) * vbW);
-        const right = Math.min(((s.end - windowStartSec) / windowLen) * vbW, vbW);
-        const w = Math.max(1, right - x);
+        if (!visible(s)) return null;
+        const { x, w } = rect(s);
+        const isActive = idx === activeSector;
         return (
           <rect
             key={idx}
-            className={`waveform-sector ${idx === activeSector ? "waveform-sector--active" : ""}`}
+            className={`waveform-sector ${isActive ? "waveform-sector--active" : ""}`}
             x={x}
             y={vbH / 2 - innerH / 4}
             width={w}
             height={innerH / 2}
             onClick={(e) => handleClick(e, idx, s.start, s.end)}
           >
-            <title>{`Sector ${idx + 1}: ${formatTime(s.start)} - ${formatTime(s.end)}`}</title>
+            <title>{`Sector ${idx + 1}: ${formatTimePrecise(s.start)} - ${formatTimePrecise(s.end)}`}</title>
           </rect>
         );
       })}

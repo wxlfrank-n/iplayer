@@ -286,9 +286,34 @@ body {
 
 .progress-container {
   display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 1000px;
+}
+
+.progress-row {
+  display: flex;
   align-items: center;
   gap: 10px;
-  max-width: 1000px;
+}
+
+.sector-merge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 2px;
+}
+
+.sector-merge input[type="range"] {
+  flex: 1;
+  accent-color: var(--accent);
+}
+
+.sector-merge__label {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .time-label {

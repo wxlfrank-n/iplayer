@@ -1,16 +1,16 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Sector } from "./Sector";
 import { WaveformBars } from "./Waveform";
-import { useSectors } from "../hooks/useSectors";
-import { formatTime } from "../utils/time";
+import { type WaveformData } from "../hooks/useWaveform";
+import { splitBySilence, mergeSectorsByGap, sectorGaps, MERGE_GAP_SEC } from "../utils/sectors";
+import { formatTime, formatTimePrecise } from "../utils/time";
 
 interface ProgressBarProps {
-  url: string | null;
   currentTime: number;
   duration: number;
   onSeek: (time: number) => void;
   onPlay: () => void;
-  peaks: number[];
+  waveform: WaveformData | null;
   onPlayRange: (start: number, end: number, repetitions: number) => void;
 }
 
@@ -24,16 +24,26 @@ const WHEEL_MIN_DX = 3;
 const WHEEL_BURST_MS = 100;
 const WHEEL_STEP_PX = 40;
 
-export function ProgressBar({ url, currentTime, duration, onSeek, onPlay, peaks, onPlayRange }: ProgressBarProps) {
-  const { sectors, status: vadStatus } = useSectors(url, peaks);
-  const progress = duration > 0 ? currentTime / duration : 0;
+export function ProgressBar({ currentTime, duration, onSeek, onPlay, waveform, onPlayRange }: ProgressBarProps) {
+  const hasWaveform = waveform !== null && waveform.data.length > 0;
+  const sectors = useMemo(
+    () => splitBySilence(waveform?.data ?? null, waveform?.sampleRate ?? 0),
+    [waveform],
+  );
 
   const [anchorStartSec, setAnchorStartSec] = useState<number>(0);
   const [prevTime, setPrevTime] = useState<number>(-1);
   const [activeSector, setActiveSector] = useState<number>(-1);
   const [hoverFrac, setHoverFrac] = useState<number | null>(null);
+  const [mergeGap, setMergeGap] = useState(MERGE_GAP_SEC);
 
-  if (peaks.length > 0 && prevTime !== currentTime) {
+  const gapValues = useMemo(() => sectorGaps(sectors), [sectors]);
+  const displaySectors = useMemo(
+    () => mergeSectorsByGap(sectors, mergeGap),
+    [sectors, mergeGap],
+  );
+
+  if (hasWaveform && prevTime !== currentTime) {
     setPrevTime(currentTime);
     if (duration > 0) {
       if (currentTime >= anchorStartSec + WINDOW_SECONDS) {
@@ -51,7 +61,7 @@ export function ProgressBar({ url, currentTime, duration, onSeek, onPlay, peaks,
 
   const fracPlayed = windowLen > 0 ? Math.min(1, Math.max(0, (currentTime - windowStartSec) / windowLen)) : 0;
 
-  const visibleSectors = sectors
+  const visibleSectors = displaySectors
     .map((s, idx) => ({ start: s.start, end: s.end, idx }))
     .filter((s) => s.end > windowStartSec && s.start < windowStartSec + windowLen);
 
@@ -65,36 +75,36 @@ export function ProgressBar({ url, currentTime, duration, onSeek, onPlay, peaks,
       const target = e.target as HTMLElement | null;
       if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return;
       if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-      if (sectors.length === 0) return;
+      if (displaySectors.length === 0) return;
       e.preventDefault();
       setActiveSector((prev) => {
-        let next = prev < 0 ? (e.key === "ArrowRight" ? 0 : sectors.length - 1) : prev + (e.key === "ArrowRight" ? 1 : -1);
-        next = Math.max(0, Math.min(next, sectors.length - 1));
+        let next = prev < 0 ? (e.key === "ArrowRight" ? 0 : displaySectors.length - 1) : prev + (e.key === "ArrowRight" ? 1 : -1);
+        next = Math.max(0, Math.min(next, displaySectors.length - 1));
         navIndexRef.current = next;
-        const s = sectors[next];
-        if (s) onPlayRange(s.start, s.end, 1);
+        const s = displaySectors[next];
+        if (s) onPlayRange(s.start, s.end, 3);
         return next;
       });
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [sectors, onPlayRange]);
+  }, [displaySectors, onPlayRange]);
 
   // Touch swipe and wheel navigation only move the viewing window.
   const navigateSector = useCallback(
     (direction: 1 | -1) => {
-      if (sectors.length === 0) return;
+      if (displaySectors.length === 0) return;
       const prev = navIndexRef.current;
       const next = prev < 0
-        ? direction > 0 ? 0 : sectors.length - 1
-        : Math.max(0, Math.min(prev + direction, sectors.length - 1));
+        ? direction > 0 ? 0 : displaySectors.length - 1
+        : Math.max(0, Math.min(prev + direction, displaySectors.length - 1));
       navIndexRef.current = next;
-      const s = sectors[next];
+      const s = displaySectors[next];
       if (!s) return;
       // Only move the viewing window so the sector starts at the left edge.
       setAnchorStartSec(Math.max(0, Math.min(s.start, Math.max(0, duration - WINDOW_SECONDS))));
     },
-    [sectors, duration],
+    [displaySectors, duration],
   );
 
   const touchStartX = useRef<number | null>(null);
@@ -222,74 +232,97 @@ export function ProgressBar({ url, currentTime, duration, onSeek, onPlay, peaks,
 
   return (
     <div className="progress-container">
-      <span className="time-label">{formatTime(currentTime)}</span>
-      <div
-        ref={barRef}
-        className="waveform-bar"
-        onClick={handleClick}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={() => setHoverFrac(null)}
-      >
-        {vadStatus === "analyzing" && (
-          <div className="waveform-status">Analyzing speech…</div>
-        )}
-        {peaks.length === 0 ? (
-          <div className="waveform-placeholder">
-            <div className="waveform-placeholder__filled" style={{ width: `${progress * 100}%` }} />
-          </div>
-        ) : (
-          <svg className="waveform-svg" viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="none">
-            <WaveformBars
-              peaks={peaks}
-              windowStartSec={windowStartSec}
-              windowLen={windowLen}
-              innerH={innerH}
-              vbW={VB_W}
-              vbH={VB_H}
-              fracPlayed={fracPlayed}
-            />
-            <Sector
-              sectors={sectors}
-              windowStartSec={windowStartSec}
-              windowLen={windowLen}
-              innerH={innerH}
-              vbW={VB_W}
-              vbH={VB_H}
-              onPlayRange={onPlayRange}
-              activeSector={activeSector}
-              onActivate={(idx) => {
-                setActiveSector(idx);
-                navIndexRef.current = idx;
-              }}
-            />
-          </svg>
-        )}
-        {peaks.length > 0 &&
-          visibleSectors.map((s) => {
-            const center = ((s.start + (s.end - s.start) / 2 - windowStartSec) / windowLen) * 100;
-            return (
-              <span
-                key={`label-${s.idx}`}
-                className={`waveform-sector-label ${s.idx === activeSector ? "waveform-sector-label--active" : ""}`}
-                style={{ left: `${center}%` }}
+      <div className="progress-row">
+        <span className="time-label">{formatTime(currentTime)}</span>
+        <div
+          ref={barRef}
+          className="waveform-bar"
+          onClick={handleClick}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={() => setHoverFrac(null)}
+        >
+          {hasWaveform && (
+            <svg className="waveform-svg" viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="none">
+              <WaveformBars
+                data={waveform.data}
+                sampleRate={waveform.sampleRate}
+                windowStartSec={windowStartSec}
+                windowLen={windowLen}
+                innerH={innerH}
+                vbW={VB_W}
+                vbH={VB_H}
+                fracPlayed={fracPlayed}
+              />
+              <Sector
+                sectors={displaySectors}
+                windowStartSec={windowStartSec}
+                windowLen={windowLen}
+                innerH={innerH}
+                vbW={VB_W}
+                vbH={VB_H}
+                onPlayRange={onPlayRange}
+                activeSector={activeSector}
+                onActivate={(idx) => {
+                  setActiveSector(idx);
+                  navIndexRef.current = idx;
+                }}
+              />
+            </svg>
+          )}
+          {hasWaveform &&
+            visibleSectors.map((s) => {
+              const center = ((s.start + (s.end - s.start) / 2 - windowStartSec) / windowLen) * 100;
+              return (
+                <span
+                  key={`label-${s.idx}`}
+                  className={`waveform-sector-label ${s.idx === activeSector ? "waveform-sector-label--active" : ""}`}
+                  style={{ left: `${center}%` }}
+                >
+                  {s.idx + 1}
+                </span>
+              );
+            })}
+          {hoverFrac !== null && (
+            <>
+              <div className="waveform-bar__guide" style={{ left: `${hoverFrac * 100}%` }} />
+              <div
+                className={`waveform-bar__tooltip ${hoverFrac > 0.9 ? "waveform-bar__tooltip--edge" : ""}`}
+                style={{ left: `${hoverFrac * 100}%` }}
               >
-                {s.idx + 1}
-              </span>
-            );
-          })}
-        {hoverFrac !== null && (
-          <>
-            <div className="waveform-bar__guide" style={{ left: `${hoverFrac * 100}%` }} />
-            <div
-              className={`waveform-bar__tooltip ${hoverFrac > 0.9 ? "waveform-bar__tooltip--edge" : ""}`}
-              style={{ left: `${hoverFrac * 100}%` }}
-            >
-              {formatTime(hoverTime)}
-            </div>
-          </>
-        )}
+                {formatTimePrecise(hoverTime)}
+              </div>
+            </>
+          )}
+        </div>
+        <span className="time-label">{formatTime(duration)}</span>
       </div>
-      <span className="time-label">{formatTime(duration)}</span>
+      {gapValues.length > 0 && (
+        <div className="sector-merge">
+          <input
+            type="range"
+            min={gapValues[0]}
+            max={gapValues[gapValues.length - 1]}
+            step={0.005}
+            value={mergeGap}
+            onChange={(e) => {
+              const raw = parseFloat(e.target.value);
+              let best = 0;
+              let bestDist = Infinity;
+              for (const g of gapValues) {
+                const d = Math.abs(g - raw);
+                if (d < bestDist) {
+                  bestDist = d;
+                  best = g;
+                }
+              }
+              setMergeGap(best);
+            }}
+          />
+          <span className="sector-merge__label">
+            Merge sentence gaps ≤ {mergeGap.toFixed(2)}s · {displaySectors.length} sectors
+          </span>
+        </div>
+      )}
     </div>
   );
 }

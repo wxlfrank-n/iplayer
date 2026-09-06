@@ -40,7 +40,7 @@ export default function App() {
   const currentTrack =
     state.currentTrackIndex >= 0 ? state.tracks[state.currentTrackIndex] : null;
 
-  const peaks = useWaveform(currentTrack?.url ?? null);
+  const waveform = useWaveform(currentTrack?.url ?? null);
 
   const showNotice = useCallback((msg: string) => {
     setNotice(msg);
@@ -93,12 +93,11 @@ export default function App() {
           <NowPlaying track={currentTrack} audioUrl={currentTrack?.url ?? null} />
           <ProgressBar
             key={currentTrack?.url ?? "none"}
-            url={currentTrack?.url ?? null}
             currentTime={state.currentTime}
             duration={state.duration}
             onSeek={seek}
             onPlay={play}
-            peaks={peaks}
+            waveform={waveform}
             onPlayRange={playRange}
           />
           <div className="player-bottom">

@@ -1,5 +1,8 @@
+import { useMemo } from "react";
+
 interface WaveformBarsProps {
-  peaks: number[];
+  data: Float32Array;
+  sampleRate: number;
   windowStartSec: number;
   windowLen: number;
   innerH: number;
@@ -8,11 +11,12 @@ interface WaveformBarsProps {
   fracPlayed: number;
 }
 
-const SILENCE_THRESHOLD = 0.02;
-const SEC_PER_PEAK = 0.02;
+const BASE_COLOR = "#30363d";
+const PLAYED_COLOR = "#58a6ff";
 
 export function WaveformBars({
-  peaks,
+  data,
+  sampleRate,
   windowStartSec,
   windowLen,
   innerH,
@@ -20,43 +24,42 @@ export function WaveformBars({
   vbH,
   fracPlayed,
 }: WaveformBarsProps) {
-  const bars: { x: number; y: number; w: number; h: number }[] = [];
-  if (peaks.length > 0 && windowLen > 0) {
-    const windowEndSec = windowStartSec + windowLen;
-    const startPeak = windowStartSec / SEC_PER_PEAK;
-    const endPeak = windowEndSec / SEC_PER_PEAK;
-    const firstPeak = Math.max(0, Math.floor(startPeak));
-    const lastPeak = Math.min(peaks.length, Math.ceil(endPeak));
-    const n = Math.max(1, lastPeak - firstPeak);
-    const stepW = vbW / n;
+  // One connecting line through the raw samples, capped to one point per
+  // horizontal pixel so the path stays small and cheap to rasterize.
+  const lineD = useMemo(() => {
+    if (data.length === 0 || windowLen <= 0) return "";
+    const i0 = Math.max(0, Math.floor(windowStartSec * sampleRate));
+    const i1 = Math.min(data.length, Math.ceil((windowStartSec + windowLen) * sampleRate));
+    const count = Math.max(1, i1 - i0);
+    const stepX = vbW / count;
+    const midY = vbH / 2;
+    const scaleY = innerH / 2;
 
-    for (let p = firstPeak; p < lastPeak; p++) {
-      const amp = peaks[p] ?? 0;
-      const amplitude = amp < SILENCE_THRESHOLD ? amp * 0.3 : amp;
-      const barHeight = Math.max(1, amplitude * innerH);
-      bars.push({
-        x: (p - firstPeak) * stepW,
-        y: (vbH - barHeight) / 2,
-        w: Math.max(1, stepW - 0.5),
-        h: barHeight,
-      });
+    let d = "";
+    let xPrev = -1;
+    for (let s = i0; s < i1; s++) {
+      const px = Math.round((s - i0) * stepX);
+      if (px === xPrev) continue;
+      xPrev = px;
+      const y = midY - data[s] * scaleY;
+      d += (d ? "L" : "M") + px + " " + Math.round(y * 100) / 100;
     }
-  }
+    return d;
+  }, [data, sampleRate, windowStartSec, windowLen, innerH, vbW, vbH]);
 
   const clipWidth = Math.max(fracPlayed * vbW, 1);
 
   return (
     <>
-      <g>
-        {bars.map((b, i) => (
-          <rect key={i} x={b.x} y={b.y} width={b.w} height={b.h} fill="#30363d" />
-        ))}
-      </g>
-      <g clipPath="url(#playedClip)">
-        {bars.map((b, i) => (
-          <rect key={i} x={b.x} y={b.y} width={b.w} height={b.h} fill="#58a6ff" />
-        ))}
-      </g>
+      <path d={lineD} fill="none" stroke={BASE_COLOR} strokeWidth={1} vectorEffect="non-scaling-stroke" />
+      <path
+        d={lineD}
+        fill="none"
+        stroke={PLAYED_COLOR}
+        strokeWidth={1}
+        vectorEffect="non-scaling-stroke"
+        clipPath="url(#playedClip)"
+      />
       <defs>
         <clipPath id="playedClip">
           <rect x={0} y={0} width={clipWidth} height={vbH} />
