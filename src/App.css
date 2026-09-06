@@ -306,7 +306,44 @@ body {
 
 .sector-merge input[type="range"] {
   flex: 1;
-  accent-color: var(--accent);
+  height: 3px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--bg-tertiary);
+  border-radius: 1.5px;
+  outline: none;
+  cursor: pointer;
+}
+
+.sector-merge input[type="range"]::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 1.5px;
+}
+
+.sector-merge input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 10px;
+  background: var(--accent);
+  border-radius: 50%;
+  margin-top: -3.5px;
+  cursor: pointer;
+  border: none;
+}
+
+.sector-merge input[type="range"]::-moz-range-track {
+  height: 3px;
+  border-radius: 1.5px;
+  background: var(--bg-tertiary);
+}
+
+.sector-merge input[type="range"]::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  background: var(--accent);
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
 }
 
 .sector-merge__label {

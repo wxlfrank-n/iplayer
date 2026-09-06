@@ -319,7 +319,7 @@ export function ProgressBar({ currentTime, duration, onSeek, onPlay, waveform, o
             }}
           />
           <span className="sector-merge__label">
-            Merge sentence gaps ≤ {mergeGap.toFixed(2)}s · {displaySectors.length} sectors
+            Gap: {mergeGap.toFixed(2)}s · {displaySectors.length} sectors
           </span>
         </div>
       )}
