@@ -296,11 +296,21 @@ export function useAudioPlayer(skipSeconds: number) {
     setState((s) => ({ ...s, currentTime: newTime }));
   }, [skipSeconds]);
 
+  // Reference to the range's active timeupdate listener so starting a new range
+  // (e.g. clicking another sector) drops the previous one instead of letting
+  // the old range keep looping/pausing.
+  const rangeListenerRef = useRef<((e: Event) => void) | null>(null);
+
   // Plays the given time range [start, end] `repetitions` times sequentially,
   // pausing at `end` after the last repetition. Calls onComplete when finished.
   const playRange = useCallback((start: number, end: number, repetitions: number, onComplete?: () => void) => {
     const audio = audioRef.current;
     let count = 0;
+
+    if (rangeListenerRef.current) {
+      audio.removeEventListener("timeupdate", rangeListenerRef.current);
+      rangeListenerRef.current = null;
+    }
 
     const onTimeUpdate = () => {
       if (audio.currentTime < start) return;
@@ -309,6 +319,7 @@ export function useAudioPlayer(skipSeconds: number) {
         if (count >= repetitions) {
           audio.pause();
           audio.removeEventListener("timeupdate", onTimeUpdate);
+          rangeListenerRef.current = null;
           onComplete?.();
           return;
         }
@@ -316,6 +327,7 @@ export function useAudioPlayer(skipSeconds: number) {
       }
     };
 
+    rangeListenerRef.current = onTimeUpdate;
     audio.addEventListener("timeupdate", onTimeUpdate);
     // Sync the playhead immediately; otherwise the wave keeps showing the old
     // position until the first timeupdate fires (~250ms later). Snap back to

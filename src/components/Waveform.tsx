@@ -11,9 +11,9 @@ interface WaveformBarsProps {
   fracPlayed: number;
 }
 
-const BASE_COLOR = "#30363d";
+const BASE_COLOR = "#8b949e";
 const PLAYED_COLOR = "#58a6ff";
-const SILENT_COLOR = "#3d444d";
+const SILENT_COLOR = "#4b545e";
 const MIN_BAR_PX = 2;
 
 export function WaveformBars({

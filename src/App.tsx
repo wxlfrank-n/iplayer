@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState } from "react";
+import { useRef, useCallback, useState, useEffect } from "react";
 import { useDrop } from "react-dnd";
 import { NativeTypes } from "react-dnd-html5-backend";
 import { useAudioPlayer } from "./hooks/useAudioPlayer";
@@ -63,6 +63,18 @@ export default function App() {
     e.target.value = "";
   };
 
+  // Stop the page from scrolling/zooming on wheel anywhere in the app, except
+  // inside the playlist's own scrollable track list.
+  useEffect(() => {
+    const onWheel = (e: WheelEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest(".track-list")) return;
+      e.preventDefault();
+    };
+    window.addEventListener("wheel", onWheel, { passive: false });
+    return () => window.removeEventListener("wheel", onWheel);
+  }, []);
+
   const [{ isOver }, drop] = useDrop(
     () => ({
       accept: [NativeTypes.FILE],
@@ -90,33 +102,35 @@ export default function App() {
 
       <div className={`player-layout ${showPlaylist ? "player-layout--with-playlist" : ""}`}>
         <div className="player-main">
-          <NowPlaying track={currentTrack} audioUrl={currentTrack?.url ?? null} />
-          <ProgressBar
-            key={currentTrack?.url ?? "none"}
-            currentTime={state.currentTime}
-            duration={state.duration}
-            onSeek={seek}
-            onPlay={play}
-            waveform={waveform}
-            onPlayRange={playRange}
-          />
-          <div className="player-bottom">
-            <PlayerControls
-              isPlaying={state.isPlaying}
-              onTogglePlay={togglePlay}
-              onNext={next}
-              onPrev={prev}
-              onSkipForward={skipForward}
-              onSkipBackward={skipBackward}
-              hasTrack={state.tracks.length > 0}
-              skipSeconds={config.skipSeconds}
+          <div className="player-card">
+            <NowPlaying track={currentTrack} audioUrl={currentTrack?.url ?? null} />
+            <ProgressBar
+              key={currentTrack?.url ?? "none"}
+              currentTime={state.currentTime}
+              duration={state.duration}
+              onSeek={seek}
+              onPlay={play}
+              waveform={waveform}
+              onPlayRange={playRange}
             />
-            <VolumeControl
-              volume={state.volume}
-              isMuted={state.isMuted}
-              onVolumeChange={setVolume}
-              onToggleMute={toggleMute}
-            />
+            <div className="player-bottom">
+              <PlayerControls
+                isPlaying={state.isPlaying}
+                onTogglePlay={togglePlay}
+                onNext={next}
+                onPrev={prev}
+                onSkipForward={skipForward}
+                onSkipBackward={skipBackward}
+                hasTrack={state.tracks.length > 0}
+                skipSeconds={config.skipSeconds}
+              />
+              <VolumeControl
+                volume={state.volume}
+                isMuted={state.isMuted}
+                onVolumeChange={setVolume}
+                onToggleMute={toggleMute}
+              />
+            </div>
           </div>
         </div>
 

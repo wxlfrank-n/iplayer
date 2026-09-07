@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 
-const STORAGE_KEY = "myplayer_config";
+const STORAGE_KEY = "waveplay_config";
 
 interface Config {
   skipSeconds: number;

@@ -49,8 +49,10 @@ export function splitBySilence(
       }
     }
   }
-  // Expand each sector into the surrounding silence: absorb 10% of each
-  // adjacent silent gap so playback starts slightly before/after the sound run.
+  // Expand each sector into the surrounding silence: extend equally on both
+  // sides by the smaller of 30% of the left gap and 20% of the right gap, so
+  // playback starts slightly before/after the sound run.
+  const minGap = 0.4; // seconds
   for (let i = 0; i < sectors.length; i++) {
     const sector = sectors[i];
     const prevEnd = i > 0 ? sectors[i - 1].end : 0;
@@ -58,8 +60,9 @@ export function splitBySilence(
       i < sectors.length - 1 ? sectors[i + 1].start : data.length / sampleRate;
     const leftSilence = sector.start - prevEnd;
     const rightSilence = nextStart - sector.end;
-    sector.start = Math.max(0, sector.start - 0.1 * leftSilence);
-    sector.end = Math.min(data.length / sampleRate, sector.end + 0.1 * rightSilence);
+    const expand = Math.min(minGap, minGap * leftSilence, minGap * rightSilence);
+    sector.start = Math.max(0, sector.start - expand);
+    sector.end = Math.min(data.length / sampleRate, sector.end + expand);
   }
   return sectors;
 }
