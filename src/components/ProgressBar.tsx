@@ -71,7 +71,11 @@ export function ProgressBar({ currentTime, duration, onSeek, onPlay, waveform, w
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  const bubbleLeft = sliderMetrics.thumbW / 2 + (sliderMetrics.width - sliderMetrics.thumbW) * mergePct;
+  // Slider is mirrored (max on the left, min on the right), so the bubble sits
+  // at the mirrored position of the thumb center.
+  const bubbleLeft =
+    sliderMetrics.width -
+    (sliderMetrics.thumbW / 2 + (sliderMetrics.width - sliderMetrics.thumbW) * mergePct);
 
   // Page/follow the 30s window along with the playhead, once per new position.
   // Uses a ref guard + functional setState and runs as an effect (after commit)
@@ -377,9 +381,6 @@ export function ProgressBar({ currentTime, duration, onSeek, onPlay, waveform, w
                 </span>
               );
             })}
-          {hasWaveform && (
-            <span className="sector-count">{displaySectors.length} sectors</span>
-          )}
           {hoverFrac !== null && (
             <>
               <div className="waveform-bar__guide" style={{ left: `${hoverFrac * 100}%` }} />
@@ -400,19 +401,19 @@ export function ProgressBar({ currentTime, duration, onSeek, onPlay, waveform, w
             <div className="sector-merge__stepper">
               <button
                 type="button"
-                aria-label="Decrease merge gap"
-                title="more sectors"
-                disabled={mergeGap <= gapValues[0]}
+                aria-label="Increase merge gap"
+                title="Fewer sectors"
+                disabled={mergeGap >= gapValues[gapValues.length - 1]}
                 onClick={() => {
                   const i = gapValues.indexOf(mergeGap);
-                  const next = gapValues[i > 0 ? i - 1 : 0];
+                  const next = gapValues[i >= 0 && i < gapValues.length - 1 ? i + 1 : gapValues.length - 1];
                   if (next !== undefined) {
                     setMergeGap(next);
                     setSliderValue(next);
                   }
                 }}
               >
-                −
+                -
               </button>
               <div className="sector-merge__slider" ref={sliderWrapRef}>
                 <span
@@ -420,7 +421,7 @@ export function ProgressBar({ currentTime, duration, onSeek, onPlay, waveform, w
                   style={{ left: `${bubbleLeft}px` }}
                   title="Sectors separated by a silent gap up to this long are merged into one"
                 >
-                  {sliderValue.toFixed(2)}s
+                  {displaySectors.length} {displaySectors.length === 1 ? "sector" : "sectors"}
                 </span>
                 <input
                   type="range"
@@ -447,12 +448,12 @@ export function ProgressBar({ currentTime, duration, onSeek, onPlay, waveform, w
               </div>
               <button
                 type="button"
-                aria-label="Increase merge gap"
-                title="Fewer sectors"
-                disabled={mergeGap >= gapValues[gapValues.length - 1]}
+                aria-label="Decrease merge gap"
+                title="more sectors"
+                disabled={mergeGap <= gapValues[0]}
                 onClick={() => {
                   const i = gapValues.indexOf(mergeGap);
-                  const next = gapValues[i >= 0 && i < gapValues.length - 1 ? i + 1 : gapValues.length - 1];
+                  const next = gapValues[i > 0 ? i - 1 : 0];
                   if (next !== undefined) {
                     setMergeGap(next);
                     setSliderValue(next);

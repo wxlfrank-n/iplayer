@@ -69,7 +69,8 @@ body {
   transition: color 0.15s, background 0.15s;
 }
 
-.settings-btn:hover {
+.settings-btn:hover,
+.settings-btn:active {
   color: var(--text-primary);
   background: var(--bg-hover);
 }
@@ -119,7 +120,8 @@ body {
   transition: color 0.15s, background 0.15s;
 }
 
-.settings-close:hover {
+.settings-close:hover,
+.settings-close:active {
   color: var(--text-primary);
   background: var(--bg-hover);
 }
@@ -153,7 +155,8 @@ body {
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
-.settings-chip:hover {
+.settings-chip:hover,
+.settings-chip:active {
   background: var(--bg-hover);
 }
 
@@ -190,7 +193,8 @@ body {
   transition: background 0.15s, color 0.15s;
 }
 
-.playlist-toggle:hover {
+.playlist-toggle:hover,
+.playlist-toggle:active {
   background: var(--bg-hover);
   color: var(--text-primary);
 }
@@ -397,6 +401,7 @@ body {
   border-radius: 1.5px;
   outline: none;
   cursor: pointer;
+  transform: scaleX(-1);
 }
 
 .sector-merge__stepper button {
@@ -416,9 +421,11 @@ body {
   cursor: pointer;
 }
 
-.sector-merge__stepper button:hover:not(:disabled) {
+.sector-merge__stepper button:hover:not(:disabled),
+.sector-merge__stepper button:active:not(:disabled) {
   border-color: var(--accent);
   color: var(--accent);
+  background: var(--bg-hover);
 }
 
 .sector-merge__stepper button:disabled {
@@ -457,30 +464,6 @@ body {
   border: none;
 }
 
-.sector-count {
-  position: absolute;
-  right: 4px;
-  bottom: 2px;
-  font-size: 0.6rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  background: rgba(13, 17, 23, 0.55);
-  border-radius: 2px;
-  padding: 1px 3px;
-  line-height: 1;
-  white-space: nowrap;
-  pointer-events: none;
-  user-select: none;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.15s ease, visibility 0.15s ease;
-}
-
-.progress-container:hover .sector-count {
-  opacity: 1;
-  visibility: visible;
-}
-
 .sector-reps {
   display: flex;
   align-items: center;
@@ -516,9 +499,11 @@ body {
   cursor: pointer;
 }
 
-.sector-reps__stepper button:hover {
+.sector-reps__stepper button:hover,
+.sector-reps__stepper button:active {
   border-color: var(--accent);
   color: var(--accent);
+  background: var(--bg-hover);
 }
 
 .sector-reps__value {
@@ -842,7 +827,8 @@ body {
   display: block;
 }
 
-.icon-btn:hover {
+.icon-btn:hover,
+.icon-btn:active {
   color: var(--accent);
   background: var(--bg-hover);
   box-shadow:
@@ -984,7 +970,8 @@ body {
   transition: background 0.15s;
 }
 
-.add-btn:hover {
+.add-btn:hover,
+.add-btn:active {
   background: var(--bg-hover);
 }
 
@@ -1080,7 +1067,8 @@ body {
   opacity: 1;
 }
 
-.track-item__remove:hover {
+.track-item__remove:hover,
+.track-item__remove:active {
   color: var(--danger);
   background: rgba(248, 81, 73, 0.1);
 }
@@ -1126,7 +1114,8 @@ body {
   transition: color 0.15s, background 0.15s, border-color 0.15s;
 }
 
-.mobile-add-btn:hover {
+.mobile-add-btn:hover,
+.mobile-add-btn:active {
   color: #fff;
   background: var(--bg-hover);
   border-color: var(--accent-dim);
@@ -1218,11 +1207,6 @@ body {
     pointer-events: auto;
   }
 
-  .sector-count {
-    opacity: 1;
-    visibility: visible;
-  }
-
   .sector-merge input[type="range"] {
     height: 6px;
   }
@@ -1254,40 +1238,9 @@ body {
     height: 22px;
   }
 
-  /* Touch has no cursor hover: keep the same visual feedback on :active while
-     the finger is down, and kill the default grey tap highlight. */
+  /* Touch has no cursor hover: taps rely on the :active states, which mirror
+     the normal :hover effect (defined next to the :hover rules below). */
   button {
     -webkit-tap-highlight-color: transparent;
-  }
-
-  .control-btn:active:not(:disabled) {
-    background: var(--bg-hover);
-    color: var(--accent);
-    box-shadow:
-      0 0 12px rgba(88, 166, 255, 0.55),
-      0 0 30px rgba(88, 166, 255, 0.3);
-  }
-
-  .control-btn--play:active:not(:disabled) {
-    background: var(--accent-dim);
-    color: #fff;
-    box-shadow:
-      0 0 20px rgba(88, 166, 255, 0.9),
-      0 0 50px rgba(88, 166, 255, 0.5);
-  }
-
-  .icon-btn:active {
-    color: var(--accent);
-    background: var(--bg-hover);
-    box-shadow:
-      0 0 10px rgba(88, 166, 255, 0.5),
-      0 0 24px rgba(88, 166, 255, 0.25);
-  }
-
-  .add-btn:active,
-  .mobile-add-btn:active,
-  .sector-reps__stepper button:active,
-  .sector-merge__stepper button:active {
-    background: var(--bg-hover);
   }
 }
