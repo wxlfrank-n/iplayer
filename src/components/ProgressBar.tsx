@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Sector } from "./Sector";
 import { WaveformBars } from "./Waveform";
-import { type WaveformData } from "../hooks/useWaveform";
+import { type WaveformData, type WaveformStatus } from "../hooks/useWaveform";
 import { splitBySilence, mergeSectorsByGap, sectorGaps, MERGE_GAP_SEC } from "../utils/sectors";
 import { formatTime, formatTimePrecise } from "../utils/time";
 
@@ -11,6 +11,7 @@ interface ProgressBarProps {
   onSeek: (time: number) => void;
   onPlay: () => void;
   waveform: WaveformData | null;
+  waveformStatus: WaveformStatus;
   onPlayRange: (start: number, end: number, repetitions: number) => void;
 }
 
@@ -24,7 +25,7 @@ const WHEEL_MIN_DX = 3;
 const WHEEL_BURST_MS = 100;
 const WHEEL_STEP_PX = 40;
 
-export function ProgressBar({ currentTime, duration, onSeek, onPlay, waveform, onPlayRange }: ProgressBarProps) {
+export function ProgressBar({ currentTime, duration, onSeek, onPlay, waveform, waveformStatus, onPlayRange }: ProgressBarProps) {
   const hasWaveform = waveform !== null && waveform.data.length > 0;
   const sectors = useMemo(
     () => splitBySilence(waveform?.data ?? null, waveform?.sampleRate ?? 0),
@@ -32,7 +33,9 @@ export function ProgressBar({ currentTime, duration, onSeek, onPlay, waveform, o
   );
 
   const [anchorStartSec, setAnchorStartSec] = useState<number>(0);
-  const [prevTime, setPrevTime] = useState<number>(-1);
+  // Last currentTime we've already anchored the follow-window for. Kept in a ref
+  // (no re-render) so the anchor only advances once per new playhead position.
+  const lastAnchoredTimeRef = useRef<number>(-1);
   const [activeSector, setActiveSector] = useState<number>(-1);
   const [hoverFrac, setHoverFrac] = useState<number | null>(null);
   const [mergeGap, setMergeGap] = useState(MERGE_GAP_SEC);
@@ -44,16 +47,20 @@ export function ProgressBar({ currentTime, duration, onSeek, onPlay, waveform, o
     [sectors, mergeGap],
   );
 
-  if (hasWaveform && prevTime !== currentTime) {
-    setPrevTime(currentTime);
-    if (duration > 0) {
-      if (currentTime >= anchorStartSec + WINDOW_SECONDS) {
-        setAnchorStartSec(Math.max(0, currentTime - WINDOW_SECONDS));
-      } else if (currentTime < anchorStartSec) {
-        setAnchorStartSec(currentTime);
+  // Page/follow the 30s window along with the playhead, once per new position.
+  // Uses a ref guard + functional setState and runs as an effect (after commit)
+  // rather than during render, so it can never trigger a render-phase stall.
+  useEffect(() => {
+    if (!hasWaveform || lastAnchoredTimeRef.current === currentTime) return;
+    lastAnchoredTimeRef.current = currentTime;
+    setAnchorStartSec((a) => {
+      if (currentTime >= a + WINDOW_SECONDS) {
+        return Math.max(0, currentTime - WINDOW_SECONDS);
       }
-    }
-  }
+      if (currentTime < a) return currentTime;
+      return a;
+    });
+  }, [hasWaveform, currentTime]);
 
   const innerH = VB_H - PAD * 2;
   const windowStartSec = Math.max(0, Math.min(anchorStartSec, Math.max(0, duration - WINDOW_SECONDS)));
@@ -242,6 +249,12 @@ export function ProgressBar({ currentTime, duration, onSeek, onPlay, waveform, o
           onMouseMove={handleMouseMove}
           onMouseLeave={() => setHoverFrac(null)}
         >
+          {(waveformStatus === "loading" || waveformStatus === "idle") && (
+            <div className="waveform-loading">Loading waveform…</div>
+          )}
+          {waveformStatus === "error" && (
+            <div className="waveform-loading waveform-loading--error">Waveform unavailable</div>
+          )}
           {hasWaveform && (
             <svg className="waveform-svg" viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="none">
               <WaveformBars

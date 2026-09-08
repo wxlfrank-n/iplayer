@@ -320,7 +320,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-width: 1600px;
   align-self: stretch;
 }
 
@@ -487,6 +486,34 @@ body {
   border: 1px solid transparent;
   transition: border-color 0.15s ease;
   touch-action: none;
+}
+
+.waveform-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  animation: waveform-loading-pulse 1.4s ease-in-out infinite;
+}
+
+.waveform-loading--error {
+  color: #f47067;
+  animation: none;
+}
+
+@keyframes waveform-loading-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .waveform-status {

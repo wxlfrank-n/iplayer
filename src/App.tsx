@@ -110,7 +110,8 @@ export default function App() {
               duration={state.duration}
               onSeek={seek}
               onPlay={play}
-              waveform={waveform}
+              waveform={waveform.data}
+              waveformStatus={waveform.status}
               onPlayRange={playRange}
             />
             <div className="player-bottom">

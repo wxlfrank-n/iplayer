@@ -33,7 +33,7 @@ export function useAudioPlayer(skipSeconds: number) {
     title: t.title,
     artist: "Unknown Artist",
     duration: 0,
-    url: `/music/${t.filename}`,
+    url: `${import.meta.env.VITE_BASE_URL}music/${t.filename}`,
     file: undefined,
   }));
 
@@ -47,7 +47,7 @@ export function useAudioPlayer(skipSeconds: number) {
     const cached = cache.get(url);
     if (cached) return cached;
 
-    const buffer = await decodeAudioBuffer(url);
+    const { buffer } = await decodeAudioBuffer(url);
     const blob = audioBufferToWavBlob(buffer);
     const objectUrl = URL.createObjectURL(blob);
     cache.set(url, objectUrl);

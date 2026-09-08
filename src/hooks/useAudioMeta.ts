@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { decodeAudioBuffer } from "../utils/audio";
 
 export interface AudioMeta {
   channels: number;
@@ -25,28 +26,22 @@ export function useAudioMeta(url: string | null) {
 
     async function extract() {
       try {
-        const response = await fetch(currentUrl!);
-        const arrayBuffer = await response.arrayBuffer();
-        const contentLength = response.headers.get("content-length");
-        const fileSize = contentLength ? parseInt(contentLength, 10) : arrayBuffer.byteLength;
-
-        const audioContext = new AudioContext();
-        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-        await audioContext.close();
-
+        // Reuse the same fetch + decodeAudioData that the waveform and playback
+        // use, so the metadata never triggers a second full decode of the file.
+        const { buffer, byteLength } = await decodeAudioBuffer(currentUrl!);
         if (cancelled) return;
 
-        const bitrate = audioBuffer.duration > 0
-          ? Math.round((fileSize * 8) / audioBuffer.duration / 1000)
+        const bitrate = buffer.duration > 0
+          ? Math.round((byteLength * 8) / buffer.duration / 1000)
           : 0;
 
         setMeta({
-          channels: audioBuffer.numberOfChannels,
-          sampleRate: audioBuffer.sampleRate,
+          channels: buffer.numberOfChannels,
+          sampleRate: buffer.sampleRate,
           bitrate,
         });
       } catch {
-        setMeta(null);
+        if (!cancelled) setMeta(null);
       }
     }
 

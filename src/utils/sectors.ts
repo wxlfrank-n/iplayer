@@ -11,7 +11,7 @@ export interface Sector {
 const SILENCE_RATIO = 0.01;
 // A silent gap shorter than this does not split: the next sound run extends
 // the previous sector instead of starting a new one.
-export const MERGE_GAP_SEC = 0.1;
+export const MERGE_GAP_SEC = 0.05;
 
 // Split raw decoded audio into sectors: each contiguous run of samples with
 // |v| > the silence cutoff becomes a sector, bounded by silent samples.

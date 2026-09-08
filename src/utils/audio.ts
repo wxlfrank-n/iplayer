@@ -1,7 +1,13 @@
-const decodeCache = new Map<string, Promise<AudioBuffer>>();
+export interface DecodedAudio {
+  buffer: AudioBuffer;
+  byteLength: number;
+}
 
-// Shared decode cache so waveform and VAD analysis decode each file only once.
-export function decodeAudioBuffer(url: string): Promise<AudioBuffer> {
+const decodeCache = new Map<string, Promise<DecodedAudio>>();
+
+// Shared decode cache so the metadata, waveform and playback (WAV) viewers all
+// fetch + decode each file exactly once and share the result.
+export function decodeAudioBuffer(url: string): Promise<DecodedAudio> {
   const cached = decodeCache.get(url);
   if (cached) return cached;
 
@@ -11,7 +17,8 @@ export function decodeAudioBuffer(url: string): Promise<AudioBuffer> {
     const arrayBuffer = await response.arrayBuffer();
     const audioContext = new AudioContext();
     try {
-      return await audioContext.decodeAudioData(arrayBuffer);
+      const buffer = await audioContext.decodeAudioData(arrayBuffer);
+      return { buffer, byteLength: arrayBuffer.byteLength };
     } finally {
       await audioContext.close();
     }

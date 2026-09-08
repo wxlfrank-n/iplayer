@@ -6,10 +6,13 @@ export interface WaveformData {
   sampleRate: number;
 }
 
-// Returns the raw decoded audio as mixed-to-mono Float32 samples.
-// The renderer downsamples these directly; nothing is extracted here.
-export function useWaveform(url: string | null): WaveformData | null {
+export type WaveformStatus = "idle" | "loading" | "ready" | "error";
+
+// Raw decoded audio as mixed-to-mono Float32 samples plus a status flag so the
+// UI can tell "still decoding" apart from "not (yet) available".
+export function useWaveform(url: string | null): { data: WaveformData | null; status: WaveformStatus } {
   const [waveform, setWaveform] = useState<WaveformData | null>(null);
+  const [status, setStatus] = useState<WaveformStatus>("idle");
   const urlRef = useRef(url);
 
   // Keep ref in sync with latest url value
@@ -20,13 +23,18 @@ export function useWaveform(url: string | null): WaveformData | null {
   // Decode audio and keep raw mono samples when url changes
   useEffect(() => {
     const currentUrl = urlRef.current;
-    if (!currentUrl) return;
+    if (!currentUrl) {
+      setWaveform(null);
+      setStatus("idle");
+      return;
+    }
+    setStatus("loading");
 
     let cancelled = false;
 
     async function load() {
       try {
-        const audioBuffer = await decodeAudioBuffer(currentUrl!);
+        const { buffer: audioBuffer } = await decodeAudioBuffer(currentUrl!);
 
         const channelCount = audioBuffer.numberOfChannels;
         const length = audioBuffer.getChannelData(0).length;
@@ -39,9 +47,11 @@ export function useWaveform(url: string | null): WaveformData | null {
 
         if (cancelled) return;
         setWaveform({ data: mono, sampleRate: audioBuffer.sampleRate });
+        setStatus("ready");
       } catch {
         if (cancelled) return;
         setWaveform(null);
+        setStatus("error");
       }
     }
 
@@ -52,5 +62,5 @@ export function useWaveform(url: string | null): WaveformData | null {
     };
   }, [url]);
 
-  return waveform;
+  return { data: status === "ready" ? waveform : null, status };
 }
