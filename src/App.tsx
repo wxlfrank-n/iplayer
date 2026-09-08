@@ -60,7 +60,7 @@ export default function App() {
   );
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) handleFiles(e.target.files, false);
+    if (e.target.files) handleFiles(e.target.files);
     e.target.value = "";
   };
 
