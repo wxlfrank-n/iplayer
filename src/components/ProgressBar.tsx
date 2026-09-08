@@ -38,6 +38,9 @@ export function ProgressBar({ currentTime, duration, onSeek, onPlay, waveform, w
   const [activeSector, setActiveSector] = useState<number>(-1);
   const [hoverFrac, setHoverFrac] = useState<number | null>(null);
   const [mergeGap, setMergeGap] = useState(MERGE_GAP_SEC);
+  // Raw slider position (continuous) — the thumb and bubble follow this while
+  // dragging; `mergeGap` snaps it to the nearest real sector gap for merging.
+  const [sliderValue, setSliderValue] = useState(MERGE_GAP_SEC);
   const [repetitions, setRepetitions] = useState(3);
 
   const gapValues = useMemo(() => sectorGaps(sectors), [sectors]);
@@ -45,6 +48,30 @@ export function ProgressBar({ currentTime, duration, onSeek, onPlay, waveform, w
     () => mergeSectorsByGap(sectors, mergeGap),
     [sectors, mergeGap],
   );
+  const gapMin = gapValues.length > 0 ? gapValues[0] : 0;
+  const gapMax = gapValues.length > 0 ? gapValues[gapValues.length - 1] : 0;
+  const mergePct =
+    gapMax > gapMin ? Math.min(1, Math.max(0, (sliderValue - gapMin) / (gapMax - gapMin))) : 0;
+
+  // Slider geometry (width + thumb size) so the value bubble can be placed
+  // exactly over the thumb center in pixels (calc() cannot multiply lengths,
+  // so the position is computed here instead of in CSS).
+  const sliderWrapRef = useRef<HTMLDivElement>(null);
+  const [sliderMetrics, setSliderMetrics] = useState({ width: 200, thumbW: 10 });
+  useEffect(() => {
+    const el = sliderWrapRef.current;
+    if (!el) return;
+    const update = () => {
+      const tw =
+        parseFloat(getComputedStyle(el).getPropertyValue("--thumb-w")) || 10;
+      setSliderMetrics({ width: el.clientWidth, thumbW: tw });
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const bubbleLeft = sliderMetrics.thumbW / 2 + (sliderMetrics.width - sliderMetrics.thumbW) * mergePct;
 
   // Page/follow the 30s window along with the playhead, once per new position.
   // Uses a ref guard + functional setState and runs as an effect (after commit)
@@ -350,6 +377,9 @@ export function ProgressBar({ currentTime, duration, onSeek, onPlay, waveform, w
                 </span>
               );
             })}
+          {hasWaveform && (
+            <span className="sector-count">{displaySectors.length} sectors</span>
+          )}
           {hoverFrac !== null && (
             <>
               <div className="waveform-bar__guide" style={{ left: `${hoverFrac * 100}%` }} />
@@ -367,36 +397,79 @@ export function ProgressBar({ currentTime, duration, onSeek, onPlay, waveform, w
       {gapValues.length > 0 && (
         <div className="sector-toolbar">
           <div className="sector-merge">
-            <input
-              type="range"
-              min={gapValues[0]}
-              max={gapValues[gapValues.length - 1]}
-              step={0.005}
-              value={mergeGap}
-              onChange={(e) => {
-                const raw = parseFloat(e.target.value);
-                let best = 0;
-                let bestDist = Infinity;
-                for (const g of gapValues) {
-                  const d = Math.abs(g - raw);
-                  if (d < bestDist) {
-                    bestDist = d;
-                    best = g;
+            <div className="sector-merge__stepper">
+              <button
+                type="button"
+                aria-label="Decrease merge gap"
+                title="more sectors"
+                disabled={mergeGap <= gapValues[0]}
+                onClick={() => {
+                  const i = gapValues.indexOf(mergeGap);
+                  const next = gapValues[i > 0 ? i - 1 : 0];
+                  if (next !== undefined) {
+                    setMergeGap(next);
+                    setSliderValue(next);
                   }
-                }
-                setMergeGap(best);
-              }}
-            />
-            <span className="sector-merge__label">
-              {mergeGap.toFixed(2)}s · {displaySectors.length} sectors
-            </span>
+                }}
+              >
+                −
+              </button>
+              <div className="sector-merge__slider" ref={sliderWrapRef}>
+                <span
+                  className="sector-merge__bubble"
+                  style={{ left: `${bubbleLeft}px` }}
+                  title="Sectors separated by a silent gap up to this long are merged into one"
+                >
+                  {sliderValue.toFixed(2)}s
+                </span>
+                <input
+                  type="range"
+                  min={gapValues[0]}
+                  max={gapValues[gapValues.length - 1]}
+                  step={0.005}
+                  value={sliderValue}
+                  title={`sectors separated less than ${sliderValue.toFixed(2)}s are combined into one`}
+                  onChange={(e) => {
+                    const raw = parseFloat(e.target.value);
+                    setSliderValue(raw);
+                    let best = 0;
+                    let bestDist = Infinity;
+                    for (const g of gapValues) {
+                      const d = Math.abs(g - raw);
+                      if (d < bestDist) {
+                        bestDist = d;
+                        best = g;
+                      }
+                    }
+                    setMergeGap(best);
+                  }}
+                />
+              </div>
+              <button
+                type="button"
+                aria-label="Increase merge gap"
+                title="Fewer sectors"
+                disabled={mergeGap >= gapValues[gapValues.length - 1]}
+                onClick={() => {
+                  const i = gapValues.indexOf(mergeGap);
+                  const next = gapValues[i >= 0 && i < gapValues.length - 1 ? i + 1 : gapValues.length - 1];
+                  if (next !== undefined) {
+                    setMergeGap(next);
+                    setSliderValue(next);
+                  }
+                }}
+              >
+                +
+              </button>
+            </div>
           </div>
-          <div className="sector-reps">
+          <div className="sector-reps" title={`Repeat ${repetitions} times when you click a sector`}>
             <span className="sector-reps__label">Repeat:</span>
             <div className="sector-reps__stepper">
               <button
                 type="button"
                 aria-label="Decrease repeats"
+                title="Play each sector fewer times"
                 onClick={() => setRepetitions((r) => Math.max(1, r - 1))}
               >
                 −
@@ -405,6 +478,7 @@ export function ProgressBar({ currentTime, duration, onSeek, onPlay, waveform, w
               <button
                 type="button"
                 aria-label="Increase repeats"
+                title="Play each sector more times"
                 onClick={() => setRepetitions((r) => Math.min(20, r + 1))}
               >
                 +

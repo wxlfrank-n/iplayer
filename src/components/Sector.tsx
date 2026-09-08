@@ -36,10 +36,6 @@ export function Sector({ sectors, windowStartSec, windowLen, innerH, vbW, vbH, o
         const { x, w } = rect(s);
         const isActive = idx === activeSector;
         const y = vbH / 2 - innerH / 4;
-        const h = innerH / 2;
-        const ratio = 6;
-        const rx = Math.min(ratio, Math.ceil(w/ratio)) + "px";
-        const ry = Math.ceil(Math.min(ratio * h / w, h/ratio)) + "px"
         return (
           <rect
             key={idx}
@@ -48,8 +44,6 @@ export function Sector({ sectors, windowStartSec, windowLen, innerH, vbW, vbH, o
             y={y}
             width={w}
             height={innerH / 2}
-            rx={rx}
-            ry={ry}
             onClick={(e) => handleClick(e, idx, s.start, s.end)}
           >
             <title>{`${formatTimePrecise(s.start)} - ${formatTimePrecise(s.end)}`}</title>
