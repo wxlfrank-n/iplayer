@@ -332,7 +332,9 @@ body {
 .sector-toolbar {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 16px;
+  margin-left: auto;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -346,16 +348,18 @@ body {
 }
 
 .sector-merge {
-  flex: 1;
-  min-width: 0;
+  flex: none;
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
   padding: 0 2px;
+  max-width: 320px;
 }
 
 .sector-merge input[type="range"] {
-  flex: 1;
+  flex: none;
+  width: 200px;
   height: 3px;
   -webkit-appearance: none;
   appearance: none;
@@ -397,10 +401,11 @@ body {
 }
 
 .sector-merge__label {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   color: var(--text-secondary);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 .sector-reps {
@@ -743,6 +748,8 @@ body {
   align-items: center;
   gap: 8px;
   margin-left: auto;
+  position: relative;
+  align-self: center;
 }
 
 .icon-btn {
@@ -770,9 +777,44 @@ body {
     0 0 24px rgba(88, 166, 255, 0.25);
 }
 
+.volume-popup {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 10px;
+  background: var(--bg-secondary);
+  border: 1px solid rgba(88, 166, 255, 0.22);
+  border-radius: 10px;
+  box-shadow:
+    0 0 24px rgba(88, 166, 255, 0.15),
+    0 0 60px rgba(31, 111, 235, 0.1),
+    0 12px 32px rgba(0, 0, 0, 0.4);
+  z-index: 30;
+}
+
+.volume-popup__mute {
+  padding: 4px;
+}
+
+.volume-popup__slider-wrap {
+  position: relative;
+  width: 24px;
+  height: 120px;
+}
+
 .volume-slider {
-  width: 100px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 120px;
   height: 4px;
+  margin: 0;
+  transform: translate(-50%, -50%) rotate(-90deg);
   -webkit-appearance: none;
   appearance: none;
   background: linear-gradient(
@@ -995,6 +1037,28 @@ body {
   }
 }
 
+.mobile-add-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.mobile-add-btn:hover {
+  color: #fff;
+  background: var(--bg-hover);
+  border-color: var(--accent-dim);
+}
+
 .app-notice {
   position: fixed;
   bottom: 20px;
@@ -1008,4 +1072,131 @@ body {
   padding: 8px 14px;
   border-radius: 6px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* Small screens: only the fullscreen player with an Add MP3 button. The
+   header and playlist are hidden; the player card fills the viewport. */
+@media (max-width: 767px) {
+  .app-header {
+    display: none;
+  }
+
+  .player-layout {
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  .player-main {
+    padding: 0;
+    gap: 0;
+    justify-content: stretch;
+  }
+
+  .player-card {
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    max-height: none;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 20px 16px;
+  }
+
+  .playlist-section {
+    display: none;
+  }
+
+  .mobile-add-btn {
+    display: flex;
+    align-self: flex-end;
+  }
+
+  .sector-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .sector-merge {
+    flex: none;
+    width: 100%;
+  }
+
+  .sector-merge input[type="range"] {
+    width: 100%;
+  }
+
+  .sector-reps {
+    width: 100%;
+  }
+}
+
+/* Touch devices have no hover: keep the sector toolbar always visible and make
+   the merge slider thumb large enough to grab with a finger. */
+@media (hover: none) {
+  .sector-toolbar {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .sector-merge input[type="range"] {
+    height: 6px;
+  }
+
+  .sector-merge input[type="range"]::-webkit-slider-runnable-track {
+    height: 6px;
+  }
+
+  .sector-merge input[type="range"]::-webkit-slider-thumb {
+    width: 22px;
+    height: 22px;
+    margin-top: -8px;
+  }
+
+  .sector-merge input[type="range"]::-moz-range-track {
+    height: 6px;
+  }
+
+  .sector-merge input[type="range"]::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+  }
+
+  /* Touch has no cursor hover: keep the same visual feedback on :active while
+     the finger is down, and kill the default grey tap highlight. */
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .control-btn:active:not(:disabled) {
+    background: var(--bg-hover);
+    color: var(--accent);
+    box-shadow:
+      0 0 12px rgba(88, 166, 255, 0.55),
+      0 0 30px rgba(88, 166, 255, 0.3);
+  }
+
+  .control-btn--play:active:not(:disabled) {
+    background: var(--accent-dim);
+    color: #fff;
+    box-shadow:
+      0 0 20px rgba(88, 166, 255, 0.9),
+      0 0 50px rgba(88, 166, 255, 0.5);
+  }
+
+  .icon-btn:active {
+    color: var(--accent);
+    background: var(--bg-hover);
+    box-shadow:
+      0 0 10px rgba(88, 166, 255, 0.5),
+      0 0 24px rgba(88, 166, 255, 0.25);
+  }
+
+  .add-btn:active,
+  .mobile-add-btn:active,
+  .sector-reps__stepper button:active {
+    background: var(--bg-hover);
+  }
 }

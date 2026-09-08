@@ -19,7 +19,6 @@ const WINDOW_SECONDS = 30;
 const VB_W = 1000;
 const VB_H = 200;
 const PAD = 4;
-const SWIPE_THRESHOLD_PX = 50;
 const SWIPE_DECIDE_PX = 8;
 const WHEEL_MIN_DX = 3;
 const WHEEL_BURST_MS = 100;
@@ -50,8 +49,9 @@ export function ProgressBar({ currentTime, duration, onSeek, onPlay, waveform, w
   // Page/follow the 30s window along with the playhead, once per new position.
   // Uses a ref guard + functional setState and runs as an effect (after commit)
   // rather than during render, so it can never trigger a render-phase stall.
+  const isPanningRef = useRef(false);
   useEffect(() => {
-    if (!hasWaveform || lastAnchoredTimeRef.current === currentTime) return;
+    if (!hasWaveform || lastAnchoredTimeRef.current === currentTime || isPanningRef.current) return;
     lastAnchoredTimeRef.current = currentTime;
     setAnchorStartSec((a) => {
       if (currentTime >= a + WINDOW_SECONDS) {
@@ -66,6 +66,25 @@ export function ProgressBar({ currentTime, duration, onSeek, onPlay, waveform, w
   const windowStartSec = Math.max(0, Math.min(anchorStartSec, Math.max(0, duration - WINDOW_SECONDS)));
   const windowEndSec = Math.min(duration, windowStartSec + WINDOW_SECONDS);
   const windowLen = windowEndSec - windowStartSec;
+
+  // Live refs so the (once-attached) touch listeners always read current values
+  // without re-binding on every render. Synced in effects (not during render).
+  const anchorRef = useRef(anchorStartSec);
+  const windowLenRef = useRef(windowLen);
+  const durationRef = useRef(duration);
+  const sectorsRef = useRef(displaySectors);
+  useEffect(() => {
+    anchorRef.current = anchorStartSec;
+  }, [anchorStartSec]);
+  useEffect(() => {
+    windowLenRef.current = windowLen;
+  }, [windowLen]);
+  useEffect(() => {
+    durationRef.current = duration;
+  }, [duration]);
+  useEffect(() => {
+    sectorsRef.current = displaySectors;
+  }, [displaySectors]);
 
   const fracPlayed = windowLen > 0 ? Math.min(1, Math.max(0, (currentTime - windowStartSec) / windowLen)) : 0;
 
@@ -117,8 +136,9 @@ export function ProgressBar({ currentTime, duration, onSeek, onPlay, waveform, w
 
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
-  const swipeActive = useRef(false);
-  const swipeFired = useRef(false);
+  const panAnchorStart = useRef(0);
+  const barRectW = useRef(0);
+  const panning = useRef(false);
   const touchEnded = useRef(false);
   const barRef = useRef<HTMLDivElement | null>(null);
 
@@ -132,16 +152,20 @@ export function ProgressBar({ currentTime, duration, onSeek, onPlay, waveform, w
     const reset = () => {
       touchStartX.current = null;
       touchStartY.current = null;
-      swipeActive.current = false;
-      swipeFired.current = false;
+      panning.current = false;
       touchEnded.current = false;
     };
 
     const onTouchStart = (e: TouchEvent) => {
       if (e.touches.length !== 1) return;
       reset();
+      isPanningRef.current = false;
       touchStartX.current = e.touches[0].clientX;
       touchStartY.current = e.touches[0].clientY;
+      // Record where the window would start if the gesture becomes a pan, plus
+      // the bar width so we can convert px deltas to seconds 1:1.
+      panAnchorStart.current = anchorRef.current;
+      barRectW.current = el.getBoundingClientRect().width;
     };
 
     const onTouchMove = (e: TouchEvent) => {
@@ -152,28 +176,57 @@ export function ProgressBar({ currentTime, duration, onSeek, onPlay, waveform, w
       const ax = Math.abs(dx);
       const ay = Math.abs(dy);
 
-      if (!swipeActive.current) {
+      if (!panning.current) {
         if (ax <= SWIPE_DECIDE_PX && ay <= SWIPE_DECIDE_PX) return;
         if (ax > ay) {
-          // Clearly horizontal: claim the gesture so the page never moves,
-          // but don't navigate until the swipe passes the threshold.
+          // Clearly horizontal: claim the gesture so the page never moves.
           e.preventDefault();
-          swipeActive.current = true;
+          panning.current = true;
+          isPanningRef.current = true;
         } else {
-          // Clearly vertical: hand the gesture back to the browser for scrolling.
+          // Clearly vertical: hand the gesture back to the browser.
           touchEnded.current = true;
           return;
         }
       }
 
-      if (!swipeFired.current && ax >= SWIPE_THRESHOLD_PX) {
-        swipeFired.current = true;
-        touchEnded.current = true;
-        navigateSector(dx < 0 ? -1 : 1);
-      }
+      // Continuous 1:1 pan: dragging by one bar pixel moves the window start by
+      // windowLen/barWidth seconds in the opposite direction, so the audio that
+      // sits under the finger stays under the finger while dragging.
+      const secPerPx = (windowLenRef.current || WINDOW_SECONDS) / (barRectW.current || 1);
+      const maxStart = Math.max(0, durationRef.current - WINDOW_SECONDS);
+      const target = panAnchorStart.current - dx * secPerPx;
+      setAnchorStartSec(Math.max(0, Math.min(target, maxStart)));
     };
 
     const onTouchEnd = () => {
+      const wasPan = panning.current;
+      isPanningRef.current = false;
+
+      // Snap the window so its left edge lands in the middle of the nearest
+      // sector, instead of wherever the finger stopped mid-silence.
+      if (wasPan) {
+        const sectors = sectorsRef.current;
+        if (sectors.length > 0) {
+          const now = anchorRef.current;
+          let best = 0;
+          let bestDist = Infinity;
+          for (let i = 0; i < sectors.length; i++) {
+            const d = Math.abs(sectors[i].start - now);
+            if (d < bestDist) {
+              bestDist = d;
+              best = i;
+            }
+          }
+          const durMax = Math.max(0, durationRef.current - WINDOW_SECONDS);
+          const s = sectors[best];
+          if (s) {
+            navIndexRef.current = best;
+            setActiveSector(best);
+            setAnchorStartSec(Math.max(0, Math.min(s.start, durMax)));
+          }
+        }
+      }
       reset();
     };
 

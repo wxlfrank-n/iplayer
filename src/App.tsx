@@ -36,6 +36,7 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimerRef = useRef<number | undefined>(undefined);
+  const mobileFileInputRef = useRef<HTMLInputElement>(null);
 
   const currentTrack =
     state.currentTrackIndex >= 0 ? state.tracks[state.currentTrackIndex] : null;
@@ -103,6 +104,20 @@ export default function App() {
       <div className={`player-layout ${showPlaylist ? "player-layout--with-playlist" : ""}`}>
         <div className="player-main">
           <div className="player-card">
+            <button
+              className="mobile-add-btn"
+              onClick={() => mobileFileInputRef.current?.click()}
+            >
+              + Add MP3
+            </button>
+            <input
+              ref={mobileFileInputRef}
+              type="file"
+              accept=".mp3,audio/mpeg"
+              multiple
+              onChange={handleFileInput}
+              style={{ display: "none" }}
+            />
             <NowPlaying track={currentTrack} audioUrl={currentTrack?.url ?? null} />
             <ProgressBar
               key={currentTrack?.url ?? "none"}
