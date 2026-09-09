@@ -89,8 +89,13 @@ export function ProgressBar({ currentTime, onSeek, waveform, waveformStatus, onP
     const cBot = scrollEl.getBoundingClientRect().bottom;
     const rTop = child.getBoundingClientRect().top;
     const rBot = child.getBoundingClientRect().bottom;
-    if (rTop < cTop) scrollEl.scrollTop += rTop - cTop;
-    else if (rBot > cBot) scrollEl.scrollTop += rBot - cBot;
+    if (rTop < cTop) {
+      autoScrollPendingRef.current = true;
+      scrollEl.scrollTop += rTop - cTop;
+    } else if (rBot > cBot) {
+      autoScrollPendingRef.current = true;
+      scrollEl.scrollTop += rBot - cBot;
+    }
   }, [activeRowIdx]);
 
   // The merge/repeat toolbar is portaled into the `.sector-toolbar-slot` in the
@@ -119,6 +124,10 @@ export function ProgressBar({ currentTime, onSeek, waveform, waveformStatus, onP
   const [toolbarActive, setToolbarActive] = useState(false);
   const scrollTimeoutRef = useRef<number | undefined>(undefined);
   const toolbarIdleRef = useRef<number | undefined>(undefined);
+  // Auto-scroll (following the current row) also fires scroll events; those are
+  // programmatic, so they must not be treated as the user scrolling (which
+  // would flash the toolbar on every row boundary during playback).
+  const autoScrollPendingRef = useRef(false);
   const keepToolbarShown = useCallback(() => {
     setToolbarActive(true);
     window.clearTimeout(toolbarIdleRef.current);
@@ -134,6 +143,10 @@ export function ProgressBar({ currentTime, onSeek, waveform, waveformStatus, onP
     const el = stackedContainerRef.current?.closest(".progress-container");
     if (!el) return;
     const onScroll = () => {
+      if (autoScrollPendingRef.current) {
+        autoScrollPendingRef.current = false;
+        return;
+      }
       setScrolling(true);
       window.clearTimeout(scrollTimeoutRef.current);
       scrollTimeoutRef.current = window.setTimeout(() => setScrolling(false), 1500);
