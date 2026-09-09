@@ -9,7 +9,6 @@ import { NowPlaying } from "./components/NowPlaying";
 import { PlayerControls } from "./components/PlayerControls";
 import { Playlist } from "./components/Playlist";
 import { ProgressBar } from "./components/ProgressBar";
-import { VolumeControl } from "./components/VolumeControl";
 import { Settings } from "./components/Settings";
 import "./App.css";
 
@@ -22,8 +21,6 @@ export default function App() {
     next,
     prev,
     seek,
-    setVolume,
-    toggleMute,
     addTracks,
     removeTrack,
     selectTrack,
@@ -35,8 +32,13 @@ export default function App() {
   const [showPlaylist, setShowPlaylist] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [progressDragFrac, setProgressDragFrac] = useState<number | null>(null);
+  const [sectorPlaying, setSectorPlaying] = useState(false);
+  const [waveformScrolling, setWaveformScrolling] = useState(false);
+  const [toolbarActive, setToolbarActive] = useState(false);
   const noticeTimerRef = useRef<number | undefined>(undefined);
   const mobileFileInputRef = useRef<HTMLInputElement>(null);
+  const sectorToolbarSlotRef = useRef<HTMLDivElement>(null);
 
   const currentTrack =
     state.currentTrackIndex >= 0 ? state.tracks[state.currentTrackIndex] : null;
@@ -110,7 +112,7 @@ export default function App() {
               className="mobile-add-btn"
               onClick={() => mobileFileInputRef.current?.click()}
             >
-              + Add MP3
+              +
             </button>
           </div>
           <input
@@ -128,30 +130,48 @@ export default function App() {
             waveform={waveform.data}
             waveformStatus={waveform.status}
             onPlayRange={playRange}
+            onSectorPlayActiveChange={setSectorPlaying}
+            onWaveformScrollChange={setWaveformScrolling}
+            onToolbarActiveChange={setToolbarActive}
+            sectorToolbarRef={sectorToolbarSlotRef}
           />
             <div className="player-bottom">
-              {state.duration > 0 && (
+              {!sectorPlaying && !waveformScrolling && !toolbarActive && state.duration > 0 && (
                 <div
                   className="mini-progress"
-                  onClick={(e) => {
+                  onPointerDown={(e) => {
+                    e.currentTarget.setPointerCapture(e.pointerId);
                     const rect = e.currentTarget.getBoundingClientRect();
                     const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                    setProgressDragFrac(frac);
                     seek(frac * state.duration);
+                  }}
+                  onPointerMove={(e) => {
+                    if (progressDragFrac === null) return;
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                    setProgressDragFrac(frac);
+                    seek(frac * state.duration);
+                  }}
+                  onPointerUp={() => {
+                    setProgressDragFrac(null);
                     play();
                   }}
+                  onPointerCancel={() => setProgressDragFrac(null)}
                 >
                   <div className="mini-progress__slider">
                     <div
                       className="mini-progress__fill"
-                      style={{ width: `${Math.min(1, state.duration > 0 ? state.currentTime / state.duration : 0) * 100}%` }}
+                      style={{ width: `${(progressDragFrac ?? Math.min(1, state.currentTime / state.duration)) * 100}%` }}
                     />
                     <div
                       className="mini-progress__thumb"
-                      style={{ left: `${Math.min(1, state.duration > 0 ? state.currentTime / state.duration : 0) * 100}%` }}
+                      style={{ left: `${(progressDragFrac ?? Math.min(1, state.currentTime / state.duration)) * 100}%` }}
                     />
                   </div>
                 </div>
               )}
+              <div className="sector-toolbar-slot" ref={sectorToolbarSlotRef} />
               <PlayerControls
                 isPlaying={state.isPlaying}
                 onTogglePlay={togglePlay}
@@ -161,12 +181,6 @@ export default function App() {
                 onSkipBackward={skipBackward}
                 hasTrack={state.tracks.length > 0}
                 skipSeconds={config.skipSeconds}
-              />
-              <VolumeControl
-                volume={state.volume}
-                isMuted={state.isMuted}
-                onVolumeChange={setVolume}
-                onToggleMute={toggleMute}
               />
             </div>
           </div>

@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Sector } from "./Sector";
 import { WaveformBars } from "./Waveform";
 import { type WaveformData, type WaveformStatus } from "../hooks/useWaveform";
@@ -10,7 +11,12 @@ interface ProgressBarProps {
   onSeek: (time: number) => void;
   waveform: WaveformData | null;
   waveformStatus: WaveformStatus;
-  onPlayRange: (start: number, end: number, repetitions: number) => void;
+  onPlayRange: (start: number, end: number, repetitions: number, onComplete?: () => void) => void;
+  onSectorActiveChange?: (idx: number) => void;
+  onSectorPlayActiveChange?: (active: boolean) => void;
+  onWaveformScrollChange?: (scrolling: boolean) => void;
+  onToolbarActiveChange?: (active: boolean) => void;
+  sectorToolbarRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 // Sectors are packed into wrapped rows that span the full track — each row aims
@@ -20,7 +26,7 @@ const VB_W = 1000;
 const VB_H = 200;
 const PAD = 4;
 
-export function ProgressBar({ currentTime, onSeek, waveform, waveformStatus, onPlayRange }: ProgressBarProps) {
+export function ProgressBar({ currentTime, onSeek, waveform, waveformStatus, onPlayRange, onSectorActiveChange, onSectorPlayActiveChange, onWaveformScrollChange, onToolbarActiveChange, sectorToolbarRef }: ProgressBarProps) {
   const hasWaveform = waveform !== null && waveform.data.length > 0;
   const sectors = useMemo(
     () => splitBySilence(waveform?.data ?? null, waveform?.sampleRate ?? 0),
@@ -72,23 +78,81 @@ export function ProgressBar({ currentTime, onSeek, waveform, waveformStatus, onP
   const stackedContainerRef = useRef<HTMLDivElement>(null);
   const activeRowIdx = stackedRows.findIndex((r) => currentTime >= r.start && currentTime <= r.end);
   useEffect(() => {
+    // The `.progress-container` is the single scrollable region (the player-card
+    // middle section); scroll it so the row being played is fully visible.
+    const scrollEl = stackedContainerRef.current?.closest(".progress-container") ?? null;
+    if (!scrollEl || activeRowIdx < 0) return;
     const container = stackedContainerRef.current;
-    if (!container || activeRowIdx < 0) return;
-    const child = container.children[activeRowIdx] as HTMLElement | undefined;
+    const child = container?.children[activeRowIdx] as HTMLElement | undefined;
     if (!child) return;
-    const cTop = container.getBoundingClientRect().top;
-    const cBot = container.getBoundingClientRect().bottom;
+    const cTop = scrollEl.getBoundingClientRect().top;
+    const cBot = scrollEl.getBoundingClientRect().bottom;
     const rTop = child.getBoundingClientRect().top;
     const rBot = child.getBoundingClientRect().bottom;
-    if (rTop < cTop) container.scrollTop += rTop - cTop;
-    else if (rBot > cBot) container.scrollTop += rBot - cBot;
+    if (rTop < cTop) scrollEl.scrollTop += rTop - cTop;
+    else if (rBot > cBot) scrollEl.scrollTop += rBot - cBot;
   }, [activeRowIdx]);
+
+  // The merge/repeat toolbar is portaled into the `.sector-toolbar-slot` in the
+  // player bottom (the same place the traditional progress bar occupies) and is
+  // shown only while a sector is selected.
+  const [toolbarTarget, setToolbarTarget] = useState<HTMLDivElement | null>(null);
+  useEffect(() => {
+    setToolbarTarget(sectorToolbarRef?.current ?? null);
+  }, [sectorToolbarRef]);
+
+  // Whether a sector is currently being played back (started but not yet
+  // finished). The selected sector itself is kept after playback completes so
+  // its highlight stays visible; only the toolbar reverts to the traditional
+  // progress bar.
+  const [sectorPlayActive, setSectorPlayActive] = useState(false);
+
+  useEffect(() => {
+    onSectorPlayActiveChange?.(sectorPlayActive);
+  }, [sectorPlayActive, onSectorPlayActiveChange]);
+
+  // Also show the toolbar while the stacked waveform is being scrolled so the
+  // merge/gap controls are reachable during scrubbing, and stay visible while
+  // the user is actually operating the controls. It only hides after the last
+  // interaction/scroll goes idle (or immediately if a sector is not playing).
+  const [scrolling, setScrolling] = useState(false);
+  const [toolbarActive, setToolbarActive] = useState(false);
+  const scrollTimeoutRef = useRef<number | undefined>(undefined);
+  const toolbarIdleRef = useRef<number | undefined>(undefined);
+  const keepToolbarShown = useCallback(() => {
+    setToolbarActive(true);
+    window.clearTimeout(toolbarIdleRef.current);
+    toolbarIdleRef.current = window.setTimeout(() => setToolbarActive(false), 2000);
+  }, []);
+  useEffect(() => {
+    onWaveformScrollChange?.(scrolling);
+  }, [scrolling, onWaveformScrollChange]);
+  useEffect(() => {
+    onToolbarActiveChange?.(toolbarActive);
+  }, [toolbarActive, onToolbarActiveChange]);
+  useEffect(() => {
+    const el = stackedContainerRef.current?.closest(".progress-container");
+    if (!el) return;
+    const onScroll = () => {
+      setScrolling(true);
+      window.clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = window.setTimeout(() => setScrolling(false), 1500);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      window.clearTimeout(scrollTimeoutRef.current);
+    };
+  }, [waveform]);
 
   // Slider geometry (width + thumb size) so the value bubble can be placed
   // exactly over the thumb center in pixels (calc() cannot multiply lengths,
-  // so the position is computed here instead of in CSS).
+  // so the position is computed here instead of in CSS). Must re-measure every
+  // time the toolbar becomes visible — the toolbar element does not exist at
+  // mount, so a one-time measurement would keep the default (wrong) width.
   const sliderWrapRef = useRef<HTMLDivElement>(null);
   const [sliderMetrics, setSliderMetrics] = useState({ width: 200, thumbW: 10 });
+  const toolbarShown = toolbarTarget && (sectorPlayActive || scrolling || toolbarActive) && gapValues.length > 0;
   useEffect(() => {
     const el = sliderWrapRef.current;
     if (!el) return;
@@ -101,7 +165,7 @@ export function ProgressBar({ currentTime, onSeek, waveform, waveformStatus, onP
     const ro = new ResizeObserver(update);
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [toolbarShown]);
   // Slider is mirrored (max on the left, min on the right), so the bubble sits
   // at the mirrored position of the thumb center.
   const bubbleLeft =
@@ -112,6 +176,18 @@ export function ProgressBar({ currentTime, onSeek, waveform, waveformStatus, onP
 
   // Cursor for keyboard navigation; kept in sync with the sector activation.
   const navIndexRef = useRef(-1);
+
+  const playSector = useCallback(
+    (start: number, end: number, reps: number) => {
+      setSectorPlayActive(true);
+      onPlayRange(start, end, reps, () => setSectorPlayActive(false));
+    },
+    [onPlayRange],
+  );
+
+  useEffect(() => {
+    onSectorActiveChange?.(activeSector);
+  }, [activeSector, onSectorActiveChange]);
 
   // Keyboard navigation keeps its original behavior: select and play the sector.
   useEffect(() => {
@@ -126,13 +202,13 @@ export function ProgressBar({ currentTime, onSeek, waveform, waveformStatus, onP
         next = Math.max(0, Math.min(next, displaySectors.length - 1));
         navIndexRef.current = next;
         const s = displaySectors[next];
-        if (s) onPlayRange(s.start, s.end, repetitions);
+        if (s) playSector(s.start, s.end, repetitions);
         return next;
       });
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-}, [displaySectors, onPlayRange, repetitions]);
+}, [displaySectors, onPlayRange, repetitions, playSector]);
 
   return (
     <div className="progress-container">
@@ -158,6 +234,9 @@ export function ProgressBar({ currentTime, onSeek, waveform, waveformStatus, onP
                       const rect = e.currentTarget.getBoundingClientRect();
                       const f = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
                       onSeek(rowStart + f * rowLen);
+                      setActiveSector(-1);
+                      navIndexRef.current = -1;
+                      keepToolbarShown();
                     }}
                   >
                     <svg
@@ -183,7 +262,7 @@ export function ProgressBar({ currentTime, onSeek, waveform, waveformStatus, onP
                         innerH={innerH}
                         vbW={VB_W}
                         vbH={VB_H}
-                        onPlayRange={onPlayRange}
+                        onPlayRange={playSector}
                         repetitions={repetitions}
                         activeSector={activeSector}
                         onActivate={(idx) => {
@@ -221,9 +300,14 @@ export function ProgressBar({ currentTime, onSeek, waveform, waveformStatus, onP
               })}
 </div>
             ) : null}
-      </div>
-      {gapValues.length > 0 && (
-        <div className="sector-toolbar">
+</div>
+      {toolbarShown &&
+        createPortal(
+<div
+            className="sector-toolbar"
+            onPointerDown={keepToolbarShown}
+            onKeyDown={keepToolbarShown}
+          >
           <div className="sector-merge">
             <div className="sector-merge__stepper">
               <button
@@ -257,6 +341,7 @@ export function ProgressBar({ currentTime, onSeek, waveform, waveformStatus, onP
                   step={0.005}
                   value={sliderValue}
                   title={`sectors separated less than ${sliderValue.toFixed(2)}s are combined into one`}
+                  onInput={keepToolbarShown}
                   onChange={(e) => {
                     const raw = parseFloat(e.target.value);
                     setSliderValue(raw);
@@ -313,8 +398,9 @@ export function ProgressBar({ currentTime, onSeek, waveform, waveformStatus, onP
               </button>
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+          toolbarTarget,
+        )}
     </div>
   );
 }

@@ -44,7 +44,7 @@ export function PlayerControls({
         </svg>
       </button>
       <button
-        className="control-btn control-btn--play"
+        className={`control-btn control-btn--play ${isPlaying ? "control-btn--playing" : "control-btn--paused"}`}
         onClick={onTogglePlay}
         disabled={!hasTrack}
         title={isPlaying ? "Pause" : "Play"}
