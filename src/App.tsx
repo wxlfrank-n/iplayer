@@ -17,7 +17,6 @@ export default function App() {
   const {
     state,
     togglePlay,
-    play,
     next,
     prev,
     seek,
@@ -27,15 +26,13 @@ export default function App() {
     skipForward,
     skipBackward,
     playRange,
+    getAnalyser,
+    getCurrentTime,
   } = useAudioPlayer(config.skipSeconds);
 
   const [showPlaylist, setShowPlaylist] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const [progressDragFrac, setProgressDragFrac] = useState<number | null>(null);
-  const [sectorPlaying, setSectorPlaying] = useState(false);
-  const [waveformScrolling, setWaveformScrolling] = useState(false);
-  const [toolbarActive, setToolbarActive] = useState(false);
   const noticeTimerRef = useRef<number | undefined>(undefined);
   const mobileFileInputRef = useRef<HTMLInputElement>(null);
   const sectorToolbarSlotRef = useRef<HTMLDivElement>(null);
@@ -71,7 +68,7 @@ export default function App() {
   useEffect(() => {
     const onWheel = (e: WheelEvent) => {
       const target = e.target as HTMLElement | null;
-      if (target?.closest(".track-list") || target?.closest(".stacked-waveform")) return;
+      if (target?.closest(".track-list") || target?.closest(".stacked-waveform") || target?.closest(".waveform-hs")) return;
       e.preventDefault();
     };
     window.addEventListener("wheel", onWheel, { passive: false });
@@ -130,47 +127,26 @@ export default function App() {
             waveform={waveform.data}
             waveformStatus={waveform.status}
             onPlayRange={playRange}
-            onSectorPlayActiveChange={setSectorPlaying}
-            onWaveformScrollChange={setWaveformScrolling}
-            onToolbarActiveChange={setToolbarActive}
             sectorToolbarRef={sectorToolbarSlotRef}
+            waveformView={config.waveformView}
+            getAnalyser={getAnalyser}
+            getCurrentTime={getCurrentTime}
+            playing={state.isPlaying}
           />
             <div className="player-bottom">
-              {!sectorPlaying && !waveformScrolling && !toolbarActive && state.duration > 0 && (
-                <div
-                  className="mini-progress"
-                  onPointerDown={(e) => {
-                    e.currentTarget.setPointerCapture(e.pointerId);
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-                    setProgressDragFrac(frac);
-                    seek(frac * state.duration);
-                  }}
-                  onPointerMove={(e) => {
-                    if (progressDragFrac === null) return;
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-                    setProgressDragFrac(frac);
-                    seek(frac * state.duration);
-                  }}
-                  onPointerUp={() => {
-                    setProgressDragFrac(null);
-                    play();
-                  }}
-                  onPointerCancel={() => setProgressDragFrac(null)}
-                >
-                  <div className="mini-progress__slider">
-                    <div
-                      className="mini-progress__fill"
-                      style={{ width: `${(progressDragFrac ?? Math.min(1, state.currentTime / state.duration)) * 100}%` }}
-                    />
-                    <div
-                      className="mini-progress__thumb"
-                      style={{ left: `${(progressDragFrac ?? Math.min(1, state.currentTime / state.duration)) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              )}
+              <label className="waveview-toggle" title="Switch waveform view">
+                <span className="waveview-toggle__label">Stacked</span>
+                <input
+                  type="checkbox"
+                  className="waveview-toggle__input"
+                  checked={config.waveformView === "horizontal"}
+                  onChange={(e) => updateConfig({ waveformView: e.target.checked ? "horizontal" : "stacked" })}
+                />
+                <span className="waveview-toggle__track">
+                  <span className="waveview-toggle__thumb" />
+                </span>
+                <span className="waveview-toggle__label">Row</span>
+              </label>
               <div className="sector-toolbar-slot" ref={sectorToolbarSlotRef} />
               <PlayerControls
                 isPlaying={state.isPlaying}
@@ -201,6 +177,8 @@ export default function App() {
         <Settings
           skipSeconds={config.skipSeconds}
           onSkipSecondsChange={(v) => updateConfig({ skipSeconds: v })}
+          waveformView={config.waveformView}
+          onWaveformViewChange={(v) => updateConfig({ waveformView: v })}
           onClose={() => setShowSettings(false)}
         />
       )}

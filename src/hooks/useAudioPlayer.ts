@@ -41,6 +41,38 @@ export function useAudioPlayer(skipSeconds: number) {
   const nextRef = useRef<() => void>(() => {});
   const expectedRawUrlRef = useRef<string | null>(null);
   const wavBlobCacheRef = useRef<Map<string, string>>(new Map());
+  // Lazily-created Web Audio graph wired through the audio element; feeding the
+  // final music through the analyser lets the UI draw live dancing lines.
+  const analyserRef = useRef<{ ctx: AudioContext; analyser: AnalyserNode } | null>(null);
+
+  const getAnalyser = useCallback((): AnalyserNode | null => {
+    if (analyserRef.current) {
+      if (analyserRef.current.ctx.state === "suspended") {
+        analyserRef.current.ctx.resume().catch(() => {});
+      }
+      return analyserRef.current.analyser;
+    }
+    try {
+      const Ctor =
+        window.AudioContext ??
+        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!Ctor) return null;
+      const ctx = new Ctor();
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 1024;
+      analyser.smoothingTimeConstant = 0.72;
+      const src = ctx.createMediaElementSource(audioRef.current);
+      src.connect(analyser);
+      analyser.connect(ctx.destination);
+      analyserRef.current = { ctx, analyser };
+      ctx.resume().catch(() => {});
+      return analyser;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const getCurrentTime = useCallback(() => audioRef.current.currentTime, []);
 
   const getPlayableUrl = useCallback(async (url: string): Promise<string> => {
     const cache = wavBlobCacheRef.current;
@@ -65,6 +97,7 @@ export function useAudioPlayer(skipSeconds: number) {
 
   // Point the audio element at a new source and start playing it.
   const startTrack = useCallback(async (audio: HTMLAudioElement, url: string) => {
+    getAnalyser();
     expectedRawUrlRef.current = url;
     try {
       const playableUrl = await getPlayableUrl(url);
@@ -83,7 +116,7 @@ export function useAudioPlayer(skipSeconds: number) {
         audio.play().then(() => setState((s) => ({ ...s, isPlaying: true }))).catch(() => {});
       }
     }
-  }, [getPlayableUrl]);
+  }, [getAnalyser, getPlayableUrl]);
 
   useEffect(() => {
     nextRef.current = () => {
@@ -148,25 +181,42 @@ export function useAudioPlayer(skipSeconds: number) {
   }, [state.tracks, state.currentTrackIndex, getPlayableUrl]);
 
   const play = useCallback(() => {
+    getAnalyser();
     audioRef.current.play().then(() => setState((s) => ({ ...s, isPlaying: true }))).catch(() => {});
+  }, [getAnalyser]);
+
+  // Reference to the range's active rAF loop / ended listener so that starting a
+  // new range (e.g. clicking another sector) drops the previous one instead of
+  // letting the old range keep looping/pausing.
+  const rangeRafRef = useRef(0);
+  const rangeEndedRef = useRef<(() => void) | null>(null);
+
+  const stopRangeMonitoring = useCallback(() => {
+    if (rangeRafRef.current) {
+      cancelAnimationFrame(rangeRafRef.current);
+      rangeRafRef.current = 0;
+    }
   }, []);
 
   const pause = useCallback(() => {
+    stopRangeMonitoring();
     audioRef.current.pause();
     setState((s) => ({ ...s, isPlaying: false }));
-  }, []);
+  }, [stopRangeMonitoring]);
 
   const togglePlay = useCallback(() => {
     setState((s) => {
       const audio = audioRef.current;
       if (s.isPlaying) {
+        stopRangeMonitoring();
         audio.pause();
         return { ...s, isPlaying: false };
       }
+      getAnalyser();
       audio.play().then(() => setState((prev) => ({ ...prev, isPlaying: true }))).catch(() => {});
       return s;
     });
-  }, []);
+  }, [getAnalyser, stopRangeMonitoring]);
 
   const next = useCallback(() => {
     nextRef.current();
@@ -296,47 +346,114 @@ export function useAudioPlayer(skipSeconds: number) {
     setState((s) => ({ ...s, currentTime: newTime }));
   }, [skipSeconds]);
 
-  // Reference to the range's active timeupdate listener so starting a new range
-  // (e.g. clicking another sector) drops the previous one instead of letting
-  // the old range keep looping/pausing.
-  const rangeListenerRef = useRef<((e: Event) => void) | null>(null);
-
   // Plays the given time range [start, end] `repetitions` times sequentially,
   // pausing at `end` after the last repetition. Calls onComplete when finished.
+  // Boundary detection runs on requestAnimationFrame (not the ~250ms
+  // `timeupdate` cadence), so a sector stops within a frame of its end and
+  // loops restart exactly at `start` instead of drifting.
   const playRange = useCallback((start: number, end: number, repetitions: number, onComplete?: () => void) => {
     const audio = audioRef.current;
-    let count = 0;
+    getAnalyser();
+    stopRangeMonitoring();
 
-    if (rangeListenerRef.current) {
-      audio.removeEventListener("timeupdate", rangeListenerRef.current);
-      rangeListenerRef.current = null;
+    if (rangeEndedRef.current) {
+      audio.removeEventListener("ended", rangeEndedRef.current);
+      rangeEndedRef.current = null;
     }
 
-    const onTimeUpdate = () => {
-      if (audio.currentTime < start) return;
-      if (audio.currentTime >= end) {
-        count++;
-        if (count >= repetitions) {
-          audio.pause();
-          audio.removeEventListener("timeupdate", onTimeUpdate);
-          rangeListenerRef.current = null;
-          onComplete?.();
-          return;
-        }
-        setTimeout(() => { audio.currentTime = start; }, 0);
+    let count = 0;
+    let armedAtStart = false;
+    const startTs = performance.now();
+
+    const stopLoop = () => {
+      if (rangeRafRef.current) {
+        cancelAnimationFrame(rangeRafRef.current);
+        rangeRafRef.current = 0;
       }
     };
 
-    rangeListenerRef.current = onTimeUpdate;
-    audio.addEventListener("timeupdate", onTimeUpdate);
+    const cleanupRange = () => {
+      stopLoop();
+      if (rangeEndedRef.current) {
+        audio.removeEventListener("ended", rangeEndedRef.current);
+        rangeEndedRef.current = null;
+      }
+    };
+
+    const tick = () => {
+      if (!rangeRafRef.current) return;
+      const t = audio.currentTime;
+
+      // Wait until the seek to `start` has actually settled before trusting the
+      // playhead: in the first frames after a click the media can still report
+      // its old position (usually 0 when paused), which must not be mistaken
+      // for the sector end or a cancelled source.
+      if (!armedAtStart) {
+        const nearStart = t >= start - 0.05 && t <= start + 0.1;
+        if (nearStart) {
+          armedAtStart = true;
+        } else if (performance.now() - startTs < 250) {
+          rangeRafRef.current = requestAnimationFrame(tick);
+          return;
+        }
+      }
+
+      // Only considered a cancelled/ended source once the seek to `start` was
+      // seen — a stale pre-seek position must never trigger this.
+      if (armedAtStart && t < start - 0.05) {
+        stopLoop();
+        return;
+      }
+
+      if (t >= end) {
+        count++;
+        if (count >= repetitions) {
+          audio.pause();
+          audio.currentTime = end;
+          cleanupRange();
+          setState((s) => ({ ...s, isPlaying: false, currentTime: end }));
+          onComplete?.();
+          return;
+        }
+        audio.currentTime = start;
+        armedAtStart = true;
+        setState((s) => ({ ...s, currentTime: start }));
+      }
+      rangeRafRef.current = requestAnimationFrame(tick);
+    };
+
+    // If the sector's end coincides with the end of the file, the audio element
+    // can fire `ended` before the last rAF frame — handle it as a full pass
+    // instead of letting the next track start.
+    const onEnded = () => {
+      if (!rangeRafRef.current) return;
+      count++;
+      if (count >= repetitions) {
+        audio.pause();
+        cleanupRange();
+        setState((s) => ({ ...s, isPlaying: false, currentTime: end }));
+        onComplete?.();
+        return;
+      }
+      audio.currentTime = start;
+      armedAtStart = true;
+      setState((s) => ({ ...s, currentTime: start }));
+      audio.play().then(() => setState((s) => ({ ...s, isPlaying: true }))).catch(() => {});
+      rangeRafRef.current = requestAnimationFrame(tick);
+    };
+
+    rangeEndedRef.current = onEnded;
+    audio.addEventListener("ended", onEnded);
+
     // Sync the playhead immediately; otherwise the wave keeps showing the old
-    // position until the first timeupdate fires (~250ms later). Snap back to
-    // `start` when playback actually begins so the opening is not skipped.
+    // position until the first event fires. Snap back to `start` when playback
+    // actually begins so the opening is not skipped.
     snatchToStart(audio, start);
     audio.currentTime = start;
     setState((s) => ({ ...s, currentTime: start }));
     audio.play().then(() => setState((s) => ({ ...s, isPlaying: true }))).catch(() => {});
-  }, []);
+    rangeRafRef.current = requestAnimationFrame(tick);
+  }, [getAnalyser, stopRangeMonitoring]);
 
   return {
     state,
@@ -354,5 +471,7 @@ export function useAudioPlayer(skipSeconds: number) {
     skipForward,
     skipBackward,
     playRange,
+    getAnalyser,
+    getCurrentTime,
   };
 }

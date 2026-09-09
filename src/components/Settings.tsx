@@ -1,12 +1,18 @@
+import type { WaveformView } from "../hooks/useConfig";
+
 interface SettingsProps {
   skipSeconds: number;
   onSkipSecondsChange: (value: number) => void;
+  waveformView: WaveformView;
+  onWaveformViewChange: (value: WaveformView) => void;
   onClose: () => void;
 }
 
 export function Settings({
   skipSeconds,
   onSkipSecondsChange,
+  waveformView,
+  onWaveformViewChange,
   onClose,
 }: SettingsProps) {
   return (
@@ -21,6 +27,21 @@ export function Settings({
           </button>
         </div>
         <div className="settings-body">
+          <label className="settings-label">Waveform view</label>
+          <div className="settings-row">
+            <button
+              className={`settings-chip ${waveformView === "stacked" ? "settings-chip--active" : ""}`}
+              onClick={() => onWaveformViewChange("stacked")}
+            >
+              Stacked
+            </button>
+            <button
+              className={`settings-chip ${waveformView === "horizontal" ? "settings-chip--active" : ""}`}
+              onClick={() => onWaveformViewChange("horizontal")}
+            >
+              One row
+            </button>
+          </div>
           <label className="settings-label">Skip interval (seconds)</label>
           <div className="settings-row">
             {[5, 10, 15, 20, 30].map((val) => (

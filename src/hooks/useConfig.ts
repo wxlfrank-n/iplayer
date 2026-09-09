@@ -2,12 +2,16 @@ import { useState, useCallback } from "react";
 
 const STORAGE_KEY = "waveplay_config";
 
+export type WaveformView = "stacked" | "horizontal";
+
 interface Config {
   skipSeconds: number;
+  waveformView: WaveformView;
 }
 
 const DEFAULT_CONFIG: Config = {
   skipSeconds: 10,
+  waveformView: "stacked",
 };
 
 function loadConfig(): Config {
