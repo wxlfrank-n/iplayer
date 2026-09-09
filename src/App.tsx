@@ -69,7 +69,7 @@ export default function App() {
   useEffect(() => {
     const onWheel = (e: WheelEvent) => {
       const target = e.target as HTMLElement | null;
-      if (target?.closest(".track-list")) return;
+      if (target?.closest(".track-list") || target?.closest(".stacked-waveform")) return;
       e.preventDefault();
     };
     window.addEventListener("wheel", onWheel, { passive: false });
@@ -104,32 +104,54 @@ export default function App() {
       <div className={`player-layout ${showPlaylist ? "player-layout--with-playlist" : ""}`}>
         <div className="player-main">
           <div className="player-card">
+<div className="now-playing-row">
+            <NowPlaying track={currentTrack} audioUrl={currentTrack?.url ?? null} />
             <button
               className="mobile-add-btn"
               onClick={() => mobileFileInputRef.current?.click()}
             >
               + Add MP3
             </button>
-            <input
-              ref={mobileFileInputRef}
-              type="file"
-              accept=".mp3,audio/mpeg"
-              multiple
-              onChange={handleFileInput}
-              style={{ display: "none" }}
-            />
-            <NowPlaying track={currentTrack} audioUrl={currentTrack?.url ?? null} />
-            <ProgressBar
-              key={currentTrack?.url ?? "none"}
-              currentTime={state.currentTime}
-              duration={state.duration}
-              onSeek={seek}
-              onPlay={play}
-              waveform={waveform.data}
-              waveformStatus={waveform.status}
-              onPlayRange={playRange}
-            />
+          </div>
+          <input
+            ref={mobileFileInputRef}
+            type="file"
+            accept=".mp3,audio/mpeg"
+            multiple
+            onChange={handleFileInput}
+            style={{ display: "none" }}
+          />
+          <ProgressBar
+            key={currentTrack?.url ?? "none"}
+            currentTime={state.currentTime}
+            onSeek={seek}
+            waveform={waveform.data}
+            waveformStatus={waveform.status}
+            onPlayRange={playRange}
+          />
             <div className="player-bottom">
+              {state.duration > 0 && (
+                <div
+                  className="mini-progress"
+                  onClick={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                    seek(frac * state.duration);
+                    play();
+                  }}
+                >
+                  <div className="mini-progress__slider">
+                    <div
+                      className="mini-progress__fill"
+                      style={{ width: `${Math.min(1, state.duration > 0 ? state.currentTime / state.duration : 0) * 100}%` }}
+                    />
+                    <div
+                      className="mini-progress__thumb"
+                      style={{ left: `${Math.min(1, state.duration > 0 ? state.currentTime / state.duration : 0) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              )}
               <PlayerControls
                 isPlaying={state.isPlaying}
                 onTogglePlay={togglePlay}

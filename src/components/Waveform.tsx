@@ -9,6 +9,7 @@ interface WaveformBarsProps {
   vbW: number;
   vbH: number;
   fracPlayed: number;
+  idPrefix?: string;
 }
 
 const BASE_COLOR = "#8b949e";
@@ -25,6 +26,7 @@ export function WaveformBars({
   vbW,
   vbH,
   fracPlayed,
+  idPrefix = "playedClip",
 }: WaveformBarsProps) {
   // One vertical bar per horizontal pixel "frame": each frame covers a slice of
   // samples and the bar spans that slice's min..max sample amplitude, tracing
@@ -100,11 +102,11 @@ export function WaveformBars({
         stroke={PLAYED_COLOR}
         strokeWidth={1}
         vectorEffect="non-scaling-stroke"
-        clipPath="url(#playedClip)"
+        clipPath={`url(#${idPrefix})`}
       />
       <defs>
-        <clipPath id="playedClip">
-          <rect x={0} y={0} width={clipWidth} height={vbH} />
+        <clipPath id={idPrefix}>
+          <rect x={0} y={vbH / 2 - innerH / 4} width={clipWidth} height={innerH / 2} />
         </clipPath>
       </defs>
     </>

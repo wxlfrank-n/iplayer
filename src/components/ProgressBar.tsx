@@ -1,42 +1,33 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Sector } from "./Sector";
 import { WaveformBars } from "./Waveform";
 import { type WaveformData, type WaveformStatus } from "../hooks/useWaveform";
 import { splitBySilence, mergeSectorsByGap, sectorGaps, MERGE_GAP_SEC } from "../utils/sectors";
-import { formatTime, formatTimePrecise } from "../utils/time";
+import type { Sector as SectorData } from "../utils/sectors";
 
 interface ProgressBarProps {
   currentTime: number;
-  duration: number;
   onSeek: (time: number) => void;
-  onPlay: () => void;
   waveform: WaveformData | null;
   waveformStatus: WaveformStatus;
   onPlayRange: (start: number, end: number, repetitions: number) => void;
 }
 
-const WINDOW_SECONDS = 30;
+// Sectors are packed into wrapped rows that span the full track — each row aims
+// for roughly this many seconds but never splits a sector across rows.
+const STACK_ROW_TARGET_SECS = 10;
 const VB_W = 1000;
 const VB_H = 200;
 const PAD = 4;
-const SWIPE_DECIDE_PX = 8;
-const WHEEL_MIN_DX = 3;
-const WHEEL_BURST_MS = 100;
-const WHEEL_STEP_PX = 40;
 
-export function ProgressBar({ currentTime, duration, onSeek, onPlay, waveform, waveformStatus, onPlayRange }: ProgressBarProps) {
+export function ProgressBar({ currentTime, onSeek, waveform, waveformStatus, onPlayRange }: ProgressBarProps) {
   const hasWaveform = waveform !== null && waveform.data.length > 0;
   const sectors = useMemo(
     () => splitBySilence(waveform?.data ?? null, waveform?.sampleRate ?? 0),
     [waveform],
   );
 
-  const [anchorStartSec, setAnchorStartSec] = useState<number>(0);
-  // Last currentTime we've already anchored the follow-window for. Kept in a ref
-  // (no re-render) so the anchor only advances once per new playhead position.
-  const lastAnchoredTimeRef = useRef<number>(-1);
   const [activeSector, setActiveSector] = useState<number>(-1);
-  const [hoverFrac, setHoverFrac] = useState<number | null>(null);
   const [mergeGap, setMergeGap] = useState(MERGE_GAP_SEC);
   // Raw slider position (continuous) — the thumb and bubble follow this while
   // dragging; `mergeGap` snaps it to the nearest real sector gap for merging.
@@ -52,6 +43,46 @@ export function ProgressBar({ currentTime, duration, onSeek, onPlay, waveform, w
   const gapMax = gapValues.length > 0 ? gapValues[gapValues.length - 1] : 0;
   const mergePct =
     gapMax > gapMin ? Math.min(1, Math.max(0, (sliderValue - gapMin) / (gapMax - gapMin))) : 0;
+
+  // Pack sectors into stacked rows for small screens: each row holds whole
+  // sectors totalling ~STACK_ROW_TARGET_SECS (variable length, and a sector is
+  // never split across two rows).
+  type StackedRow = { start: number; end: number; sectors: { sector: SectorData; idx: number }[] };
+  const stackedRows = useMemo<StackedRow[]>(() => {
+    const rows: StackedRow[] = [];
+    let cur: StackedRow | null = null;
+    displaySectors.forEach((s, idx) => {
+      const dur = s.end - s.start;
+      if (!cur || dur + (cur.end - cur.start) <= STACK_ROW_TARGET_SECS) {
+        if (!cur) cur = { start: s.start, end: s.end, sectors: [] };
+        cur.end = s.end;
+        cur.sectors.push({ sector: s, idx });
+      } else {
+        rows.push(cur);
+        cur = { start: s.start, end: s.end, sectors: [{ sector: s, idx }] };
+      }
+    });
+    if (cur) rows.push(cur);
+    return rows;
+  }, [displaySectors]);
+
+  // Auto-scroll the stacked waveform so the row currently playing is never
+  // half-covered or below the visible window. Fires only when that row index
+  // changes, so it does not fight the user while scrolling inside a row.
+  const stackedContainerRef = useRef<HTMLDivElement>(null);
+  const activeRowIdx = stackedRows.findIndex((r) => currentTime >= r.start && currentTime <= r.end);
+  useEffect(() => {
+    const container = stackedContainerRef.current;
+    if (!container || activeRowIdx < 0) return;
+    const child = container.children[activeRowIdx] as HTMLElement | undefined;
+    if (!child) return;
+    const cTop = container.getBoundingClientRect().top;
+    const cBot = container.getBoundingClientRect().bottom;
+    const rTop = child.getBoundingClientRect().top;
+    const rBot = child.getBoundingClientRect().bottom;
+    if (rTop < cTop) container.scrollTop += rTop - cTop;
+    else if (rBot > cBot) container.scrollTop += rBot - cBot;
+  }, [activeRowIdx]);
 
   // Slider geometry (width + thumb size) so the value bubble can be placed
   // exactly over the thumb center in pixels (calc() cannot multiply lengths,
@@ -77,54 +108,9 @@ export function ProgressBar({ currentTime, duration, onSeek, onPlay, waveform, w
     sliderMetrics.width -
     (sliderMetrics.thumbW / 2 + (sliderMetrics.width - sliderMetrics.thumbW) * mergePct);
 
-  // Page/follow the 30s window along with the playhead, once per new position.
-  // Uses a ref guard + functional setState and runs as an effect (after commit)
-  // rather than during render, so it can never trigger a render-phase stall.
-  const isPanningRef = useRef(false);
-  useEffect(() => {
-    if (!hasWaveform || lastAnchoredTimeRef.current === currentTime || isPanningRef.current) return;
-    lastAnchoredTimeRef.current = currentTime;
-    setAnchorStartSec((a) => {
-      if (currentTime >= a + WINDOW_SECONDS) {
-        return Math.max(0, currentTime - WINDOW_SECONDS);
-      }
-      if (currentTime < a) return currentTime;
-      return a;
-    });
-  }, [hasWaveform, currentTime]);
-
   const innerH = VB_H - PAD * 2;
-  const windowStartSec = Math.max(0, Math.min(anchorStartSec, Math.max(0, duration - WINDOW_SECONDS)));
-  const windowEndSec = Math.min(duration, windowStartSec + WINDOW_SECONDS);
-  const windowLen = windowEndSec - windowStartSec;
 
-  // Live refs so the (once-attached) touch listeners always read current values
-  // without re-binding on every render. Synced in effects (not during render).
-  const anchorRef = useRef(anchorStartSec);
-  const windowLenRef = useRef(windowLen);
-  const durationRef = useRef(duration);
-  const sectorsRef = useRef(displaySectors);
-  useEffect(() => {
-    anchorRef.current = anchorStartSec;
-  }, [anchorStartSec]);
-  useEffect(() => {
-    windowLenRef.current = windowLen;
-  }, [windowLen]);
-  useEffect(() => {
-    durationRef.current = duration;
-  }, [duration]);
-  useEffect(() => {
-    sectorsRef.current = displaySectors;
-  }, [displaySectors]);
-
-  const fracPlayed = windowLen > 0 ? Math.min(1, Math.max(0, (currentTime - windowStartSec) / windowLen)) : 0;
-
-  const visibleSectors = displaySectors
-    .map((s, idx) => ({ start: s.start, end: s.end, idx }))
-    .filter((s) => s.end > windowStartSec && s.start < windowStartSec + windowLen);
-
-  // Cursor for touch/wheel window navigation; kept in sync with the keyboard's
-  // active sector so mixed input stays consistent.
+  // Cursor for keyboard navigation; kept in sync with the sector activation.
   const navIndexRef = useRef(-1);
 
   // Keyboard navigation keeps its original behavior: select and play the sector.
@@ -146,254 +132,95 @@ export function ProgressBar({ currentTime, duration, onSeek, onPlay, waveform, w
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [displaySectors, onPlayRange, repetitions]);
-
-  // Touch swipe and wheel navigation only move the viewing window.
-  const navigateSector = useCallback(
-    (direction: 1 | -1) => {
-      if (displaySectors.length === 0) return;
-      const prev = navIndexRef.current;
-      const next = prev < 0
-        ? direction > 0 ? 0 : displaySectors.length - 1
-        : Math.max(0, Math.min(prev + direction, displaySectors.length - 1));
-      navIndexRef.current = next;
-      const s = displaySectors[next];
-      if (!s) return;
-      // Only move the viewing window so the sector starts at the left edge.
-      setAnchorStartSec(Math.max(0, Math.min(s.start, Math.max(0, duration - WINDOW_SECONDS))));
-    },
-    [displaySectors, duration],
-  );
-
-  const touchStartX = useRef<number | null>(null);
-  const touchStartY = useRef<number | null>(null);
-  const panAnchorStart = useRef(0);
-  const barRectW = useRef(0);
-  const panning = useRef(false);
-  const touchEnded = useRef(false);
-  const barRef = useRef<HTMLDivElement | null>(null);
-
-  const wheelLastMs = useRef(0);
-  const wheelAccum = useRef(0);
-
-  useEffect(() => {
-    const el = barRef.current;
-    if (!el) return;
-
-    const reset = () => {
-      touchStartX.current = null;
-      touchStartY.current = null;
-      panning.current = false;
-      touchEnded.current = false;
-    };
-
-    const onTouchStart = (e: TouchEvent) => {
-      if (e.touches.length !== 1) return;
-      reset();
-      isPanningRef.current = false;
-      touchStartX.current = e.touches[0].clientX;
-      touchStartY.current = e.touches[0].clientY;
-      // Record where the window would start if the gesture becomes a pan, plus
-      // the bar width so we can convert px deltas to seconds 1:1.
-      panAnchorStart.current = anchorRef.current;
-      barRectW.current = el.getBoundingClientRect().width;
-    };
-
-    const onTouchMove = (e: TouchEvent) => {
-      if (touchEnded.current) return;
-      if (touchStartX.current === null || touchStartY.current === null) return;
-      const dx = e.touches[0].clientX - touchStartX.current;
-      const dy = e.touches[0].clientY - touchStartY.current;
-      const ax = Math.abs(dx);
-      const ay = Math.abs(dy);
-
-      if (!panning.current) {
-        if (ax <= SWIPE_DECIDE_PX && ay <= SWIPE_DECIDE_PX) return;
-        if (ax > ay) {
-          // Clearly horizontal: claim the gesture so the page never moves.
-          e.preventDefault();
-          panning.current = true;
-          isPanningRef.current = true;
-        } else {
-          // Clearly vertical: hand the gesture back to the browser.
-          touchEnded.current = true;
-          return;
-        }
-      }
-
-      // Continuous 1:1 pan: dragging by one bar pixel moves the window start by
-      // windowLen/barWidth seconds in the opposite direction, so the audio that
-      // sits under the finger stays under the finger while dragging.
-      const secPerPx = (windowLenRef.current || WINDOW_SECONDS) / (barRectW.current || 1);
-      const maxStart = Math.max(0, durationRef.current - WINDOW_SECONDS);
-      const target = panAnchorStart.current - dx * secPerPx;
-      setAnchorStartSec(Math.max(0, Math.min(target, maxStart)));
-    };
-
-    const onTouchEnd = () => {
-      const wasPan = panning.current;
-      isPanningRef.current = false;
-
-      // Snap the window so its left edge lands in the middle of the nearest
-      // sector, instead of wherever the finger stopped mid-silence.
-      if (wasPan) {
-        const sectors = sectorsRef.current;
-        if (sectors.length > 0) {
-          const now = anchorRef.current;
-          let best = 0;
-          let bestDist = Infinity;
-          for (let i = 0; i < sectors.length; i++) {
-            const d = Math.abs(sectors[i].start - now);
-            if (d < bestDist) {
-              bestDist = d;
-              best = i;
-            }
-          }
-          const durMax = Math.max(0, durationRef.current - WINDOW_SECONDS);
-          const s = sectors[best];
-          if (s) {
-            navIndexRef.current = best;
-            setActiveSector(best);
-            setAnchorStartSec(Math.max(0, Math.min(s.start, durMax)));
-          }
-        }
-      }
-      reset();
-    };
-
-    // Touchpads (Windows/macOS) don't fire touch events; a two-finger horizontal
-    // swipe arrives as `wheel` with deltaX. Claim every wheel event on the bar so
-    // it never pans the page, then navigate one sector per step so a continuous
-    // flick scrolls through sectors quickly.
-    const onWheel = (e: WheelEvent) => {
-      if (e.ctrlKey || e.metaKey) return;
-      e.preventDefault();
-      const dx = e.deltaX;
-      const dy = e.deltaY;
-      const ax = Math.abs(dx);
-      const ay = Math.abs(dy);
-      if (ax < WHEEL_MIN_DX || ax <= ay) return;
-
-      const now = performance.now();
-      if (now - wheelLastMs.current > WHEEL_BURST_MS) {
-        wheelAccum.current = 0;
-      }
-      wheelLastMs.current = now;
-
-      // Normalize line/page-mode deltas to pixels.
-      const scale = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1;
-      wheelAccum.current += dx * scale;
-
-      const sign = Math.sign(wheelAccum.current);
-      while (Math.abs(wheelAccum.current) >= WHEEL_STEP_PX) {
-        navigateSector(sign > 0 ? 1 : -1);
-        wheelAccum.current -= sign * WHEEL_STEP_PX;
-      }
-    };
-
-    el.addEventListener("touchstart", onTouchStart, { passive: true });
-    el.addEventListener("touchmove", onTouchMove, { passive: false });
-    el.addEventListener("touchend", onTouchEnd, { passive: true });
-    el.addEventListener("touchcancel", onTouchEnd, { passive: true });
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => {
-      el.removeEventListener("touchstart", onTouchStart);
-      el.removeEventListener("touchmove", onTouchMove);
-      el.removeEventListener("touchend", onTouchEnd);
-      el.removeEventListener("touchcancel", onTouchEnd);
-      el.removeEventListener("wheel", onWheel);
-    };
-  }, [navigateSector]);
-
-  const handleClick = (e: React.MouseEvent<HTMLElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const frac = x / rect.width;
-    const seekTime = windowStartSec + frac * windowLen;
-    onSeek(Math.max(0, Math.min(seekTime, duration)));
-    onPlay();
-  };
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    setHoverFrac(Math.max(0, Math.min(1, x / rect.width)));
-  };
-
-  const hoverTime = hoverFrac !== null ? windowStartSec + hoverFrac * windowLen : 0;
+}, [displaySectors, onPlayRange, repetitions]);
 
   return (
     <div className="progress-container">
       <div className="progress-row">
-        <span className="time-label">{formatTime(currentTime)}</span>
-        <div
-          ref={barRef}
-          className="waveform-bar"
-          onClick={handleClick}
-          onMouseMove={handleMouseMove}
-          onMouseLeave={() => setHoverFrac(null)}
-        >
-          {(waveformStatus === "loading" || waveformStatus === "idle") && (
-            <div className="waveform-loading">Loading waveform…</div>
-          )}
-          {waveformStatus === "error" && (
-            <div className="waveform-loading waveform-loading--error">Waveform unavailable</div>
-          )}
-          {hasWaveform && (
-            <svg className="waveform-svg" viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="none">
-              <WaveformBars
-                data={waveform.data}
-                sampleRate={waveform.sampleRate}
-                windowStartSec={windowStartSec}
-                windowLen={windowLen}
-                innerH={innerH}
-                vbW={VB_W}
-                vbH={VB_H}
-                fracPlayed={fracPlayed}
-              />
-              <Sector
-                sectors={displaySectors}
-                windowStartSec={windowStartSec}
-                windowLen={windowLen}
-                innerH={innerH}
-                vbW={VB_W}
-                vbH={VB_H}
-                onPlayRange={onPlayRange}
-                repetitions={repetitions}
-                activeSector={activeSector}
-                onActivate={(idx) => {
-                  setActiveSector(idx);
-                  navIndexRef.current = idx;
-                }}
-              />
-            </svg>
-          )}
-          {hasWaveform &&
-            visibleSectors.map((s) => {
-              const center = ((s.start + (s.end - s.start) / 2 - windowStartSec) / windowLen) * 100;
+        {waveformStatus === "loading" || waveformStatus === "idle" ? (
+          <div className="waveform-loading waveform-loading--stacked">Loading waveform…</div>
+        ) : waveformStatus === "error" ? (
+          <div className="waveform-loading waveform-loading--error waveform-loading--stacked">
+            Waveform unavailable
+          </div>
+        ) : hasWaveform ? (
+          <div className="stacked-waveform" ref={stackedContainerRef}>
+            {stackedRows.map((row, r) => {
+              const rowStart = row.start;
+              const rowLen = Math.max(0, row.end - row.start);
+              if (rowLen <= 0) return null;
+              const rowFrac = Math.max(0, Math.min(1, (currentTime - rowStart) / rowLen));
               return (
-                <span
-                  key={`label-${s.idx}`}
-                  className={`waveform-sector-label ${s.idx === activeSector ? "waveform-sector-label--active" : ""}`}
-                  style={{ left: `${center}%` }}
-                >
-                  {s.idx + 1}
-                </span>
-              );
-            })}
-          {hoverFrac !== null && (
-            <>
-              <div className="waveform-bar__guide" style={{ left: `${hoverFrac * 100}%` }} />
-              <div
-                className={`waveform-bar__tooltip ${hoverFrac > 0.9 ? "waveform-bar__tooltip--edge" : ""}`}
-                style={{ left: `${hoverFrac * 100}%` }}
-              >
-                {formatTimePrecise(hoverTime)}
-              </div>
-            </>
-          )}
-        </div>
-        <span className="time-label">{formatTime(duration)}</span>
+                <div
+                    key={r}
+                    className="stacked-waveform__row"
+                    onClick={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const f = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                      onSeek(rowStart + f * rowLen);
+                    }}
+                  >
+                    <svg
+                      className="stacked-waveform__svg"
+                      viewBox={`0 0 ${VB_W} ${VB_H}`}
+                      preserveAspectRatio="none"
+                    >
+                      <WaveformBars
+                        data={waveform.data}
+                        sampleRate={waveform.sampleRate}
+                        windowStartSec={rowStart}
+                        windowLen={rowLen}
+                        innerH={innerH}
+                        vbW={VB_W}
+                        vbH={VB_H}
+                        fracPlayed={rowFrac}
+                        idPrefix={`stack-${r}`}
+                      />
+                      <Sector
+                        sectors={displaySectors}
+                        windowStartSec={rowStart}
+                        windowLen={rowLen}
+                        innerH={innerH}
+                        vbW={VB_W}
+                        vbH={VB_H}
+                        onPlayRange={onPlayRange}
+                        repetitions={repetitions}
+                        activeSector={activeSector}
+                        onActivate={(idx) => {
+                          setActiveSector(idx);
+                          navIndexRef.current = idx;
+                        }}
+                      />
+                    </svg>
+                    {currentTime >= rowStart && currentTime <= row.end && (
+                      <span
+                        className="stacked-waveform__cursor"
+                        style={{
+                          left: `${(currentTime - rowStart) / rowLen * 100}%`,
+                          top: `${(VB_H / 2 - innerH / 4) / VB_H  * 100}%`,
+                          height: `${(innerH / 2) / VB_H * 100}%`,
+                        }}
+                      />
+                    )}
+                    {row.sectors.map(({ sector: s, idx }) => {
+                      const center = ((s.start + (s.end - s.start) / 2) - rowStart) / rowLen * 100;
+                      const clamped = Math.max(5, Math.min(95, center));
+                      return (
+                        <span
+                          key={`lbl-${idx}`}
+                          className={`stacked-sector-label ${idx === activeSector ? "stacked-sector-label--active" : ""}`}
+                          style={{ left: `${clamped}%` }}
+                        >
+                          {idx + 1}
+                          <span className="stacked-sector-dur">{(s.end - s.start).toFixed(1)}s</span>
+                        </span>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+</div>
+            ) : null}
       </div>
       {gapValues.length > 0 && (
         <div className="sector-toolbar">
