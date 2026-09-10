@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState, useEffect } from "react";
+﻿import { useRef, useCallback, useState, useEffect } from "react";
 import { useDrop } from "react-dnd";
 import { NativeTypes } from "react-dnd-html5-backend";
 import { useAudioPlayer } from "./hooks/useAudioPlayer";
@@ -35,7 +35,7 @@ export default function App() {
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimerRef = useRef<number | undefined>(undefined);
   const mobileFileInputRef = useRef<HTMLInputElement>(null);
-  const sectorToolbarSlotRef = useRef<HTMLDivElement>(null);
+  const clipToolbarSlotRef = useRef<HTMLDivElement>(null);
 
   const currentTrack =
     state.currentTrackIndex >= 0 ? state.tracks[state.currentTrackIndex] : null;
@@ -127,7 +127,7 @@ export default function App() {
             waveform={waveform.data}
             waveformStatus={waveform.status}
             onPlayRange={playRange}
-            sectorToolbarRef={sectorToolbarSlotRef}
+            clipToolbarRef={clipToolbarSlotRef}
             waveformView={config.waveformView}
             onWaveformViewChange={(v) => updateConfig({ waveformView: v })}
             getAnalyser={getAnalyser}
@@ -135,7 +135,7 @@ export default function App() {
             playing={state.isPlaying}
           />
             <div className="player-bottom">
-              <div className="sector-toolbar-slot" ref={sectorToolbarSlotRef} />
+              <div className="clip-toolbar-slot" ref={clipToolbarSlotRef} />
               <PlayerControls
                 isPlaying={state.isPlaying}
                 onTogglePlay={togglePlay}

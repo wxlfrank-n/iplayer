@@ -1,8 +1,8 @@
-export interface Sector {
+﻿export interface Clip {
   start: number;
   end: number;
-  // Original sectors kept under a virtually merged parent.
-  children?: Sector[];
+  // Original clips kept under a virtually merged parent.
+  children?: Clip[];
 }
 
 // A sample is silence when |v| <= 1% of the track's peak. Normalized to the
@@ -10,7 +10,7 @@ export interface Sector {
 // median of most files and reclassify all content as silence).
 const SILENCE_RATIO = 0.01;
 // A silent gap shorter than this does not split: the next sound run extends
-// the previous sector instead of starting a new one.
+// the previous clip instead of starting a new one.
 export const MERGE_GAP_SEC = 0.05;
 
 // Detection is block-based: the buffer is split into BLOCK_SAMPLES-sample
@@ -25,14 +25,14 @@ const BLOCK_SAMPLES = 512;
 // bounding the reads done per block.
 const PEAK_STRIDE = 256;
 
-// Split raw decoded audio into sectors: each contiguous run of samples with
-// |v| > the silence cutoff becomes a sector, bounded by silent samples.
+// Split raw decoded audio into clips: each contiguous run of samples with
+// |v| > the silence cutoff becomes a clip, bounded by silent samples.
 // Runs that follow a silent gap shorter than MERGE_GAP_SEC are folded into
-// the previous sector instead of starting a new one.
+// the previous clip instead of starting a new one.
 export function splitBySilence(
   data: Float32Array | null,
   sampleRate: number,
-): Sector[] {
+): Clip[] {
   if (!data || data.length === 0 || sampleRate <= 0) return [];
 
   // Per-block peak amplitudes, computed over every PEAK_STRIDE-th sample.
@@ -51,7 +51,7 @@ export function splitBySilence(
   }
   const blockSec = BLOCK_SAMPLES / sampleRate;
 
-  const sectors: Sector[] = [];
+  const clips: Clip[] = [];
   let runActive = false;
   let startBlock = 0;
   let extendPrev = false;
@@ -60,48 +60,48 @@ export function splitBySilence(
     if (isSound && !runActive) {
       runActive = true;
       startBlock = b;
-      const prev = sectors[sectors.length - 1];
+      const prev = clips[clips.length - 1];
       extendPrev =
         prev !== undefined && startBlock * blockSec - prev.end < MERGE_GAP_SEC;
     } else if (!isSound && runActive) {
       runActive = false;
       if (extendPrev) {
-        sectors[sectors.length - 1].end = b * blockSec;
+        clips[clips.length - 1].end = b * blockSec;
         extendPrev = false;
       } else {
-        sectors.push({
+        clips.push({
           start: startBlock * blockSec,
           end: b * blockSec,
         });
       }
     }
   }
-  // Expand each sector into the surrounding silence: extend equally on both
+  // Expand each clip into the surrounding silence: extend equally on both
   // sides by the smaller of 30% of the left gap and 20% of the right gap, so
   // playback starts slightly before/after the sound run.
   const minGap = 0.4; // seconds
-  for (let i = 0; i < sectors.length; i++) {
-    const sector = sectors[i];
-    const prevEnd = i > 0 ? sectors[i - 1].end : 0;
+  for (let i = 0; i < clips.length; i++) {
+    const clip = clips[i];
+    const prevEnd = i > 0 ? clips[i - 1].end : 0;
     const nextStart =
-      i < sectors.length - 1 ? sectors[i + 1].start : data.length / sampleRate;
-    const leftSilence = sector.start - prevEnd;
-    const rightSilence = nextStart - sector.end;
+      i < clips.length - 1 ? clips[i + 1].start : data.length / sampleRate;
+    const leftSilence = clip.start - prevEnd;
+    const rightSilence = nextStart - clip.end;
     const expand = Math.min(minGap, minGap * leftSilence, minGap * rightSilence);
-    sector.start = Math.max(0, sector.start - expand);
-    sector.end = Math.min(data.length / sampleRate, sector.end + expand);
+    clip.start = Math.max(0, clip.start - expand);
+    clip.end = Math.min(data.length / sampleRate, clip.end + expand);
   }
-  return sectors;
+  return clips;
 }
 
-// Virtually merge consecutive sectors whose gap (in seconds) is <= minGap.
-// Each merged group becomes a parent sector spanning group[0].start..group[n-1].end
+// Virtually merge consecutive clips whose gap (in seconds) is <= minGap.
+// Each merged group becomes a parent clip spanning group[0].start..group[n-1].end
 // with the originals kept as children, so segments can be inspected individually.
-export function mergeSectorsByGap(sectors: Sector[], minGap: number): Sector[] {
-  if (sectors.length === 0) return [];
+export function mergeClipsByGap(clips: Clip[], minGap: number): Clip[] {
+  if (clips.length === 0) return [];
 
-  const result: Sector[] = [];
-  let group: Sector[] = [sectors[0]];
+  const result: Clip[] = [];
+  let group: Clip[] = [clips[0]];
 
   const flush = () => {
     if (group.length === 1) {
@@ -116,24 +116,24 @@ export function mergeSectorsByGap(sectors: Sector[], minGap: number): Sector[] {
     group = [];
   };
 
-  for (let i = 1; i < sectors.length; i++) {
-    const gap = sectors[i].start - group[group.length - 1].end;
+  for (let i = 1; i < clips.length; i++) {
+    const gap = clips[i].start - group[group.length - 1].end;
     if (gap <= minGap) {
-      group.push(sectors[i]);
+      group.push(clips[i]);
     } else {
       flush();
-      group = [sectors[i]];
+      group = [clips[i]];
     }
   }
   flush();
   return result;
 }
 
-// Distinct positive gaps between consecutive sectors, ascending.
-export function sectorGaps(sectors: Sector[]): number[] {
+// Distinct positive gaps between consecutive clips, ascending.
+export function clipGaps(clips: Clip[]): number[] {
   const gaps: number[] = [MERGE_GAP_SEC];
-  for (let i = 1; i < sectors.length; i++) {
-    const gap = sectors[i].start - sectors[i - 1].end;
+  for (let i = 1; i < clips.length; i++) {
+    const gap = clips[i].start - clips[i - 1].end;
     if (isFinite(gap) && gap > 0.01) gaps.push(gap);
   }
   return [...new Set(gaps)].sort((a, b) => a - b);

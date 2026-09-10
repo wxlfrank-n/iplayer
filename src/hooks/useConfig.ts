@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 
-const STORAGE_KEY = "waveplay_config";
+const STORAGE_KEY = "Listenoop_config";
 
 export type WaveformView = "stacked" | "horizontal";
 

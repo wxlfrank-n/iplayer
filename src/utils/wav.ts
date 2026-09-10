@@ -1,6 +1,6 @@
-// Encode a decoded AudioBuffer as a mono WAV blob. Playing this (instead of the
+﻿// Encode a decoded AudioBuffer as a mono WAV blob. Playing this (instead of the
 // raw MP3) makes the audio element timeline identical to the waveform and
-// sectors, which are also built from decodeAudioData on a mono downmix — what
+// clips, which are also built from decodeAudioData on a mono downmix — what
 // you see is what you play. Downmixing to a single channel halves the blob
 // (and its memory allocation), which keeps peak memory lower on constrained
 // mobile browsers.

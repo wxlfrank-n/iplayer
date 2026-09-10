@@ -13,7 +13,7 @@ export function AppHeader({
 }: AppHeaderProps) {
   return (
     <header className="app-header">
-      <h1 className="app-title">{"\u{1F3B5}"} MyPlayer</h1>
+      <h1 className="app-title">{"\u{1F3B5}"} Listenoop</h1>
       <div className="app-header-actions">
         <button
           className={`playlist-toggle ${showPlaylist ? "playlist-toggle--active" : ""}`}

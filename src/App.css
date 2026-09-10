@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --bg-primary: #0d1117;
   --bg-secondary: #161b22;
   --bg-tertiary: #21262d;
@@ -411,14 +411,14 @@ body {
   align-items: stretch;
 }
 
-.sector-toolbar {
+.clip-toolbar {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 16px;
 }
 
-.sector-toolbar-slot {
+.clip-toolbar-slot {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
@@ -427,12 +427,12 @@ body {
   min-height: 0;
 }
 
-.sector-toolbar-slot .sector-toolbar {
+.clip-toolbar-slot .clip-toolbar {
   width: min(100%, 480px);
   max-width: none;
 }
 
-.sector-merge {
+.clip-merge {
   flex: 1;
   min-width: 0;
   max-width: none;
@@ -443,21 +443,21 @@ body {
   padding: 0 2px;
 }
 
-.sector-merge__stepper {
+.clip-merge__stepper {
   display: flex;
   align-items: center;
   gap: 8px;
   width: 100%;
 }
 
-.sector-merge__slider {
+.clip-merge__slider {
   --thumb-w: 10px;
   position: relative;
   flex: 1;
   min-width: 0;
 }
 
-.sector-merge__bubble {
+.clip-merge__bubble {
   position: absolute;
   top: -24px;
   transform: translateX(-50%);
@@ -473,7 +473,7 @@ body {
   z-index: 2;
 }
 
-.sector-merge__slider input[type="range"] {
+.clip-merge__slider input[type="range"] {
   display: block;
   width: 100%;
   height: 3px;
@@ -486,7 +486,7 @@ body {
   transform: scaleX(-1);
 }
 
-.sector-merge__stepper button {
+.clip-merge__stepper button {
   flex: none;
   width: 22px;
   height: 22px;
@@ -503,24 +503,24 @@ body {
   cursor: pointer;
 }
 
-.sector-merge__stepper button:hover:not(:disabled),
-.sector-merge__stepper button:active:not(:disabled) {
+.clip-merge__stepper button:hover:not(:disabled),
+.clip-merge__stepper button:active:not(:disabled) {
   border-color: var(--accent);
   color: var(--accent);
   background: var(--bg-hover);
 }
 
-.sector-merge__stepper button:disabled {
+.clip-merge__stepper button:disabled {
   opacity: 0.35;
   cursor: not-allowed;
 }
 
-.sector-merge input[type="range"]::-webkit-slider-runnable-track {
+.clip-merge input[type="range"]::-webkit-slider-runnable-track {
   height: 3px;
   border-radius: 1.5px;
 }
 
-.sector-merge input[type="range"]::-webkit-slider-thumb {
+.clip-merge input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 10px;
   height: 10px;
@@ -531,13 +531,13 @@ body {
   border: none;
 }
 
-.sector-merge input[type="range"]::-moz-range-track {
+.clip-merge input[type="range"]::-moz-range-track {
   height: 3px;
   border-radius: 1.5px;
   background: var(--bg-tertiary);
 }
 
-.sector-merge input[type="range"]::-moz-range-thumb {
+.clip-merge input[type="range"]::-moz-range-thumb {
   width: 10px;
   height: 10px;
   background: var(--accent);
@@ -562,7 +562,7 @@ body {
   position: relative;
 }
 
-.stacked-sector-label {
+.stacked-clip-label {
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
@@ -582,7 +582,7 @@ body {
   white-space: nowrap;
 }
 
-.stacked-sector-dur {
+.stacked-clip-dur {
   font-size: 0.5rem;
   font-weight: 400;
   font-variant-numeric: tabular-nums;
@@ -600,7 +600,7 @@ body {
   pointer-events: none;
 }
 
-.stacked-sector-label--active {
+.stacked-clip-label--active {
   background: var(--accent);
   border-color: var(--accent);
 }
@@ -683,27 +683,61 @@ body {
   white-space: nowrap;
 }
 
-.waveview-switcher {
+.view-switcher {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 3px;
+  right: 3px;
   z-index: 5;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg-tertiary);
-  color: var(--text-secondary);
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
 }
 
-.waveview-switcher:hover {
+.view-switcher__input {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.view-switcher__track {
+  position: relative;
+  box-sizing: border-box;
+  width: 32px;
+  height: 20px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  transition: background 0.15s;
+  pointer-events: none;
+}
+
+.view-switcher__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  box-sizing: border-box;
+  width: 14px;
+  height: 14px;
+  background: var(--text-secondary);
+  border-radius: 50%;
+  transition: transform 0.15s, background 0.15s;
+  pointer-events: none;
+}
+
+.view-switcher__input:checked ~ .view-switcher__track {
   background: var(--accent-dim);
-  color: #fff;
+  border-color: var(--accent);
+}
+
+.view-switcher__input:checked ~ .view-switcher__track .view-switcher__thumb {
+  transform: translateX(14px);
+  background: #fff;
 }
 
 .waveform-loading--stacked {
@@ -716,26 +750,26 @@ body {
   display: none;
 }
 
-.sector-reps {
+.clip-reps {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 0 2px;
 }
 
-.sector-reps__label {
+.clip-reps__label {
   font-size: 0.72rem;
   color: var(--text-secondary);
   white-space: nowrap;
 }
 
-.sector-reps__stepper {
+.clip-reps__stepper {
   display: flex;
   align-items: center;
   gap: 2px;
 }
 
-.sector-reps__stepper button {
+.clip-reps__stepper button {
   width: 22px;
   height: 22px;
   display: flex;
@@ -751,14 +785,14 @@ body {
   cursor: pointer;
 }
 
-.sector-reps__stepper button:hover,
-.sector-reps__stepper button:active {
+.clip-reps__stepper button:hover,
+.clip-reps__stepper button:active {
   border-color: var(--accent);
   color: var(--accent);
   background: var(--bg-hover);
 }
 
-.sector-reps__value {
+.clip-reps__value {
   min-width: 26px;
   text-align: center;
   font-size: 0.8rem;
@@ -870,23 +904,23 @@ body {
   background: #58a6ff;
 }
 
-.waveform-sector {
+.waveform-clip {
   cursor: pointer;
   fill: rgba(88, 166, 255, 0.32);
   transition: fill 0.15s ease, filter 0.2s ease;
 }
 
-.waveform-sector:hover {
+.waveform-clip:hover {
   fill: rgba(88, 166, 255, 0.5);
   filter: drop-shadow(0 0 6px rgba(88, 166, 255, 0.65)) drop-shadow(0 0 14px rgba(88, 166, 255, 0.35));
 }
 
-.waveform-sector--active {
+.waveform-clip--active {
   fill: rgba(88, 166, 255, 0.65);
   filter: drop-shadow(0 0 6px rgba(88, 166, 255, 0.7)) drop-shadow(0 0 16px rgba(88, 166, 255, 0.4));
 }
 
-.waveform-sector-label {
+.waveform-clip-label {
   position: absolute;
   top: 50%;
   left: 0;
@@ -903,7 +937,7 @@ body {
   user-select: none;
 }
 
-.waveform-sector-label--active {
+.waveform-clip-label--active {
   color: #fff;
   background: var(--accent);
 }
@@ -1494,25 +1528,25 @@ body {
   padding-right: 40px;
 }
 
-  .sector-toolbar {
+  .clip-toolbar {
     flex-direction: row;
     flex-wrap: wrap;
     align-items: center;
     gap: 8px 16px;
   }
 
-  .sector-merge {
+  .clip-merge {
     flex: 1;
     min-width: 0;
     max-width: none;
     width: auto;
   }
 
-  .sector-merge__slider input[type="range"] {
+  .clip-merge__slider input[type="range"] {
     width: 100%;
   }
 
-  .sector-reps {
+  .clip-reps {
     flex: none;
     width: auto;
   }
@@ -1525,36 +1559,36 @@ body {
 }
 
 /* Touch devices: make the merge slider thumb large enough to grab with a
-   finger. The sector toolbar itself stays hidden until the progress bar is
+   finger. The clip toolbar itself stays hidden until the progress bar is
    hovered, matching desktop behavior. */
 @media (hover: none) {
-  .sector-merge input[type="range"] {
+  .clip-merge input[type="range"] {
     height: 6px;
   }
 
-  .sector-merge__slider {
+  .clip-merge__slider {
     --thumb-w: 22px;
   }
 
-  .sector-merge__bubble {
+  .clip-merge__bubble {
     top: -22px;
   }
 
-  .sector-merge input[type="range"]::-webkit-slider-runnable-track {
+  .clip-merge input[type="range"]::-webkit-slider-runnable-track {
     height: 6px;
   }
 
-  .sector-merge input[type="range"]::-webkit-slider-thumb {
+  .clip-merge input[type="range"]::-webkit-slider-thumb {
     width: 22px;
     height: 22px;
     margin-top: -8px;
   }
 
-  .sector-merge input[type="range"]::-moz-range-track {
+  .clip-merge input[type="range"]::-moz-range-track {
     height: 6px;
   }
 
-  .sector-merge input[type="range"]::-moz-range-thumb {
+  .clip-merge input[type="range"]::-moz-range-thumb {
     width: 22px;
     height: 22px;
   }

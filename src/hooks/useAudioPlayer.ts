@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+﻿import { useState, useRef, useCallback, useEffect } from "react";
 import type { Track } from "../types";
 import { DEFAULT_TRACKS } from "../defaultTracks";
 import { decodeAudioBuffer } from "../utils/audio";
@@ -186,7 +186,7 @@ export function useAudioPlayer(skipSeconds: number) {
   }, [getAnalyser]);
 
   // Reference to the range's active rAF loop / ended listener so that starting a
-  // new range (e.g. clicking another sector) drops the previous one instead of
+  // new range (e.g. clicking another clip) drops the previous one instead of
   // letting the old range keep looping/pausing.
   const rangeRafRef = useRef(0);
   const rangeEndedRef = useRef<(() => void) | null>(null);
@@ -349,7 +349,7 @@ export function useAudioPlayer(skipSeconds: number) {
   // Plays the given time range [start, end] `repetitions` times sequentially,
   // pausing at `end` after the last repetition. Calls onComplete when finished.
   // Boundary detection runs on requestAnimationFrame (not the ~250ms
-  // `timeupdate` cadence), so a sector stops within a frame of its end and
+  // `timeupdate` cadence), so a clip stops within a frame of its end and
   // loops restart exactly at `start` instead of drifting.
   const playRange = useCallback((start: number, end: number, repetitions: number, onComplete?: () => void) => {
     const audio = audioRef.current;
@@ -387,7 +387,7 @@ export function useAudioPlayer(skipSeconds: number) {
       // Wait until the seek to `start` has actually settled before trusting the
       // playhead: in the first frames after a click the media can still report
       // its old position (usually 0 when paused), which must not be mistaken
-      // for the sector end or a cancelled source.
+      // for the clip end or a cancelled source.
       if (!armedAtStart) {
         const nearStart = t >= start - 0.05 && t <= start + 0.1;
         if (nearStart) {
@@ -422,7 +422,7 @@ export function useAudioPlayer(skipSeconds: number) {
       rangeRafRef.current = requestAnimationFrame(tick);
     };
 
-    // If the sector's end coincides with the end of the file, the audio element
+    // If the clip's end coincides with the end of the file, the audio element
     // can fire `ended` before the last rAF frame — handle it as a full pass
     // instead of letting the next track start.
     const onEnded = () => {
