@@ -120,7 +120,7 @@ export default function App() {
             onChange={handleFileInput}
             style={{ display: "none" }}
           />
-          <ProgressBar
+<ProgressBar
             key={currentTrack?.url ?? "none"}
             currentTime={state.currentTime}
             onSeek={seek}
@@ -129,24 +129,12 @@ export default function App() {
             onPlayRange={playRange}
             sectorToolbarRef={sectorToolbarSlotRef}
             waveformView={config.waveformView}
+            onWaveformViewChange={(v) => updateConfig({ waveformView: v })}
             getAnalyser={getAnalyser}
             getCurrentTime={getCurrentTime}
             playing={state.isPlaying}
           />
             <div className="player-bottom">
-              <label className="waveview-toggle" title="Switch waveform view">
-                <span className="waveview-toggle__label">Stacked</span>
-                <input
-                  type="checkbox"
-                  className="waveview-toggle__input"
-                  checked={config.waveformView === "horizontal"}
-                  onChange={(e) => updateConfig({ waveformView: e.target.checked ? "horizontal" : "stacked" })}
-                />
-                <span className="waveview-toggle__track">
-                  <span className="waveview-toggle__thumb" />
-                </span>
-                <span className="waveview-toggle__label">Row</span>
-              </label>
               <div className="sector-toolbar-slot" ref={sectorToolbarSlotRef} />
               <PlayerControls
                 isPlaying={state.isPlaying}

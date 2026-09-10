@@ -19,6 +19,7 @@ interface ProgressBarProps {
   onToolbarActiveChange?: (active: boolean) => void;
   sectorToolbarRef?: React.RefObject<HTMLDivElement | null>;
   waveformView?: WaveformView;
+  onWaveformViewChange?: (value: WaveformView) => void;
   getAnalyser?: () => AnalyserNode | null;
   getCurrentTime?: () => number;
   playing?: boolean;
@@ -46,7 +47,7 @@ const formatTime = (sec: number) => {
   return `${m}:${r.toString().padStart(2, "0")}`;
 };
 
-export function ProgressBar({ currentTime, onSeek, waveform, waveformStatus, onPlayRange, onSectorActiveChange, onSectorPlayActiveChange, onWaveformScrollChange, onToolbarActiveChange, sectorToolbarRef, waveformView = "stacked", getAnalyser, getCurrentTime, playing = false }: ProgressBarProps) {
+export function ProgressBar({ currentTime, onSeek, waveform, waveformStatus, onPlayRange, onSectorActiveChange, onSectorPlayActiveChange, onWaveformScrollChange, onToolbarActiveChange, sectorToolbarRef, waveformView = "stacked", onWaveformViewChange, getAnalyser, getCurrentTime, playing = false }: ProgressBarProps) {
   const hasWaveform = waveform !== null && waveform.data.length > 0;
   const sectors = useMemo(
     () => splitBySilence(waveform?.data ?? null, waveform?.sampleRate ?? 0),
@@ -515,6 +516,23 @@ useEffect(() => {
 
   return (
     <div className="progress-container">
+      <button
+        type="button"
+        className="waveview-switcher"
+        title={waveformView === "stacked" ? "Show waveform as one row" : "Show waveform as stacked rows"}
+        aria-label="Switch waveform view"
+        onClick={() => onWaveformViewChange?.(waveformView === "stacked" ? "horizontal" : "stacked")}
+      >
+        {waveformView === "stacked" ? (
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+            <path d="M4 12h16" />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+            <path d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        )}
+      </button>
       <div className={`progress-row ${waveformView === "horizontal" ? "progress-row--horizontal" : ""}`}>
         {waveformStatus === "loading" || waveformStatus === "idle" ? (
           <div className="waveform-loading waveform-loading--stacked">Loading waveform…</div>
