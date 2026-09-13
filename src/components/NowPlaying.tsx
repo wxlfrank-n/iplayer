@@ -1,21 +1,30 @@
-import type { Track } from "../types";
+/**
+ * Displays currently playing track information.
+ *
+ * Shows:
+ * - Track title and artist
+ * - Audio metadata (channels, sample rate, bitrate)
+ * - Music note icon (static when no track, animated when playing)
+ *
+ * Falls back to "No track selected" message when the playlist is empty.
+ */
+
+import { memo } from "react";
 import { useAudioMeta } from "../hooks/useAudioMeta";
+import { useAppSelector } from "../store/hooks";
+import { selectCurrentTrack } from "../store/selectors";
+import MusicNoteIcon from "../assets/icons/music-note.svg?react";
 
-interface NowPlayingProps {
-  track: Track | null;
-  audioUrl: string | null;
-}
-
-export function NowPlaying({ track, audioUrl }: NowPlayingProps) {
-  const meta = useAudioMeta(audioUrl);
+export const NowPlaying = memo(function NowPlaying() {
+  const track = useAppSelector(selectCurrentTrack);
+  // Fetch and display audio metadata (channels, sample rate, bitrate)
+  const meta = useAudioMeta(track?.url ?? null);
 
   if (!track) {
     return (
       <div className="now-playing now-playing--empty">
         <div className="now-playing__art">
-          <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor" opacity="0.4">
-            <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55C7.79 13 6 14.79 6 17s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
-          </svg>
+          <MusicNoteIcon width={32} height={32} opacity={0.4} />
         </div>
         <div className="now-playing__info">
           <span className="now-playing__title">No track selected</span>
@@ -28,16 +37,15 @@ export function NowPlaying({ track, audioUrl }: NowPlayingProps) {
   return (
     <div className="now-playing">
       <div className="now-playing__art now-playing__art--active">
-        <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
-          <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55C7.79 13 6 14.79 6 17s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
-        </svg>
+        <MusicNoteIcon width={28} height={28} />
       </div>
       <div className="now-playing__info">
         <span className="now-playing__title">{track.title}</span>
         <span className="now-playing__artist">{track.artist}</span>
         {meta && (
           <span className="now-playing__meta">
-            {meta.channels === 1 ? "Mono" : "Stereo"}{" · "}
+            {meta.channels === 1 ? "Mono" : "Stereo"}
+            {" · "}
             {(meta.sampleRate / 1000).toFixed(1)} kHz{" · "}
             {meta.bitrate} kbps
           </span>
@@ -45,4 +53,4 @@ export function NowPlaying({ track, audioUrl }: NowPlayingProps) {
       </div>
     </div>
   );
-}
+});

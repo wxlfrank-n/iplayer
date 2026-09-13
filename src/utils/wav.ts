@@ -1,9 +1,16 @@
-﻿// Encode a decoded AudioBuffer as a mono WAV blob. Playing this (instead of the
-// raw MP3) makes the audio element timeline identical to the waveform and
-// clips, which are also built from decodeAudioData on a mono downmix — what
-// you see is what you play. Downmixing to a single channel halves the blob
-// (and its memory allocation), which keeps peak memory lower on constrained
-// mobile browsers.
+﻿/**
+ * Encodes a decoded AudioBuffer as a mono WAV blob.
+ *
+ * Why WAV?
+ * - Playing WAV (instead of raw MP3) makes the audio element timeline
+ *   identical to the waveform and clips, which are also built from
+ *   decodeAudioData on a mono downmix
+ * - What you see is what you play
+ * - Downmixing to mono halves the blob and memory usage on constrained browsers
+ *
+ * @param buffer - The decoded AudioBuffer (may be mono or stereo)
+ * @returns A Blob containing WAV-encoded mono audio data
+ */
 export function audioBufferToWavBlob(buffer: AudioBuffer): Blob {
   const length = buffer.length;
   const sampleRate = buffer.sampleRate;
@@ -12,6 +19,7 @@ export function audioBufferToWavBlob(buffer: AudioBuffer): Blob {
   const arrayBuffer = new ArrayBuffer(44 + dataSize);
   const view = new DataView(arrayBuffer);
 
+  // Helper to write ASCII string to buffer (for WAV header markers like "RIFF", "WAVE", etc.)
   const writeString = (offset: number, text: string) => {
     for (let i = 0; i < text.length; i++) {
       view.setUint8(offset + i, text.charCodeAt(i));

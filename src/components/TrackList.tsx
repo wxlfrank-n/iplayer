@@ -1,3 +1,9 @@
+/**
+ * Lists all loaded tracks in the playlist.
+ * Shows current playing track with highlight.
+ * Allows selecting tracks and removing them from playlist.
+ */
+
 import type { Track } from "../types";
 
 interface TrackListProps {
@@ -17,7 +23,9 @@ export function TrackList({
     return (
       <div className="track-list track-list--empty">
         <p>No tracks loaded</p>
-        <p className="track-list__hint">Drop MP3 files here or use the button above</p>
+        <p className="track-list__hint">
+          Drop MP3 files here or use the button above
+        </p>
       </div>
     );
   }

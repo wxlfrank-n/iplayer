@@ -1,4 +1,12 @@
-﻿export interface Clip {
+﻿/**
+ * Represents a contiguous audio segment.
+ * Used for both silence-split clips and merged groups.
+ *
+ * @property start - Start time in seconds
+ * @property end - End time in seconds
+ * @property children - For merged clips, contains the original clips that were merged
+ */
+export interface Clip {
   start: number;
   end: number;
   // Original clips kept under a virtually merged parent.
@@ -87,7 +95,11 @@ export function splitBySilence(
       i < clips.length - 1 ? clips[i + 1].start : data.length / sampleRate;
     const leftSilence = clip.start - prevEnd;
     const rightSilence = nextStart - clip.end;
-    const expand = Math.min(minGap, minGap * leftSilence, minGap * rightSilence);
+    const expand = Math.min(
+      minGap,
+      minGap * leftSilence,
+      minGap * rightSilence,
+    );
     clip.start = Math.max(0, clip.start - expand);
     clip.end = Math.min(data.length / sampleRate, clip.end + expand);
   }

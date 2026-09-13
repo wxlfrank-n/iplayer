@@ -1,13 +1,22 @@
-import { useMemo } from "react";
+/**
+ * Renders waveform visualization as SVG bars.
+ *
+ * Algorithm:
+ * - One vertical bar per horizontal pixel "frame"
+ * - Each frame covers a slice of samples and spans that slice's min..max amplitude
+ * - Traces the wave shape instead of showing symmetric peaks
+ * - 3-tap smoothing on edges keeps adjacent bars visually continuous
+ * - Silent (sub-peak) frames get dimmed min-height tick for visibility
+ * - Played portion highlighted in blue, unplayed in gray, silent in darker gray
+ */
+
+import { memo, useMemo } from "react";
+import type { WaveWindow } from "../types";
 
 interface WaveformBarsProps {
   data: Float32Array;
   sampleRate: number;
-  windowStartSec: number;
-  windowLen: number;
-  innerH: number;
-  vbW: number;
-  vbH: number;
+  window: WaveWindow;
   fracPlayed: number;
   idPrefix?: string;
   strokeWidth?: number;
@@ -18,18 +27,15 @@ const PLAYED_COLOR = "#58a6ff";
 const SILENT_COLOR = "#4b545e";
 const MIN_BAR_PX = 2;
 
-export function WaveformBars({
+export const WaveformBars = memo(function WaveformBars({
   data,
   sampleRate,
-  windowStartSec,
-  windowLen,
-  innerH,
-  vbW,
-  vbH,
+  window,
   fracPlayed,
   idPrefix = "playedClip",
   strokeWidth = 1,
 }: WaveformBarsProps) {
+  const { windowStartSec, windowLen, innerH, vbW, vbH } = window;
   // One vertical bar per horizontal pixel "frame": each frame covers a slice of
   // samples and the bar spans that slice's min..max sample amplitude, tracing
   // the wave shape instead of a symmetric peak. A 3-tap smoothing pass on both
@@ -38,7 +44,10 @@ export function WaveformBars({
   const { waveD, silentD } = useMemo(() => {
     if (data.length === 0 || windowLen <= 0) return { waveD: "", silentD: "" };
     const i0 = Math.max(0, Math.floor(windowStartSec * sampleRate));
-    const i1 = Math.min(data.length, Math.ceil((windowStartSec + windowLen) * sampleRate));
+    const i1 = Math.min(
+      data.length,
+      Math.ceil((windowStartSec + windowLen) * sampleRate),
+    );
     const total = Math.max(1, i1 - i0);
     const frames = Math.max(1, Math.floor(vbW));
     const perFrame = total / frames;
@@ -85,7 +94,7 @@ export function WaveformBars({
       }
       const mid = (top + bot) / 2;
       const half = MIN_BAR_PX / 2;
-      silentD += `M${f} ${((mid - half)).toFixed(2)}L${f} ${(mid + half).toFixed(2)}`;
+      silentD += `M${f} ${(mid - half).toFixed(2)}L${f} ${(mid + half).toFixed(2)}`;
     }
     return { waveD, silentD };
   }, [data, sampleRate, windowStartSec, windowLen, innerH, vbW, vbH]);
@@ -94,9 +103,21 @@ export function WaveformBars({
 
   return (
     <>
-      <path d={waveD} fill="none" stroke={BASE_COLOR} strokeWidth={strokeWidth} vectorEffect="non-scaling-stroke" />
+      <path
+        d={waveD}
+        fill="none"
+        stroke={BASE_COLOR}
+        strokeWidth={strokeWidth}
+        vectorEffect="non-scaling-stroke"
+      />
       {silentD && (
-        <path d={silentD} fill="none" stroke={SILENT_COLOR} strokeWidth={strokeWidth} vectorEffect="non-scaling-stroke" />
+        <path
+          d={silentD}
+          fill="none"
+          stroke={SILENT_COLOR}
+          strokeWidth={strokeWidth}
+          vectorEffect="non-scaling-stroke"
+        />
       )}
       <path
         d={waveD}
@@ -108,9 +129,14 @@ export function WaveformBars({
       />
       <defs>
         <clipPath id={idPrefix}>
-          <rect x={0} y={vbH / 2 - innerH / 4} width={clipWidth} height={innerH / 2} />
+          <rect
+            x={0}
+            y={vbH / 2 - innerH / 4}
+            width={clipWidth}
+            height={innerH / 2}
+          />
         </clipPath>
       </defs>
     </>
   );
-}
+});

@@ -1,29 +1,46 @@
-﻿import { type Clip } from "../utils/clips";
+﻿/**
+ * Renders detected audio clips (silence-split segments) on the waveform.
+ * Each clip is a highlighted rect that user can click to select or play.
+ */
+
+import { memo } from "react";
+import { type Clip as ClipData } from "../utils/clips";
+import { type WaveWindow } from "../types";
 import { formatTimePrecise } from "../utils/time";
 
 interface ClipProps {
-  clips: Clip[];
-  windowStartSec: number;
-  windowLen: number;
-  innerH: number;
-  vbW: number;
-  vbH: number;
+  clips: ClipData[];
+  window: WaveWindow;
   onPlayRange: (start: number, end: number, repetitions: number) => void;
   repetitions: number;
   activeClip: number;
   onActivate: (idx: number) => void;
 }
 
-export function Clip({ clips, windowStartSec, windowLen, innerH, vbW, vbH, onPlayRange, repetitions, activeClip, onActivate }: ClipProps) {
+export const Clip = memo(function Clip({
+  clips,
+  window,
+  onPlayRange,
+  repetitions,
+  activeClip,
+  onActivate,
+}: ClipProps) {
+  const { windowStartSec, windowLen, innerH, vbW, vbH } = window;
 
-  const handleClick = (e: React.MouseEvent<SVGRectElement>, idx: number, start: number, end: number) => {
+  const handleClick = (
+    e: React.MouseEvent<SVGRectElement>,
+    idx: number,
+    start: number,
+    end: number,
+  ) => {
     e.stopPropagation();
     onActivate(idx);
     onPlayRange(start, end, repetitions);
   };
 
-  const visible = (c: Clip) => c.end > windowStartSec && c.start < windowStartSec + windowLen;
-  const rect = (c: Clip) => {
+  const visible = (c: ClipData) =>
+    c.end > windowStartSec && c.start < windowStartSec + windowLen;
+  const rect = (c: ClipData) => {
     const x = Math.max(0, ((c.start - windowStartSec) / windowLen) * vbW);
     const right = Math.min(((c.end - windowStartSec) / windowLen) * vbW, vbW);
     return { x, w: Math.max(1, right - x) };
@@ -52,4 +69,4 @@ export function Clip({ clips, windowStartSec, windowLen, innerH, vbW, vbH, onPla
       })}
     </>
   );
-}
+});

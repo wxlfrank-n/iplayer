@@ -1,44 +1,26 @@
-import { useState, useCallback } from "react";
+/**
+ * App configuration backed by Redux.
+ *
+ * Thin wrapper over the `config` slice so existing consumers keep the
+ * `{ config, updateConfig }` shape while the actual state lives in the store.
+ */
 
-const STORAGE_KEY = "Listenoop_config";
+import { useCallback } from "react";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { updateConfig as updateConfigAction } from "../store/configSlice";
 
-export type WaveformView = "stacked" | "horizontal";
-
-interface Config {
-  skipSeconds: number;
-  waveformView: WaveformView;
-}
-
-const DEFAULT_CONFIG: Config = {
-  skipSeconds: 10,
-  waveformView: "stacked",
-};
-
-function loadConfig(): Config {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      return { ...DEFAULT_CONFIG, ...parsed };
-    }
-  } catch {}
-  return { ...DEFAULT_CONFIG };
-}
-
-function saveConfig(config: Config) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-}
+export type { WaveformView } from "../types";
 
 export function useConfig() {
-  const [config, setConfig] = useState<Config>(loadConfig);
+  const config = useAppSelector((s) => s.config);
+  const dispatch = useAppDispatch();
 
-  const updateConfig = useCallback((partial: Partial<Config>) => {
-    setConfig((prev) => {
-      const next = { ...prev, ...partial };
-      saveConfig(next);
-      return next;
-    });
-  }, []);
+  const updateConfig = useCallback(
+    (partial: Partial<typeof config>) => {
+      dispatch(updateConfigAction(partial));
+    },
+    [dispatch],
+  );
 
   return { config, updateConfig };
 }

@@ -1,11 +1,40 @@
-﻿import { useRef, useCallback, useState, useEffect } from "react";
-import { useDrop } from "react-dnd";
-import { NativeTypes } from "react-dnd-html5-backend";
+﻿/**
+ * Main application component.
+ *
+ * The root container that orchestrates:
+ * - Audio playback (useAudioPlayer hook)
+ * - Playlist management
+ * - Waveform visualization and analysis
+ * - Settings panel
+ * - Drag-and-drop file loading
+ * - Keyboard shortcuts and playback controls
+ *
+ * Layout:
+ * - Main player card with waveform and controls
+ * - Playlist sidebar (toggleable)
+ * - Settings overlay (toggleable)
+ *
+ * Features:
+ * - Load MP3 files via file input or drag-drop
+ * - Play/pause with Web Audio for waveform visualization
+ * - Skip forward/backward by configurable interval
+ * - Seek via waveform click
+ * - Range selection on waveform for looped playback
+ * - Configurable skip interval and waveform display mode
+ * - Auto-save config to localStorage
+ */
+
+import { useRef, useCallback, useState, useEffect, useMemo } from "react";
 import { useAudioPlayer } from "./hooks/useAudioPlayer";
 import { useConfig } from "./hooks/useConfig";
 import { useWaveform } from "./hooks/useWaveform";
-import { AppHeader } from "./components/AppHeader";
+import { useAddFiles } from "./hooks/useAddFiles";
+import { splitBySilence } from "./utils/clips";
+import { useAppDispatch, useAppSelector } from "./store/hooks";
+import { selectCurrentTrack } from "./store/selectors";
+import { setClips, setActiveClip } from "./store/analysisSlice";
 import { NowPlaying } from "./components/NowPlaying";
+import { PlayerActions } from "./components/PlayerActions";
 import { PlayerControls } from "./components/PlayerControls";
 import { Playlist } from "./components/Playlist";
 import { ProgressBar } from "./components/ProgressBar";
@@ -13,9 +42,12 @@ import { Settings } from "./components/Settings";
 import "./App.css";
 
 export default function App() {
-  const { config, updateConfig } = useConfig();
+  // Load user configuration from localStorage
+  const { config } = useConfig();
+  const dispatch = useAppDispatch();
+
+  // Set up audio player with all playback controls and state
   const {
-    state,
     togglePlay,
     next,
     prev,
@@ -30,17 +62,39 @@ export default function App() {
     getCurrentTime,
   } = useAudioPlayer(config.skipSeconds);
 
-  const [showPlaylist, setShowPlaylist] = useState(true);
+  // UI state for overlays
+  const [showPlaylist, setShowPlaylist] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+
+  // Temporary notification message (auto-hides after 4s)
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimerRef = useRef<number | undefined>(undefined);
-  const mobileFileInputRef = useRef<HTMLInputElement>(null);
-  const clipToolbarSlotRef = useRef<HTMLDivElement>(null);
 
-  const currentTrack =
-    state.currentTrackIndex >= 0 ? state.tracks[state.currentTrackIndex] : null;
+  // Get current playing track from the store
+  const currentTrack = useAppSelector(selectCurrentTrack);
 
+  // Decode and extract waveform data for visualization
   const waveform = useWaveform(currentTrack?.url ?? null);
+
+  // Clips detected from the current audio's silence gaps, recomputed only
+  // when the waveform (i.e. the loaded track) changes, then published to the
+  // analysis slice so every component can read them.
+  const clips = useMemo(
+    () =>
+      splitBySilence(
+        waveform.data?.data ?? null,
+        waveform.data?.sampleRate ?? 0,
+      ),
+    [waveform],
+  );
+  useEffect(() => {
+    dispatch(setClips(clips));
+  }, [clips, dispatch]);
+
+  // Reset the active clip whenever the loaded track changes.
+  useEffect(() => {
+    dispatch(setActiveClip(-1));
+  }, [currentTrack?.url, dispatch]);
 
   const showNotice = useCallback((msg: string) => {
     setNotice(msg);
@@ -48,43 +102,35 @@ export default function App() {
     noticeTimerRef.current = window.setTimeout(() => setNotice(null), 4000);
   }, []);
 
-  const handleFiles = useCallback(
-    (files: FileList, playAfter: boolean = true) => {
-      const { skipped } = addTracks(files, playAfter);
-      if (skipped > 0) {
-        showNotice(`Skipped ${skipped} non-MP3 file${skipped > 1 ? "s" : ""}. Only MP3 files are supported.`);
-      }
-    },
-    [addTracks, showNotice],
+  // Adding files (file picker + drag-and-drop) with a skip notice for
+  // non-MP3 files.
+  const { handleFiles, isOver, drop } = useAddFiles(
+    addTracks,
+    useCallback(
+      (skipped: number) =>
+        showNotice(
+          `Skipped ${skipped} non-MP3 file${skipped > 1 ? "s" : ""}. Only MP3 files are supported.`,
+        ),
+      [showNotice],
+    ),
   );
-
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) handleFiles(e.target.files);
-    e.target.value = "";
-  };
 
   // Stop the page from scrolling/zooming on wheel anywhere in the app, except
   // inside the playlist's own scrollable track list.
   useEffect(() => {
     const onWheel = (e: WheelEvent) => {
       const target = e.target as HTMLElement | null;
-      if (target?.closest(".track-list") || target?.closest(".stacked-waveform") || target?.closest(".waveform-hs")) return;
+      if (
+        target?.closest(".track-list") ||
+        target?.closest(".stacked-waveform") ||
+        target?.closest(".row-waveform")
+      )
+        return;
       e.preventDefault();
     };
     window.addEventListener("wheel", onWheel, { passive: false });
     return () => window.removeEventListener("wheel", onWheel);
   }, []);
-
-  const [{ isOver }, drop] = useDrop(
-    () => ({
-      accept: [NativeTypes.FILE],
-      drop: (item: { files?: FileList }) => {
-        if (item.files && item.files.length > 0) handleFiles(item.files);
-      },
-      collect: (monitor) => ({ isOver: monitor.isOver() }),
-    }),
-    [handleFiles],
-  );
 
   return (
     <div
@@ -93,83 +139,45 @@ export default function App() {
         if (node) drop(node);
       }}
     >
-      <AppHeader
-        trackCount={state.tracks.length}
-        showPlaylist={showPlaylist}
-        onTogglePlaylist={() => setShowPlaylist((v) => !v)}
-        onOpenSettings={() => setShowSettings(true)}
-      />
-
-      <div className={`player-layout ${showPlaylist ? "player-layout--with-playlist" : ""}`}>
+      <div className="player-layout">
         <div className="player-main">
+          <PlayerActions
+            playlistOpen={showPlaylist}
+            onTogglePlaylist={() => setShowPlaylist((v) => !v)}
+            onOpenSettings={() => setShowSettings(true)}
+            onAddFiles={handleFiles}
+          />
+
           <div className="player-card">
-<div className="now-playing-row">
-            <NowPlaying track={currentTrack} audioUrl={currentTrack?.url ?? null} />
-            <button
-              className="mobile-add-btn"
-              onClick={() => mobileFileInputRef.current?.click()}
-            >
-              +
-            </button>
-          </div>
-          <input
-            ref={mobileFileInputRef}
-            type="file"
-            accept=".mp3,audio/mpeg"
-            multiple
-            onChange={handleFileInput}
-            style={{ display: "none" }}
-          />
-<ProgressBar
-            key={currentTrack?.url ?? "none"}
-            currentTime={state.currentTime}
-            onSeek={seek}
-            waveform={waveform.data}
-            waveformStatus={waveform.status}
-            onPlayRange={playRange}
-            clipToolbarRef={clipToolbarSlotRef}
-            waveformView={config.waveformView}
-            onWaveformViewChange={(v) => updateConfig({ waveformView: v })}
-            getAnalyser={getAnalyser}
-            getCurrentTime={getCurrentTime}
-            playing={state.isPlaying}
-          />
-            <div className="player-bottom">
-              <div className="clip-toolbar-slot" ref={clipToolbarSlotRef} />
-              <PlayerControls
-                isPlaying={state.isPlaying}
-                onTogglePlay={togglePlay}
-                onNext={next}
-                onPrev={prev}
-                onSkipForward={skipForward}
-                onSkipBackward={skipBackward}
-                hasTrack={state.tracks.length > 0}
-                skipSeconds={config.skipSeconds}
-              />
-            </div>
+            <NowPlaying />
+            <ProgressBar
+              key={currentTrack?.url ?? "none"}
+              onSeek={seek}
+              onPlayRange={playRange}
+              getAnalyser={getAnalyser}
+              getCurrentTime={getCurrentTime}
+            />
+            <PlayerControls
+              onTogglePlay={togglePlay}
+              onNext={next}
+              onPrev={prev}
+              onSkipForward={skipForward}
+              onSkipBackward={skipBackward}
+            />
           </div>
         </div>
-
-        {showPlaylist && (
-          <Playlist
-            tracks={state.tracks}
-            currentTrackIndex={state.currentTrackIndex}
-            onSelectTrack={selectTrack}
-            onRemoveTrack={removeTrack}
-            onAddFiles={handleFileInput}
-          />
-        )}
       </div>
 
-      {showSettings && (
-        <Settings
-          skipSeconds={config.skipSeconds}
-          onSkipSecondsChange={(v) => updateConfig({ skipSeconds: v })}
-          waveformView={config.waveformView}
-          onWaveformViewChange={(v) => updateConfig({ waveformView: v })}
-          onClose={() => setShowSettings(false)}
+      {showPlaylist && (
+        <Playlist
+          onSelectTrack={selectTrack}
+          onRemoveTrack={removeTrack}
+          onAddFiles={handleFiles}
+          onClose={() => setShowPlaylist(false)}
         />
       )}
+
+      {showSettings && <Settings onClose={() => setShowSettings(false)} />}
 
       {notice && <div className="app-notice">{notice}</div>}
     </div>

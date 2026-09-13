@@ -1,18 +1,27 @@
-import { useState, useEffect, useRef } from "react";
+/**
+ * Decodes audio and stores waveform data in Redux.
+ *
+ * The decoded mono samples live in the `analysis` slice so all components can
+ * read them; this hook owns the decode side effect and reports status.
+ */
+
+import { useEffect, useRef } from "react";
 import { decodeAudioBuffer } from "../utils/audio";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { setWaveform, setWaveformStatus } from "../store/analysisSlice";
+import type { WaveformData, WaveformStatus } from "../types";
 
-export interface WaveformData {
-  data: Float32Array;
-  sampleRate: number;
-}
-
-export type WaveformStatus = "idle" | "loading" | "ready" | "error";
+export type { WaveformData, WaveformStatus } from "../types";
 
 // Raw decoded audio as mixed-to-mono Float32 samples plus a status flag so the
 // UI can tell "still decoding" apart from "not (yet) available".
-export function useWaveform(url: string | null): { data: WaveformData | null; status: WaveformStatus } {
-  const [waveform, setWaveform] = useState<WaveformData | null>(null);
-  const [status, setStatus] = useState<WaveformStatus>("idle");
+export function useWaveform(url: string | null): {
+  data: WaveformData | null;
+  status: WaveformStatus;
+} {
+  const dispatch = useAppDispatch();
+  const waveform = useAppSelector((s) => s.analysis.waveform);
+  const status = useAppSelector((s) => s.analysis.waveformStatus);
   const urlRef = useRef(url);
 
   // Keep ref in sync with latest url value
@@ -24,11 +33,11 @@ export function useWaveform(url: string | null): { data: WaveformData | null; st
   useEffect(() => {
     const currentUrl = urlRef.current;
     if (!currentUrl) {
-      setWaveform(null);
-      setStatus("idle");
+      dispatch(setWaveform(null));
+      dispatch(setWaveformStatus("idle"));
       return;
     }
-    setStatus("loading");
+    dispatch(setWaveformStatus("loading"));
 
     let cancelled = false;
 
@@ -46,12 +55,14 @@ export function useWaveform(url: string | null): { data: WaveformData | null; st
         for (let i = 0; i < length; i++) mono[i] /= channelCount;
 
         if (cancelled) return;
-        setWaveform({ data: mono, sampleRate: audioBuffer.sampleRate });
-        setStatus("ready");
+        dispatch(
+          setWaveform({ data: mono, sampleRate: audioBuffer.sampleRate }),
+        );
+        dispatch(setWaveformStatus("ready"));
       } catch {
         if (cancelled) return;
-        setWaveform(null);
-        setStatus("error");
+        dispatch(setWaveform(null));
+        dispatch(setWaveformStatus("error"));
       }
     }
 
@@ -60,7 +71,7 @@ export function useWaveform(url: string | null): { data: WaveformData | null; st
     return () => {
       cancelled = true;
     };
-  }, [url]);
+  }, [url, dispatch]);
 
   return { data: status === "ready" ? waveform : null, status };
 }
