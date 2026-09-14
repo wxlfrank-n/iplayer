@@ -451,18 +451,19 @@ body {
 
 .clip-merge__bubble {
   position: absolute;
-  top: -24px;
-  transform: translateX(-50%);
+  top: -3px;
+  transform: translate(-50%, -100%);
   font-size: 0.66rem;
   font-variant-numeric: tabular-nums;
-  color: var(--text-primary);
-  background: var(--bg-tertiary);
-  border: 1px solid var(--accent);
+  color: var(--accent);
+  border: none;
   border-radius: 4px;
   padding: 1px 5px;
   pointer-events: none;
   white-space: nowrap;
   z-index: 2;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .clip-merge__slider input[type="range"] {
@@ -1341,7 +1342,7 @@ body {
   }
 
   .clip-merge__bubble {
-    top: -22px;
+    top: -3px;
   }
 
   .clip-merge input[type="range"]::-webkit-slider-runnable-track {
