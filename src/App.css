@@ -420,6 +420,8 @@ body {
   width: min(100%, 480px);
   max-width: none;
   align-self: center;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .clip-merge {
@@ -570,6 +572,8 @@ body {
   line-height: 1.25;
   pointer-events: none;
   white-space: nowrap;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .stacked-clip-dur {
