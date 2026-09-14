@@ -10,8 +10,6 @@ import {
   setIsPlaying,
   setCurrentTime,
   setDuration,
-  setVolume,
-  setIsMuted,
 } from "../store/playerSlice";
 
 // When playback starts after a seek, the browser may begin slightly past the
@@ -213,10 +211,6 @@ export function useAudioPlayer(skipSeconds: number) {
   }, [dispatch]);
 
   useEffect(() => {
-    audioRef.current.volume = state.volume;
-  }, [state.volume]);
-
-  useEffect(() => {
     const audio = audioRef.current;
     const track = state.tracks[state.currentTrackIndex];
     if (track && !audio.src) {
@@ -321,24 +315,6 @@ export function useAudioPlayer(skipSeconds: number) {
     },
     [dispatch],
   );
-
-  const setVolumeLevel = useCallback(
-    (vol: number) => {
-      audioRef.current.volume = vol;
-      dispatch(setVolume(vol));
-      dispatch(setIsMuted(vol === 0));
-    },
-    [dispatch],
-  );
-
-  const toggleMute = useCallback(() => {
-    const s = getPlayer();
-    const newMuted = !s.isMuted;
-    const audio = audioRef.current;
-    audio.volume = newMuted ? 0 : s.volume;
-    audio.muted = newMuted;
-    dispatch(setIsMuted(newMuted));
-  }, [dispatch]);
 
   const addTracks = useCallback(
     (files: FileList, playAfter: boolean = false) => {
@@ -564,8 +540,6 @@ export function useAudioPlayer(skipSeconds: number) {
     next,
     prev,
     seek,
-    setVolume: setVolumeLevel,
-    toggleMute,
     addTracks,
     removeTrack,
     selectTrack,

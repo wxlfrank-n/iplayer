@@ -2,9 +2,9 @@
  * Redux slice for player playback state.
  *
  * Holds everything the audio engine exposes as mutable state: the track list,
- * which track is current, live playback position, volume, and mute. The audio
- * element itself stays a side effect inside `useAudioPlayer`; this slice is the
- * single source of truth that all components read.
+ * which track is current, and live playback position. The audio element itself
+ * stays a side effect inside `useAudioPlayer`; this slice is the single source
+ * of truth that all components read.
  */
 
 import { createSlice } from "@reduxjs/toolkit";
@@ -18,8 +18,6 @@ export interface PlayerState {
   isPlaying: boolean;
   currentTime: number;
   duration: number;
-  volume: number;
-  isMuted: boolean;
 }
 
 const defaultTracks: Track[] = DEFAULT_TRACKS.map((t) => ({
@@ -37,8 +35,6 @@ const initialState: PlayerState = {
   isPlaying: false,
   currentTime: 0,
   duration: 0,
-  volume: 0.75,
-  isMuted: false,
 };
 
 export const playerSlice = createSlice({
@@ -60,12 +56,6 @@ export const playerSlice = createSlice({
     setDuration(state, action: PayloadAction<number>) {
       state.duration = action.payload;
     },
-    setVolume(state, action: PayloadAction<number>) {
-      state.volume = action.payload;
-    },
-    setIsMuted(state, action: PayloadAction<boolean>) {
-      state.isMuted = action.payload;
-    },
   },
 });
 
@@ -75,7 +65,5 @@ export const {
   setIsPlaying,
   setCurrentTime,
   setDuration,
-  setVolume,
-  setIsMuted,
 } = playerSlice.actions;
 export default playerSlice.reducer;

@@ -20,7 +20,6 @@ export const selectCurrentTrackIndex = (s: RootState) =>
 export const selectIsPlaying = (s: RootState) => s.player.isPlaying;
 export const selectCurrentTime = (s: RootState) => s.player.currentTime;
 export const selectDuration = (s: RootState) => s.player.duration;
-export const selectIsMuted = (s: RootState) => s.player.isMuted;
 
 export const selectCurrentTrack = (s: RootState) => {
   const t = s.player.tracks[s.player.currentTrackIndex];
