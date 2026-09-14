@@ -124,14 +124,17 @@ export function ProgressBar({
         </div>
       </div>
       {clips.length > 0 && (
-        <div className="clip-toolbar">
+        <div
+          className={`clip-toolbar ${playing ? "clip-toolbar--disabled" : ""}`}
+        >
           <MergeSlider
             value={mergeGap}
             gapValues={gapValues}
             clipCount={displayClips.length}
             onChange={setMergeGap}
+            disabled={playing}
           />
-          <RepsStepper value={repetitions} onChange={setRepetitions} />
+          <RepsStepper value={repetitions} onChange={setRepetitions} disabled={playing} />
         </div>
       )}
     </>

@@ -17,6 +17,8 @@ interface RepsStepperProps {
   min?: number;
   /** Upper bound for the count. */
   max?: number;
+  /** Disables the stepper (e.g. while playing). */
+  disabled?: boolean;
 }
 
 export function RepsStepper({
@@ -24,6 +26,7 @@ export function RepsStepper({
   onChange,
   min = 1,
   max = 20,
+  disabled = false,
 }: RepsStepperProps) {
   const step = (delta: number) =>
     onChange(Math.min(max, Math.max(min, value + delta)));
@@ -39,7 +42,7 @@ export function RepsStepper({
           type="button"
           aria-label="Decrease repeats"
           title="Play each clip fewer times"
-          disabled={value <= min}
+          disabled={disabled || value <= min}
           onClick={() => step(-1)}
         >
           −
@@ -49,7 +52,7 @@ export function RepsStepper({
           type="button"
           aria-label="Increase repeats"
           title="Play each clip more times"
-          disabled={value >= max}
+          disabled={disabled || value >= max}
           onClick={() => step(1)}
         >
           +

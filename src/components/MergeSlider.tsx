@@ -24,6 +24,8 @@ interface MergeSliderProps {
   clipCount: number;
   /** Reports the snapped merge gap whenever it changes. */
   onChange: (gap: number) => void;
+  /** Disables the slider and steppers (e.g. while playing). */
+  disabled?: boolean;
 }
 
 export function MergeSlider({
@@ -31,6 +33,7 @@ export function MergeSlider({
   gapValues,
   clipCount,
   onChange,
+  disabled = false,
 }: MergeSliderProps) {
   // Raw thumb position (seconds). Internal so the thumb tracks the pointer
   // continuously while dragging; only the reported `value` snaps.
@@ -114,7 +117,7 @@ export function MergeSlider({
           type="button"
           aria-label="Increase merge gap"
           title="Fewer clips"
-          disabled={value >= gapValues[gapValues.length - 1]}
+          disabled={disabled || value >= gapValues[gapValues.length - 1]}
           onClick={stepToNext}
         >
           -
@@ -133,6 +136,7 @@ export function MergeSlider({
             max={gapValues[gapValues.length - 1]}
             step={0.005}
             value={sliderValue}
+            disabled={disabled}
             title={`clips separated less than ${sliderValue.toFixed(2)}s are combined into one`}
             onChange={onSliderChange}
           />
@@ -141,7 +145,7 @@ export function MergeSlider({
           type="button"
           aria-label="Decrease merge gap"
           title="more clips"
-          disabled={value <= gapValues[0]}
+          disabled={disabled || value <= gapValues[0]}
           onClick={stepToPrev}
         >
           +

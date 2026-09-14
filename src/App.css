@@ -424,6 +424,10 @@ body {
   -webkit-user-select: none;
 }
 
+.clip-toolbar--disabled {
+  opacity: 0.55;
+}
+
 .clip-merge {
   flex: 1;
   min-width: 0;
