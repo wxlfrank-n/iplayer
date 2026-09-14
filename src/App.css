@@ -60,27 +60,6 @@ body {
   z-index: 10;
 }
 
-.view-toggle {
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition:
-    color 0.15s,
-    background 0.15s;
-}
-
-.view-toggle:hover,
-.view-toggle:active {
-  color: var(--text-primary);
-  background: var(--bg-hover);
-}
-
 .settings-btn {
   background: none;
   border: none;

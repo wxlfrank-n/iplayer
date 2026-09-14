@@ -145,7 +145,6 @@ export default function App() {
             playlistOpen={showPlaylist}
             onTogglePlaylist={() => setShowPlaylist((v) => !v)}
             onOpenSettings={() => setShowSettings(true)}
-            onAddFiles={handleFiles}
           />
 
           <div className="player-card">
