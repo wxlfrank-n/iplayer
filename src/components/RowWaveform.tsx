@@ -13,6 +13,7 @@
 import { memo, useState, useEffect, useRef, useCallback } from "react";
 import { Clip } from "./Clip";
 import { ClipLabel } from "./ClipLabel";
+import { DancingLines } from "./DancingLines";
 import { WaveformCursor } from "./WaveformCursor";
 import { WaveformBars } from "./Waveform";
 import { type WaveformData } from "../hooks/useWaveform";
@@ -319,42 +320,22 @@ export const RowWaveform = memo(function RowWaveform({
     return () => el.removeEventListener("wheel", onWheel);
   }, [bumpScrolling]);
 
-  // Dancing lines canvas.
-  const danceCanvasRef = useRef<HTMLCanvasElement>(null);
+  // Dance loop: drives the waveform glide (track transform, cursor, time label)
+  // imperatively on top of the auto-follow anchor commits.
   const cursorRef = useRef<HTMLSpanElement>(null);
   const timeLabelRef = useRef<HTMLSpanElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const hsSmoothRef = useRef(0);
   const lastFormattedTimeRef = useRef<string>("");
   useEffect(() => {
-    const canvas = danceCanvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
+    const track = trackRef.current;
+    if (!track) return;
 
-    const N = 56;
-    const levels = new Float32Array(N);
-    let data = new Uint8Array(0);
     let raf = 0;
-    let color = "";
-
     const frame = () => {
       raf = requestAnimationFrame(frame);
-      const rect = canvas.getBoundingClientRect();
-      if (rect.width === 0 || rect.height === 0) return;
-
-      const dpr = window.devicePixelRatio || 1;
-      const pw = Math.round(rect.width * dpr);
-      const ph = Math.round(rect.height * dpr);
-      if (canvas.width !== pw || canvas.height !== ph) {
-        canvas.width = pw;
-        canvas.height = ph;
-      }
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, rect.width, rect.height);
-
-      const innerEl = canvas.parentElement;
-      const track = trackRef.current;
-      if (innerEl && track && getCurrentTime) {
+      const innerEl = track.parentElement;
+      if (innerEl && getCurrentTime) {
         const t = getCurrentTime();
         const win = hsWinLenRef.current || 1;
         const s =
@@ -398,45 +379,10 @@ export const RowWaveform = memo(function RowWaveform({
           timeLabel.style.left = `${Math.max(4, Math.min(96, ((t - s) / win) * 100)).toFixed(2)}%`;
         }
       }
-
-      const analyser = getAnalyser ? getAnalyser(false) : null;
-      const len = analyser ? analyser.frequencyBinCount : 0;
-      if (analyser) {
-        if (data.length !== len) data = new Uint8Array(len);
-        analyser.getByteFrequencyData(data);
-      }
-
-      if (!color) {
-        const v = getComputedStyle(document.documentElement)
-          .getPropertyValue("--accent")
-          .trim();
-        color = v || "#58a6ff";
-      }
-      ctx.globalAlpha = 0.8;
-      ctx.fillStyle = color;
-      const bw = rect.width / N;
-      const base = rect.height - 4;
-      const maxH = rect.height - 8;
-      for (let i = 0; i < N; i++) {
-        const bin =
-          len > 0
-            ? Math.min(
-                len - 1,
-                Math.floor((1 - Math.pow(1 - i / N, 1.5)) * (len - 1)),
-              )
-            : 0;
-        const v = len > 0 ? data[bin] / 255 : 0;
-        const target = Math.pow(v, 1.7);
-        levels[i] += (target - levels[i]) * 0.2;
-        const h = Math.max(3, levels[i] * maxH) * 3;
-        const x = i * bw + bw * 0.25;
-        ctx.fillRect(x, base - h, bw * 0.5, h);
-      }
-      ctx.globalAlpha = 1;
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [getAnalyser, getCurrentTime, playing, scrolling, clipPlayActive]);
+  }, [getCurrentTime, playing, scrolling, clipPlayActive]);
 
   const onHsPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0 && e.pointerType === "mouse") return;
@@ -526,7 +472,7 @@ export const RowWaveform = memo(function RowWaveform({
           navIndexRef.current = -1;
         }}
       >
-        <canvas className="row-waveform__dance" ref={danceCanvasRef} />
+        <DancingLines getAnalyser={getAnalyser} />
         <div className="row-waveform__track" ref={trackRef}>
           <svg
             className="row-waveform__svg"
