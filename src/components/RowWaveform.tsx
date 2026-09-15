@@ -26,23 +26,12 @@ const getWindowSecs = (w: number) => {
   return 8;
 };
 const HS_FOLLOW_FRAC = 0.6;
-const HS_PAN_DECIDE_PX = 8;
 // VB = viewBox: the SVG coordinate space the waveform is drawn in.
 // VB_W/VB_H = fixed viewBox width/height (1000 x 200 units), scaled by the
 // container; only VB_H can vary based on the waveform bar height.
 const VB_W = 1000;
 const VB_H = 200;
 const PAD = 4;
-
-const formatTime = (sec: number) => {
-  const s = Math.max(0, Math.floor(sec));
-  const m = Math.floor(s / 60);
-  const r = s % 60;
-  const h = Math.floor(m / 60);
-  if (h > 0)
-    return `${h}:${(m % 60).toString().padStart(2, "0")}:${r.toString().padStart(2, "0")}`;
-  return `${m}:${r.toString().padStart(2, "0")}`;
-};
 
 export interface RowWaveformProps {
   waveform: WaveformData;
@@ -60,7 +49,7 @@ export interface RowWaveformProps {
   activeClip: number;
   onActiveClipChange: (idx: number) => void;
   getAnalyser?: (resume: boolean) => AnalyserNode | null;
-  getCurrentTime?: () => number;
+  getCurrentTime: () => number;
   playing: boolean;
   scrolling: boolean;
   setScrolling: React.Dispatch<React.SetStateAction<boolean>>;
@@ -224,65 +213,7 @@ export const RowWaveform = memo(function RowWaveform({
     [onPlayRange, setClipPlayActiveLocal, setHsAnchor],
   );
 
-  const revealClip = useCallback(
-    (s: ClipData) => {
-      if (
-        s.start < hsAnchorRef.current ||
-        s.end > hsAnchorRef.current + hsWinLenRef.current
-      ) {
-        setHsAnchor(Math.max(0, Math.min(s.start, hsMaxStartRef.current)));
-      }
-    },
-    [setHsAnchor],
-  );
-
-  // Keyboard navigation.
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (
-        target instanceof HTMLInputElement ||
-        target instanceof HTMLTextAreaElement
-      )
-        return;
-      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-      if (displayClips.length === 0) return;
-      e.preventDefault();
-      const prev = activeClip;
-      let next =
-        prev < 0
-          ? e.key === "ArrowRight"
-            ? 0
-            : displayClips.length - 1
-          : prev + (e.key === "ArrowRight" ? 1 : -1);
-      next = Math.max(0, Math.min(next, displayClips.length - 1));
-      navIndexRef.current = next;
-      const s = displayClips[next];
-      if (s) {
-        playClip(s.start, s.end, repetitions);
-        revealClip(s);
-      }
-      onActiveClipChange(next);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [
-    displayClips,
-    repetitions,
-    playClip,
-    revealClip,
-    onActiveClipChange,
-    activeClip,
-  ]);
-
   // Panning.
-  const hsDragRef = useRef<{
-    pointerId: number;
-    startX: number;
-    startAnchor: number;
-    panned: boolean;
-  } | null>(null);
-  const hsSuppressClickRef = useRef(false);
   const bumpScrolling = useCallback(() => {
     setScrolling(true);
     window.clearTimeout(scrollTimeoutRef.current);
@@ -308,7 +239,7 @@ export const RowWaveform = memo(function RowWaveform({
         Math.min(
           2,
           ((delta * scale) / (elNow.clientWidth || 1)) *
-            (hsWinLenRef.current || 1),
+          (hsWinLenRef.current || 1),
         ),
       );
       setHsAnchor((a) =>
@@ -320,13 +251,11 @@ export const RowWaveform = memo(function RowWaveform({
     return () => el.removeEventListener("wheel", onWheel);
   }, [bumpScrolling]);
 
-  // Dance loop: drives the waveform glide (track transform, cursor, time label)
-  // imperatively on top of the auto-follow anchor commits.
-  const cursorRef = useRef<HTMLSpanElement>(null);
-  const timeLabelRef = useRef<HTMLSpanElement>(null);
+  // Dance loop: drives the waveform glide (track transform) imperatively on
+  // top of the auto-follow anchor commits. The cursor and time label run their
+  // own rAF loop inside WaveformCursor.
   const trackRef = useRef<HTMLDivElement>(null);
   const hsSmoothRef = useRef(0);
-  const lastFormattedTimeRef = useRef<string>("");
   useEffect(() => {
     const track = trackRef.current;
     if (!track) return;
@@ -341,127 +270,49 @@ export const RowWaveform = memo(function RowWaveform({
         const s =
           playing && !scrolling
             ? (() => {
-                if (clipPlayActive) {
-                  const followEnd = clipPlayFollowEndRef.current;
-                  if (
-                    !followEnd ||
-                    hsAnchorRef.current + (hsWinLenRef.current || 1) >=
-                      followEnd
-                  ) {
-                    return hsAnchorRef.current;
-                  }
-                  const elapsed = t - clipPlayStartRef.current;
-                  const target = Math.min(
-                    clipPlayAnchorStartRef.current + elapsed,
-                    Math.max(0, followEnd - (hsWinLenRef.current || 1)),
-                  );
-                  return Math.max(hsAnchorRef.current, target);
+              if (clipPlayActive) {
+                const followEnd = clipPlayFollowEndRef.current;
+                if (
+                  !followEnd ||
+                  hsAnchorRef.current + (hsWinLenRef.current || 1) >=
+                  followEnd
+                ) {
+                  return hsAnchorRef.current;
                 }
-                if (clipPlaySkipRef.current) return hsAnchorRef.current;
-                return Math.max(
-                  0,
-                  Math.min(t - HS_FOLLOW_FRAC * win, hsMaxStartRef.current),
+                const elapsed = t - clipPlayStartRef.current;
+                const target = Math.min(
+                  clipPlayAnchorStartRef.current + elapsed,
+                  Math.max(0, followEnd - (hsWinLenRef.current || 1)),
                 );
-              })()
+                return Math.max(hsAnchorRef.current, target);
+              }
+              if (clipPlaySkipRef.current) return hsAnchorRef.current;
+              return Math.max(
+                0,
+                Math.min(t - HS_FOLLOW_FRAC * win, hsMaxStartRef.current),
+              );
+            })()
             : hsAnchorRef.current;
         hsSmoothRef.current = s;
         const pxPerSec = (innerEl.clientWidth || 1) / win;
         track.style.transform = `translateX(${(-(s - hsAnchorRef.current) * pxPerSec).toFixed(2)}px)`;
-        const cur = cursorRef.current;
-        if (cur) cur.style.left = `${(((t - s) / win) * 100).toFixed(3)}%`;
-        const timeLabel = timeLabelRef.current;
-        if (timeLabel) {
-          const formatted = formatTime(t);
-          if (formatted !== lastFormattedTimeRef.current) {
-            timeLabel.textContent = formatted;
-            lastFormattedTimeRef.current = formatted;
-          }
-          timeLabel.style.left = `${Math.max(4, Math.min(96, ((t - s) / win) * 100)).toFixed(2)}%`;
-        }
       }
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
   }, [getCurrentTime, playing, scrolling, clipPlayActive]);
 
-  const onHsPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.button !== 0 && e.pointerType === "mouse") return;
-    if (hsDragRef.current) return;
-    const el = e.currentTarget;
-    const drag = {
-      pointerId: e.pointerId,
-      startX: e.clientX,
-      startAnchor: hsAnchorRef.current,
-      panned: false,
-    };
-    hsDragRef.current = drag;
-
-    const onMove = (ev: PointerEvent) => {
-      if (ev.pointerId !== drag.pointerId) return;
-      const dx = ev.clientX - drag.startX;
-      if (!drag.panned && Math.abs(dx) < HS_PAN_DECIDE_PX) return;
-      drag.panned = true;
-      const secPerPx = (hsWinLenRef.current || 1) / (el.clientWidth || 1);
-      const target = drag.startAnchor - dx * secPerPx;
-      setHsAnchor(Math.max(0, Math.min(target, hsMaxStartRef.current)));
-      bumpScrolling();
-    };
-    const onEnd = (ev: PointerEvent) => {
-      if (ev.pointerId !== drag.pointerId) return;
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onEnd);
-      window.removeEventListener("pointercancel", onEnd);
-      hsDragRef.current = null;
-      if (!drag.panned) return;
-      hsSuppressClickRef.current = true;
-      const clips = clipsRef.current;
-      if (clips.length === 0) return;
-      const now = hsAnchorRef.current;
-      let best = 0;
-      let bestDist = Infinity;
-      for (let i = 0; i < clips.length; i++) {
-        const d = Math.abs(clips[i].start - now);
-        if (d < bestDist) {
-          bestDist = d;
-          best = i;
-        }
-      }
-      setHsAnchor(
-        Math.max(0, Math.min(clips[best].start, hsMaxStartRef.current)),
-      );
-      onActiveClipChange(best);
-      navIndexRef.current = best;
-    };
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onEnd);
-    window.addEventListener("pointercancel", onEnd);
-    bumpScrolling();
-  };
-
-  const hsFrac =
-    hsWinLen > 0
-      ? Math.max(0, Math.min(1, (currentTime - hsAnchor) / hsWinLen))
-      : 0;
-
+  const getPlayedPct = useCallback(() => {
+    return Math.max(0, Math.min(1, (getCurrentTime() - hsAnchorRef.current) / hsWinLenRef.current));
+  }, [getCurrentTime]);
   return (
     <div
       className="row-waveform"
       ref={hsRef}
-      onPointerDown={onHsPointerDown}
-      onClickCapture={(e) => {
-        if (hsSuppressClickRef.current) {
-          hsSuppressClickRef.current = false;
-          e.stopPropagation();
-        }
-      }}
     >
       <div
         className="row-waveform__inner"
         onClick={(e) => {
-          if (hsSuppressClickRef.current) {
-            hsSuppressClickRef.current = false;
-            return;
-          }
           const rect = e.currentTarget.getBoundingClientRect();
           const f = Math.max(
             0,
@@ -489,7 +340,7 @@ export const RowWaveform = memo(function RowWaveform({
                 vbW: VB_W,
                 vbH: VB_H,
               }}
-              fracPlayed={hsFrac}
+              fracPlayed={getPlayedPct()}
               idPrefix="hs"
               strokeWidth={1.6}
             />
@@ -513,21 +364,19 @@ export const RowWaveform = memo(function RowWaveform({
           </svg>
           <WaveformCursor
             view="row"
-            left={hsFrac}
-            time={formatTime(currentTime)}
-            cursorRef={cursorRef}
-            timeRef={timeLabelRef}
+            getPlayedPct={getPlayedPct}
+            getCurrentTime={getCurrentTime}
           />
           {displayClips.map((s, idx) => {
-            if (s.end <= hsAnchor || s.start >= hsAnchor + hsWinLen)
+            if (s.vEnd <= hsAnchor || s.vStart >= hsAnchor + hsWinLen)
               return null;
             const center =
-              ((s.start + (s.end - s.start) / 2 - hsAnchor) / hsWinLen) * 100;
+              ((s.vStart + (s.vEnd - s.vStart) / 2 - hsAnchor) / hsWinLen) * 100;
             return (
               <ClipLabel
                 key={`hlbl-${idx}`}
                 index={idx}
-                duration={s.end - s.start}
+                duration={s.vEnd - s.vStart}
                 left={center}
                 active={idx === activeClip}
               />

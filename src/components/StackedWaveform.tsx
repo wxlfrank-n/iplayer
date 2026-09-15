@@ -22,16 +22,6 @@ const VB_W = 1000;
 const VB_H = 200;
 const PAD = 4;
 
-const formatTime = (sec: number) => {
-  const s = Math.max(0, Math.floor(sec));
-  const m = Math.floor(s / 60);
-  const r = s % 60;
-  const h = Math.floor(m / 60);
-  if (h > 0)
-    return `${h}:${(m % 60).toString().padStart(2, "0")}:${r.toString().padStart(2, "0")}`;
-  return `${m}:${r.toString().padStart(2, "0")}`;
-};
-
 interface StackedWaveformProps {
   waveform: WaveformData;
   displayClips: ClipData[];
@@ -46,8 +36,8 @@ interface StackedWaveformProps {
     repetitions: number,
     onComplete?: () => void,
   ) => void;
-  onClipPlayActiveChange?: (active: boolean) => void;
-  getCurrentTime?: () => number;
+onClipPlayActiveChange?: (active: boolean) => void;
+  getCurrentTime: () => number;
   onScrollChange?: (scrolling: boolean) => void;
 }
 
@@ -76,23 +66,26 @@ export const StackedWaveform = memo(function StackedWaveform({
     const rows: StackedRow[] = [];
     let cur: StackedRow | null = null;
     displayClips.forEach((s, idx) => {
-      const dur = s.end - s.start;
+      const dur = s.vEnd - s.vStart;
       if (!cur || dur + (cur.end - cur.start) <= STACK_ROW_TARGET_SECS) {
-        if (!cur) cur = { start: s.start, end: s.end, clips: [] };
-        cur.end = s.end;
+        if (!cur) cur = { start: s.vStart, end: s.vEnd, clips: [] };
+        cur.end = s.vEnd;
         cur.clips.push({ clip: s, idx });
       } else {
         rows.push(cur);
-        cur = { start: s.start, end: s.end, clips: [{ clip: s, idx }] };
+        cur = { start: s.vStart, end: s.vEnd, clips: [{ clip: s, idx }] };
       }
     });
     if (cur) rows.push(cur);
+    if (rows && rows.length > 0) {
+      rows[0].start = 0; // first row always starts at 0
+      const duration = waveform.data.length / waveform.sampleRate;
+      rows[rows.length - 1].end = Math.max(rows[rows.length - 1].end, duration); // last row always ends at the waveform end
+    }
     return rows;
   }, [displayClips]);
 
   const stackedContainerRef = useRef<HTMLDivElement>(null);
-  const stackedCursorRefs = useRef<Array<HTMLSpanElement | null>>([]);
-  const stackedTimeRefs = useRef<Array<HTMLSpanElement | null>>([]);
 
   // Scroll state. `scrolling` is reported up (shared with the horizontal view's
   // follow behavior); auto-scroll marks `autoScrollPendingRef` so the listener
@@ -126,37 +119,6 @@ export const StackedWaveform = memo(function StackedWaveform({
       scrollEl.scrollTop += rBot - cBot;
     }
   }, [activeRowIdx]);
-
-  // Cursor rAF.
-  useEffect(() => {
-    let raf = 0;
-    const frame = () => {
-      raf = requestAnimationFrame(frame);
-      if (!getCurrentTime) return;
-      const t = getCurrentTime();
-      for (let r = 0; r < stackedRows.length; r++) {
-        const el = stackedCursorRefs.current[r];
-        const timeLabel = stackedTimeRefs.current[r];
-        if (!el) continue;
-        const rs = stackedRows[r].start;
-        const rl = stackedRows[r].end - rs;
-        if (rl > 0 && t >= rs && t <= stackedRows[r].end) {
-          el.style.display = "block";
-          el.style.left = `${(((t - rs) / rl) * 100).toFixed(3)}%`;
-          if (timeLabel) {
-            timeLabel.style.display = "block";
-            timeLabel.textContent = formatTime(t);
-            timeLabel.style.left = `${Math.max(4, Math.min(96, ((t - rs) / rl) * 100)).toFixed(2)}%`;
-          }
-        } else {
-          el.style.display = "none";
-          if (timeLabel) timeLabel.style.display = "none";
-        }
-      }
-    };
-    raf = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(raf);
-  }, [getCurrentTime, stackedRows]);
 
   // Distinguish manual scrolling from auto-follow so the playhead keeps tracking.
   useEffect(() => {
@@ -200,10 +162,12 @@ export const StackedWaveform = memo(function StackedWaveform({
         const rowStart = row.start;
         const rowLen = Math.max(0, row.end - row.start);
         if (rowLen <= 0) return null;
-        const rowFrac = Math.max(
-          0,
-          Math.min(1, (currentTime - rowStart) / rowLen),
-        );
+        const getPlayedPct = () => {
+          return Math.max(
+            0,
+            Math.min(1, (getCurrentTime() - rowStart) / rowLen),
+          );
+        }
         return (
           <div
             key={r}
@@ -233,7 +197,7 @@ export const StackedWaveform = memo(function StackedWaveform({
                   vbW: VB_W,
                   vbH: VB_H,
                 }}
-                fracPlayed={rowFrac}
+                fracPlayed={getPlayedPct()}
                 idPrefix={`stack-${r}`}
               />
               <Clip
@@ -253,29 +217,23 @@ export const StackedWaveform = memo(function StackedWaveform({
                 }}
               />
             </svg>
-            <WaveformCursor
+            {currentTime >= rowStart && currentTime < row.end && (
+<WaveformCursor
               view="stacked"
-              left={rowFrac}
-              time={formatTime(currentTime)}
-              cursorRef={(el) => {
-                stackedCursorRefs.current[r] = el;
-              }}
-              timeRef={(el) => {
-                stackedTimeRefs.current[r] = el;
-              }}
+              getPlayedPct={getPlayedPct}
+              getCurrentTime={getCurrentTime}
             />
+            )}
             {row.clips.map(({ clip: s, idx }) => {
               const center =
-                ((s.start + (s.end - s.start) / 2 - rowStart) / rowLen) * 100;
+                ((s.vStart + (s.vEnd - s.vStart) / 2 - rowStart) / rowLen) * 100;
               return (
                 <ClipLabel
                   key={`lbl-${idx}`}
                   index={idx}
-                  duration={s.end - s.start}
+                  duration={s.vEnd - s.vStart}
                   left={center}
                   active={idx === activeClip}
-                  minLeft={5}
-                  maxLeft={95}
                 />
               );
             })}

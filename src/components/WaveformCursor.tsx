@@ -4,43 +4,55 @@
  * position as a fraction (0..1) within the current row/window, so the exact
  * pixel position follows the container.
  *
- * Refs are exposed for the rAF loops in each view to drive the cursor and time
- * label imperatively during playback.
+ * When `getCurrentTime` is provided the time label is refreshed from it in an
+ * internal rAF loop, so the displayed time always reflects the live playhead.
  */
 
-import { memo } from "react";
+import { memo, useEffect, useRef, useState } from "react";
+import { formatTime } from "../utils/format";
 
 interface WaveformCursorProps {
   view: "row" | "stacked";
-  left: number;
-  time: string;
-  cursorRef?: React.Ref<HTMLSpanElement | null>;
-  timeRef?: React.Ref<HTMLSpanElement | null>;
+  getPlayedPct: () => number;
+  /** Live playhead time source; drives the rAF-updated time label. */
+  getCurrentTime: () => number;
 }
 
 export const WaveformCursor = memo(function WaveformCursor({
   view,
-  left,
-  time,
-  cursorRef,
-  timeRef,
+  getPlayedPct,
+  getCurrentTime,
 }: WaveformCursorProps) {
-  const pct = Math.max(0, Math.min(1, left)) * 100;
-  const timePct = Math.max(4, Math.min(96, pct));
+  const [pct, setPct] = useState(getPlayedPct() * 100);
+  const pctRef = useRef(pct);
+  const getPlayedPctRef = useRef(getPlayedPct);
+  useEffect(() => {
+    getPlayedPctRef.current = getPlayedPct;
+  });
+  useEffect(() => {
+    let raf = 0;
+    const frame = () => {
+      raf = requestAnimationFrame(frame);
+      const left = getPlayedPctRef.current() * 100;
+      if (Math.abs(left - pctRef.current) > 0.1) {
+        pctRef.current = left;
+        setPct(left);
+      }
+    };
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
   return (
-    <>
-      <span
+    <div
         className={`${view}-waveform__cursor`}
-        ref={cursorRef}
         style={{ left: `${pct}%` }}
-      />
-      <span
-        className={`${view}-waveform__time`}
-        ref={timeRef}
-        style={{ left: `${timePct}%` }}
       >
-        {time}
-      </span>
-    </>
+      <div
+        className={`${view}-waveform__time`}
+      >
+        {formatTime(getCurrentTime())}
+      </div>
+    </div>
   );
 });

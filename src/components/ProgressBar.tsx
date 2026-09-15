@@ -38,7 +38,7 @@ interface ProgressBarProps {
   onWaveformScrollChange?: (scrolling: boolean) => void;
   getAnalyser?: () => AnalyserNode | null;
   /** Returns the current playback time in seconds. */
-  getCurrentTime?: () => number;
+  getCurrentTime: () => number;
 }
 
 export function ProgressBar({
@@ -122,8 +122,8 @@ export function ProgressBar({
               repetitions={repetitions}
               onSeek={onSeek}
               onPlayRange={onPlayRange}
-              onActiveClipChange={handleActiveClipChange}
               getCurrentTime={getCurrentTime}
+              onActiveClipChange={handleActiveClipChange}
             />
           ) : null}
         </div>
