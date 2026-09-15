@@ -1,11 +1,16 @@
 /**
  * Redux slice for player configuration.
  *
- * Persisted settings:
+ * Persisted settings (auto-saved to localStorage under Listeenoop_config):
  * - skipSeconds: Skip duration for forward/backward buttons (default: 10s)
- * - waveformView: Display mode for waveform ("stacked" or "horizontal")
+ * - waveformView: Waveform display mode ("stacked" or "horizontal")
+ * - blockSamples: Silence-detection block size in samples (default: 512)
+ * - silenceRatio: Silence cutoff as a ratio of the track peak (default: 0.01)
+ * - minSilenceLength: Shortest acceptable clip in seconds (default: 0.05).
+ *   Independent of silenceRatio — it caps how short a merged clip can be, not
+ *   how quiet a block must be to count as silence.
  *
- * Changes are automatically saved to localStorage.
+ * Changes persist to localStorage immediately.
  */
 
 import { createSlice } from "@reduxjs/toolkit";
@@ -17,11 +22,17 @@ const STORAGE_KEY = "Listeenoop_config";
 interface ConfigState {
   skipSeconds: number;
   waveformView: WaveformView;
+  blockSamples: number;
+  silenceRatio: number;
+  minSilenceLength: number;
 }
 
 const DEFAULT_CONFIG: ConfigState = {
   skipSeconds: 10,
   waveformView: "stacked",
+  blockSamples: 512,
+  silenceRatio: 0.01,
+  minSilenceLength: 0.05,
 };
 
 function loadConfig(): ConfigState {

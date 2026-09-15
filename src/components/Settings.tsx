@@ -17,7 +17,7 @@ interface SettingsProps {
 
 export function Settings({ onClose }: SettingsProps) {
   const { config, updateConfig } = useConfig();
-  const { skipSeconds, waveformView } = config;
+  const { skipSeconds, waveformView, blockSamples, silenceRatio } = config;
   return (
     <div className="settings-overlay" onClick={onClose}>
       <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
@@ -66,7 +66,54 @@ export function Settings({ onClose }: SettingsProps) {
             }}
             className="settings-input"
           />
-        </div>
+          <label className="settings-label">Silence cutoff (ratio of track peak)</label>
+          <div className="settings-row">
+            {[0.005, 0.01, 0.02, 0.05].map((val) => (
+              <button
+                key={val}
+                className={`settings-chip ${silenceRatio === val ? "settings-chip--active" : ""}`}
+                onClick={() => updateConfig({ silenceRatio: val })}
+              >
+                {val}
+              </button>
+            ))}
+          </div>
+          <input
+            type="number"
+            min={0.001}
+            max={0.1}
+            step={0.005}
+            value={silenceRatio}
+            onChange={(e) => {
+              const v = parseFloat(e.target.value);
+              if (v >= 0.001 && v <= 0.1) updateConfig({ silenceRatio: v });
+            }}
+            className="settings-input"
+          />
+          <label className="settings-label">Block size (samples)</label>
+          <div className="settings-row">
+            {[64, 128, 256, 512].map((val) => (
+              <button
+                key={val}
+                className={`settings-chip ${blockSamples === val ? "settings-chip--active" : ""}`}
+                onClick={() => updateConfig({ blockSamples: val })}
+              >
+                {val}
+              </button>
+            ))}
+          </div>
+          <input
+            type="number"
+            min={32}
+            max={1024}
+            step={32}
+            value={blockSamples}
+            onChange={(e) => {
+              const v = parseInt(e.target.value, 10);
+              if (v >= 32 && v <= 1024) updateConfig({ blockSamples: v });
+            }}
+            className="settings-input"
+          />        </div>
       </div>
     </div>
   );

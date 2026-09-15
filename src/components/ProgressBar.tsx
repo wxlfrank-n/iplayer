@@ -1,16 +1,13 @@
 ﻿/**
  * Main progress and waveform visualization component.
  *
- * Features:
- * - Waveform display (stacked or horizontal view)
- * - Seek bar with current playback position
- * - Silence-based clip detection and display
- * - Range selection for looping playback
- * - Interactive clip toolbar
- * - Responsive to window resize and playback state
+ * Shows the decoded waveform (stacked or horizontal view), the silence-split
+ * clips, and the interactive clip toolbar. Props describe the seek/play-range
+ * entry points only; every detail of how clips are detected and merged is
+ * owned by ProgressBar itself (state + helpers) so App stays a thin shell.
  */
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { shallowEqual } from "react-redux";
 import { RowWaveform } from "./RowWaveform";
 import { StackedWaveform } from "./StackedWaveform";
@@ -21,12 +18,16 @@ import {
   selectCurrentAudio,
   selectWaveformView,
   selectIsPlaying,
+  selectminSilenceLength,
 } from "../store/selectors";
 import { setActiveClip } from "../store/analysisSlice";
-import { mergeClipsByGap, clipGaps, MERGE_GAP_SEC } from "../utils/clips";
+import { mergeClipsByGap, clipGaps } from "../utils/clips";
 
 interface ProgressBarProps {
+  /** Seek to an absolute track time (seconds). */
   onSeek: (time: number) => void;
+  /** Play a range, repeating `repetitions` times, with an optional
+   *  completion callback. */
   onPlayRange: (
     start: number,
     end: number,
@@ -36,14 +37,13 @@ interface ProgressBarProps {
   onClipPlayActiveChange?: (active: boolean) => void;
   onWaveformScrollChange?: (scrolling: boolean) => void;
   getAnalyser?: () => AnalyserNode | null;
+  /** Returns the current playback time in seconds. */
   getCurrentTime?: () => number;
 }
 
 export function ProgressBar({
   onSeek,
   onPlayRange,
-  onClipPlayActiveChange,
-  onWaveformScrollChange,
   getAnalyser,
   getCurrentTime,
 }: ProgressBarProps) {
@@ -51,17 +51,21 @@ export function ProgressBar({
   const audio = useAppSelector(selectCurrentAudio, shallowEqual);
   const waveformView = useAppSelector(selectWaveformView);
   const playing = useAppSelector(selectIsPlaying);
-  const handleActiveClipChange = useCallback(
-    (idx: number) => dispatch(setActiveClip(idx)),
-    [dispatch],
-  );
+  const minSilenceLength = useAppSelector(selectminSilenceLength);
+
   const { waveform, waveformStatus, clips, currentTime, activeClip } = audio;
   const hasWaveform = waveform !== null && waveform.data.length > 0;
 
-  const [mergeGap, setMergeGap] = useState(MERGE_GAP_SEC);
+  // Merge gap is seeded from `minSilenceLength` (an independent, user-configured
+  // value in seconds) rather than derived from `silenceRatio`, so the slider's
+  // smallest step is decoupled from how loud "silence" is.
+  const [mergeGap, setMergeGap] = useState(minSilenceLength);
   const [repetitions, setRepetitions] = useState(3);
 
-  const gapValues = useMemo(() => clipGaps(clips), [clips]);
+  const gapValues = useMemo(
+    () => clipGaps(clips, minSilenceLength),
+    [clips, minSilenceLength],
+  );
   const displayClips = useMemo(
     () => mergeClipsByGap(clips, mergeGap),
     [clips, mergeGap],
@@ -70,9 +74,13 @@ export function ProgressBar({
   // Scroll state shared with the horizontal RowWaveform follow behavior.
   const [scrolling, setScrolling] = useState(false);
   const scrollTimeoutRef = useRef<number | undefined>(undefined);
-  useEffect(() => {
-    onWaveformScrollChange?.(scrolling);
-  }, [scrolling, onWaveformScrollChange]);
+
+  const handleActiveClipChange = useCallback(
+    (val: number) => {
+      if (audio.clips[val]) dispatch(setActiveClip(val));
+    },
+    [audio.clips, dispatch],
+  );
 
   return (
     <>
@@ -95,7 +103,6 @@ export function ProgressBar({
               currentTime={currentTime}
               onSeek={onSeek}
               onPlayRange={onPlayRange}
-              onClipPlayActiveChange={onClipPlayActiveChange}
               repetitions={repetitions}
               activeClip={activeClip}
               onActiveClipChange={handleActiveClipChange}
@@ -114,11 +121,9 @@ export function ProgressBar({
               activeClip={activeClip}
               repetitions={repetitions}
               onSeek={onSeek}
-              onActiveClipChange={handleActiveClipChange}
               onPlayRange={onPlayRange}
-              onClipPlayActiveChange={onClipPlayActiveChange}
+              onActiveClipChange={handleActiveClipChange}
               getCurrentTime={getCurrentTime}
-              onScrollChange={setScrolling}
             />
           ) : null}
         </div>

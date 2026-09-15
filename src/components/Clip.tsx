@@ -39,10 +39,10 @@ export const Clip = memo(function Clip({
   };
 
   const visible = (c: ClipData) =>
-    c.end > windowStartSec && c.start < windowStartSec + windowLen;
+    c.vEnd > windowStartSec && c.vStart < windowStartSec + windowLen;
   const rect = (c: ClipData) => {
-    const x = Math.max(0, ((c.start - windowStartSec) / windowLen) * vbW);
-    const right = Math.min(((c.end - windowStartSec) / windowLen) * vbW, vbW);
+    const x = Math.max(0, ((c.vStart - windowStartSec) / windowLen) * vbW);
+    const right = Math.min(((c.vEnd - windowStartSec) / windowLen) * vbW, vbW);
     return { x, w: Math.max(1, right - x) };
   };
 
@@ -61,9 +61,9 @@ export const Clip = memo(function Clip({
             y={y}
             width={w}
             height={innerH / 2}
-            onClick={(e) => handleClick(e, idx, c.start, c.end)}
+            onClick={(e) => handleClick(e, idx, c.vStart, c.vEnd)}
           >
-            <title>{`${formatTimePrecise(c.start)} - ${formatTimePrecise(c.end)}`}</title>
+            <title>{`${formatTimePrecise(c.vStart)} - ${formatTimePrecise(c.vEnd)}`}</title>
           </rect>
         );
       })}

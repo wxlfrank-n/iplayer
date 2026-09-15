@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Main application component.
  *
  * The root container that orchestrates:
@@ -84,8 +84,13 @@ export default function App() {
       splitBySilence(
         waveform.data?.data ?? null,
         waveform.data?.sampleRate ?? 0,
+        {
+          blockSamples: config.blockSamples,
+          silenceRatio: config.silenceRatio,
+          minSilenceLength: config.minSilenceLength,
+        },
       ),
-    [waveform],
+    [waveform, config.blockSamples, config.silenceRatio, config.minSilenceLength],
   );
   useEffect(() => {
     dispatch(setClips(clips));
