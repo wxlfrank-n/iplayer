@@ -26,6 +26,7 @@ const getWindowSecs = (w: number) => {
   return 8;
 };
 const HS_FOLLOW_FRAC = 0.6;
+const HS_PAN_DECIDE_PX = 8;
 // VB = viewBox: the SVG coordinate space the waveform is drawn in.
 // VB_W/VB_H = fixed viewBox width/height (1000 x 200 units), scaled by the
 // container; only VB_H can vary based on the waveform bar height.
@@ -223,6 +224,71 @@ export const RowWaveform = memo(function RowWaveform({
     );
   }, [setScrolling, scrollTimeoutRef]);
 
+  // Drag pan (mouse + touch).
+  const hsDragRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startAnchor: number;
+    panned: boolean;
+  } | null>(null);
+  const hsSuppressClickRef = useRef(false);
+  const onHsPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0 && e.pointerType === "mouse") return;
+    if (hsDragRef.current) return;
+    const el = e.currentTarget;
+    const drag = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startAnchor: hsAnchorRef.current,
+      panned: false,
+    };
+    hsDragRef.current = drag;
+
+    const onMove = (ev: PointerEvent) => {
+      if (ev.pointerId !== drag.pointerId) return;
+      const dx = ev.clientX - drag.startX;
+      if (!drag.panned && Math.abs(dx) < HS_PAN_DECIDE_PX) return;
+      drag.panned = true;
+      const secPerPx = (hsWinLenRef.current || 1) / (el.clientWidth || 1);
+      const target = Math.max(
+        0,
+        Math.min(drag.startAnchor - dx * secPerPx, hsMaxStartRef.current),
+      );
+      setHsAnchor(target);
+      bumpScrolling();
+    };
+    const onEnd = (ev: PointerEvent) => {
+      if (ev.pointerId !== drag.pointerId) return;
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onEnd);
+      window.removeEventListener("pointercancel", onEnd);
+      hsDragRef.current = null;
+      if (!drag.panned) return;
+      hsSuppressClickRef.current = true;
+      const clips = clipsRef.current;
+      if (clips.length === 0) return;
+      const now = hsAnchorRef.current;
+      let best = 0;
+      let bestDist = Infinity;
+      for (let i = 0; i < clips.length; i++) {
+        const d = Math.abs(clips[i].vStart - now);
+        if (d < bestDist) {
+          bestDist = d;
+          best = i;
+        }
+      }
+      setHsAnchor(
+        Math.max(0, Math.min(clips[best].vStart, hsMaxStartRef.current)),
+      );
+      onActiveClipChange(best);
+      navIndexRef.current = best;
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onEnd);
+    window.addEventListener("pointercancel", onEnd);
+    bumpScrolling();
+  };
+
   // Wheel pan.
   useEffect(() => {
     const el = hsRef.current;
@@ -309,10 +375,21 @@ export const RowWaveform = memo(function RowWaveform({
     <div
       className="row-waveform"
       ref={hsRef}
+      onPointerDown={onHsPointerDown}
+      onClickCapture={(e) => {
+        if (hsSuppressClickRef.current) {
+          hsSuppressClickRef.current = false;
+          e.stopPropagation();
+        }
+      }}
     >
       <div
         className="row-waveform__inner"
         onClick={(e) => {
+          if (hsSuppressClickRef.current) {
+            hsSuppressClickRef.current = false;
+            return;
+          }
           const rect = e.currentTarget.getBoundingClientRect();
           const f = Math.max(
             0,
