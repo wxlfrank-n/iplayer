@@ -128,7 +128,8 @@ export default function App() {
       if (
         target?.closest(".track-list") ||
         target?.closest(".stacked-waveform") ||
-        target?.closest(".row-waveform")
+        target?.closest(".row-waveform") ||
+        target?.closest(".settings-panel")
       )
         return;
       e.preventDefault();

@@ -17,7 +17,7 @@ interface SettingsProps {
 
 export function Settings({ onClose }: SettingsProps) {
   const { config, updateConfig } = useConfig();
-  const { skipSeconds, waveformView, blockSamples, silenceRatio } = config;
+  const { skipSeconds, waveformView, blockSamples, silenceRatio, minSilenceLength } = config;
   return (
     <div className="settings-overlay" onClick={onClose}>
       <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
@@ -40,10 +40,10 @@ export function Settings({ onClose }: SettingsProps) {
               className={`settings-chip ${waveformView === "horizontal" ? "settings-chip--active" : ""}`}
               onClick={() => updateConfig({ waveformView: "horizontal" })}
             >
-              One row
+              Single row
             </button>
           </div>
-          <label className="settings-label">Skip interval (seconds)</label>
+          <label className="settings-label">Skip forward / back by</label>
           <div className="settings-row">
             {[5, 10, 15, 20, 30].map((val) => (
               <button
@@ -66,7 +66,10 @@ export function Settings({ onClose }: SettingsProps) {
             }}
             className="settings-input"
           />
-          <label className="settings-label">Silence cutoff (ratio of track peak)</label>
+          <label className="settings-label">Silence threshold</label>
+          <p className="settings-hint">
+            How quiet a block must be to count as silence. Lower values = only very quiet parts are detected.
+          </p>
           <div className="settings-row">
             {[0.005, 0.01, 0.02, 0.05].map((val) => (
               <button
@@ -90,7 +93,10 @@ export function Settings({ onClose }: SettingsProps) {
             }}
             className="settings-input"
           />
-          <label className="settings-label">Block size (samples)</label>
+          <label className="settings-label">Analysis detail</label>
+          <p className="settings-hint">
+            Audio chunk size for detection. Smaller = more precise splits, larger = faster processing.
+          </p>
           <div className="settings-row">
             {[64, 128, 256, 512].map((val) => (
               <button
@@ -113,7 +119,35 @@ export function Settings({ onClose }: SettingsProps) {
               if (v >= 32 && v <= 1024) updateConfig({ blockSamples: v });
             }}
             className="settings-input"
-          />        </div>
+          />
+          <label className="settings-label">Minimum gap between clips</label>
+          <p className="settings-hint">
+            Shortest silence duration that splits two clips apart. Lower = more granular splits.
+          </p>
+          <div className="settings-row">
+            {[0.01, 0.02, 0.05, 0.1, 0.2].map((val) => (
+              <button
+                key={val}
+                className={`settings-chip ${minSilenceLength === val ? "settings-chip--active" : ""}`}
+                onClick={() => updateConfig({ minSilenceLength: val })}
+              >
+                {val}s
+              </button>
+            ))}
+          </div>
+          <input
+            type="number"
+            min={0.001}
+            max={0.5}
+            step={0.01}
+            value={minSilenceLength}
+            onChange={(e) => {
+              const v = parseFloat(e.target.value);
+              if (v >= 0.001 && v <= 0.5) updateConfig({ minSilenceLength: v });
+            }}
+            className="settings-input"
+          />
+        </div>
       </div>
     </div>
   );
