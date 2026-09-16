@@ -12,6 +12,16 @@ import {
   setDuration,
 } from "../store/playerSlice";
 
+// iOS devices (including Chrome on iPhone, which uses the WebKit engine)
+// cannot route an <audio> element through the Web Audio graph reliably:
+// `createMediaElementSource` is broken on iOS/WebKit — the element's timeline
+// and the audible output diverge, so seeking is unreliable and clip loops play
+// stale content / skip rounds. On those devices playback must go straight to
+// the speakers (the dancing-lines canvas simply has no live data).
+const isIOS =
+  /iP(hone|ad|od)/.test(navigator.userAgent) ||
+  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
 // When playback starts after a seek, the browser may begin slightly past the
 // requested position (preroll/seek settling), skipping the very beginning.
 // Snap the playhead back to `time` once rendering actually starts.
@@ -60,6 +70,7 @@ export function useAudioPlayer(skipSeconds: number) {
    */
   const getAnalyser = useCallback(
     (resume: boolean = true): AnalyserNode | null => {
+      if (isIOS) return null;
       // Return existing analyser if already created
       if (analyserRef.current) {
         // Resume context if needed (e.g., after pause)
@@ -194,7 +205,13 @@ export function useAudioPlayer(skipSeconds: number) {
       dispatch(setCurrentTime(audio.currentTime));
     };
     const onLoadedMetadata = () => dispatch(setDuration(audio.duration));
-    const onEnded = () => nextRef.current();
+    const onEnded = () => {
+      // While a clip/sector is looping, the range owns the element's `ended`
+      // event — a clip ending exactly at the file end must not jump to the
+      // next track mid-loop.
+      if (audioRef.current.dataset.clipLoopActive === "1") return;
+      nextRef.current();
+    };
     const onError = () => console.error("Audio error", audio.error);
 
     audio.addEventListener("timeupdate", onTimeUpdate);
@@ -249,12 +266,21 @@ export function useAudioPlayer(skipSeconds: number) {
   // letting the old range keep looping/pausing.
   const rangeRafRef = useRef(0);
   const rangeEndedRef = useRef<(() => void) | null>(null);
+  // Monotonic id so a late callback (stale resume timer / event) from a
+  // previous range can never touch the state of the range that replaced it.
+  const rangeRunIdRef = useRef(0);
 
   const stopRangeMonitoring = useCallback(() => {
     if (rangeRafRef.current) {
       cancelAnimationFrame(rangeRafRef.current);
       rangeRafRef.current = 0;
     }
+    const audio = audioRef.current;
+    if (rangeEndedRef.current) {
+      audio.removeEventListener("ended", rangeEndedRef.current);
+      rangeEndedRef.current = null;
+    }
+    audio.dataset.clipLoopActive = "0";
   }, []);
 
   const pause = useCallback(() => {
@@ -412,6 +438,13 @@ export function useAudioPlayer(skipSeconds: number) {
   // Boundary detection runs on requestAnimationFrame (not the ~250ms
   // `timeupdate` cadence), so a clip stops within a frame of its end and
   // loops restart exactly at `start` instead of drifting.
+  //
+  // iOS/WebKit robustness: assigning `audio.currentTime` on a *playing*
+  // element is applied asynchronously and can be delayed or ignored entirely,
+  // leaving the audible output playing the previous region. Every loop restart
+  // therefore pauses first, seeks, and only resumes once the seek has settled;
+  // while it settles, a `seeking` guard ignores stale playhead reads so a
+  // boundary is never counted twice (which used to skip/finish rounds early).
   const playRange = useCallback(
     (
       start: number,
@@ -421,16 +454,27 @@ export function useAudioPlayer(skipSeconds: number) {
     ) => {
       const audio = audioRef.current;
       getAnalyser();
+      // Drops any previous clip loop (rAF + ended listener) so clicking a new
+      // clip can never resurrect the previous one.
       stopRangeMonitoring();
+      audio.dataset.clipLoopActive = "1";
 
-      if (rangeEndedRef.current) {
-        audio.removeEventListener("ended", rangeEndedRef.current);
-        rangeEndedRef.current = null;
-      }
-
+      const runId = ++rangeRunIdRef.current;
       let count = 0;
-      let armedAtStart = false;
-      const startTs = performance.now();
+      // True until the playhead is observed near `start` after a seek. While
+      // true the (possibly stale) currentTime is ignored, so the same boundary
+      // can never be counted twice while iOS settles the seek.
+      let seeking = true;
+      let seekRequestTs = performance.now();
+      let recoveryAttempts = 0;
+      let resumeTimer = 0;
+
+      const cancelResume = () => {
+        if (resumeTimer) {
+          window.clearTimeout(resumeTimer);
+          resumeTimer = 0;
+        }
+      };
 
       const stopLoop = () => {
         if (rangeRafRef.current) {
@@ -440,93 +484,115 @@ export function useAudioPlayer(skipSeconds: number) {
       };
 
       const cleanupRange = () => {
+        cancelResume();
         stopLoop();
         if (rangeEndedRef.current) {
           audio.removeEventListener("ended", rangeEndedRef.current);
           rangeEndedRef.current = null;
         }
+        audio.dataset.clipLoopActive = "0";
+      };
+
+      const abortLoop = () => {
+        cleanupRange();
+        audio.pause();
+        dispatch(setIsPlaying(false));
+        dispatch(setCurrentTime(audio.currentTime));
+        onComplete?.();
+      };
+
+      const finishLoop = () => {
+        audio.pause();
+        audio.currentTime = end;
+        cleanupRange();
+        dispatch(setIsPlaying(false));
+        dispatch(setCurrentTime(end));
+        onComplete?.();
+      };
+
+      const resetToStart = () => {
+        if (runId !== rangeRunIdRef.current) return;
+        seeking = true;
+        seekRequestTs = performance.now();
+        cancelResume();
+        audio.pause();
+        audio.currentTime = start;
+        dispatch(setCurrentTime(start));
+        // Let the paused seek settle before resuming so iOS honors it.
+        resumeTimer = window.setTimeout(() => {
+          if (runId !== rangeRunIdRef.current) return;
+          resumeTimer = 0;
+          snatchToStart(audio, start);
+          audio
+            .play()
+            .then(() => dispatch(setIsPlaying(true)))
+            .catch(() => {});
+        }, 50);
       };
 
       const tick = () => {
         if (!rangeRafRef.current) return;
         const t = audio.currentTime;
 
-        // Wait until the seek to `start` has actually settled before trusting the
-        // playhead: in the first frames after a click the media can still report
-        // its old position (usually 0 when paused), which must not be mistaken
-        // for the clip end or a cancelled source.
-        if (!armedAtStart) {
-          const nearStart = t >= start - 0.05 && t <= start + 0.1;
+        if (seeking) {
+          const nearStart = t >= start - 0.05 && t <= start + 0.15;
           if (nearStart) {
-            armedAtStart = true;
-          } else if (performance.now() - startTs < 250) {
-            rangeRafRef.current = requestAnimationFrame(tick);
+            seeking = false;
+          } else if (performance.now() - seekRequestTs > 3000) {
+            // The seek never settled (iOS can ignore seeks on a live element).
+            // Retry once from a paused state, then give up cleanly.
+            if (recoveryAttempts < 1) {
+              recoveryAttempts++;
+              audio.pause();
+              audio.currentTime = start;
+              seekRequestTs = performance.now();
+              audio
+                .play()
+                .then(() => dispatch(setIsPlaying(true)))
+                .catch(() => {});
+            } else {
+              abortLoop();
+              return;
+            }
+          }
+        } else {
+          if (t >= end) {
+            count++;
+            if (count >= repetitions) {
+              finishLoop();
+              return;
+            }
+            resetToStart();
+          } else if (t < start - 0.05) {
+            // A round was armed but the playhead dropped behind `start`: the
+            // media restarted/cancelled unexpectedly. Stop cleanly instead of
+            // counting phantom rounds.
+            abortLoop();
             return;
           }
-        }
-
-        // Only considered a cancelled/ended source once the seek to `start` was
-        // seen — a stale pre-seek position must never trigger this.
-        if (armedAtStart && t < start - 0.05) {
-          stopLoop();
-          return;
-        }
-
-        if (t >= end) {
-          count++;
-          if (count >= repetitions) {
-            audio.pause();
-            audio.currentTime = end;
-            cleanupRange();
-            dispatch(setIsPlaying(false));
-            dispatch(setCurrentTime(end));
-            onComplete?.();
-            return;
-          }
-          audio.currentTime = start;
-          armedAtStart = true;
-          dispatch(setCurrentTime(start));
         }
         rangeRafRef.current = requestAnimationFrame(tick);
       };
 
-      // If the clip's end coincides with the end of the file, the audio element
-      // can fire `ended` before the last rAF frame — handle it as a full pass
-      // instead of letting the next track start.
+      // The media element's own `ended` fires when playback reaches the end of
+      // the file. When a clip ends exactly at the file end this is the last
+      // chance to observe the boundary; the global "ended" handler (next
+      // track) is suppressed while the range is active.
       const onEnded = () => {
         if (!rangeRafRef.current) return;
+        if (seeking) return; // boundary already counted by the tick loop
         count++;
         if (count >= repetitions) {
-          audio.pause();
-          cleanupRange();
-          dispatch(setIsPlaying(false));
-          dispatch(setCurrentTime(end));
-          onComplete?.();
+          finishLoop();
           return;
         }
-        audio.currentTime = start;
-        armedAtStart = true;
-        dispatch(setCurrentTime(start));
-        audio
-          .play()
-          .then(() => dispatch(setIsPlaying(true)))
-          .catch(() => {});
-        rangeRafRef.current = requestAnimationFrame(tick);
+        resetToStart();
       };
 
       rangeEndedRef.current = onEnded;
       audio.addEventListener("ended", onEnded);
 
-      // Sync the playhead immediately; otherwise the wave keeps showing the old
-      // position until the first event fires. Snap back to `start` when playback
-      // actually begins so the opening is not skipped.
-      snatchToStart(audio, start);
-      audio.currentTime = start;
-      dispatch(setCurrentTime(start));
-      audio
-        .play()
-        .then(() => dispatch(setIsPlaying(true)))
-        .catch(() => {});
+      resetToStart();
       rangeRafRef.current = requestAnimationFrame(tick);
     },
     [dispatch, getAnalyser, stopRangeMonitoring],
