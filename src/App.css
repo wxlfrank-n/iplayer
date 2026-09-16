@@ -620,7 +620,7 @@ body {
 }
 
 .row-waveform__track {
-  flex: 0 0 90px;
+  flex: 0 0 var(--row-wave-h, 90px);
   position: relative;
   width: 100%;
   will-change: transform;
@@ -642,8 +642,9 @@ body {
 
 .row-waveform__cursor {
   position: absolute;
-  top: 0;
+  top: auto;
   bottom: 0;
+  height: var(--row-wave-h, 90px);
   width: 2px;
   z-index: 1;
   background: var(--accent);

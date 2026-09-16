@@ -10,7 +10,7 @@
  * - Pan/drag support for manual navigation
  */
 
-import { memo, useState, useEffect, useRef, useCallback } from "react";
+import { memo, useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import { Clip } from "./Clip";
 import { ClipLabel } from "./ClipLabel";
 import { DancingLines } from "./DancingLines";
@@ -86,6 +86,9 @@ export const RowWaveform = memo(function RowWaveform({
   const clipsRef = useRef(displayClips);
   const hsMaxStartRef = useRef(0);
   const hsAnchorRef = useRef(0);
+  // Frame-by-frame paint targets, written by `drawFrame` every rAF tick.
+  const hsSmoothRef = useRef(0);
+  const trackRef = useRef<HTMLDivElement>(null);
 
   const [hsAnchor, setHsAnchor] = useState(0);
   const [winWidth, setWinWidth] = useState(window.innerWidth);
@@ -125,10 +128,6 @@ export const RowWaveform = memo(function RowWaveform({
     displayClips.length > 0 ? displayClips[displayClips.length - 1].end : 1;
   const hsWinLen = Math.min(getWindowSecs(winWidth), totalDuration);
   const hsMaxStart = Math.max(0, totalDuration - hsWinLen);
-  useEffect(() => {
-    hsAnchorRef.current = hsAnchor;
-    hsSmoothRef.current = hsAnchor;
-  }, [hsAnchor]);
 
   // Clip play tracking.
   const [clipPlayActive, setClipPlayActiveLocal] = useState(false);
@@ -141,7 +140,96 @@ export const RowWaveform = memo(function RowWaveform({
     onClipPlayActiveChange?.(clipPlayActive);
   }, [clipPlayActive, onClipPlayActiveChange]);
 
-  // Auto-follow the playhead.
+  // Live mirrors of props/locals for the 60fps draw pass (refs never go stale).
+  const playingRef = useRef(playing);
+  useEffect(() => {
+    playingRef.current = playing;
+  }, [playing]);
+  const scrollingRef = useRef(scrolling);
+  useEffect(() => {
+    scrollingRef.current = scrolling;
+  }, [scrolling]);
+  const clipPlayActiveRef = useRef(clipPlayActive);
+  useEffect(() => {
+    clipPlayActiveRef.current = clipPlayActive;
+  }, [clipPlayActive]);
+
+  // Single source of truth for the row's frame-by-frame paint: writes the glide
+  // transform on the waveform AND the cursor position from the SAME live values.
+  // The cursor lives OUTSIDE the transformed track and is positioned in window
+  // space, so it can never ride a stale anchor/transform. (Previously the cursor
+  // was double-animated — its own rAF loop read an async-synced anchor ref while
+  // the track transform was translated imperatively — which flashed on every
+  // auto-scroll commit.)
+  const drawFrame = useCallback(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    const innerEl = track.parentElement;
+    if (!innerEl) return;
+    const win = hsWinLenRef.current || 1;
+    const t = getCurrentTime ? getCurrentTime() : 0;
+    let s = hsAnchorRef.current;
+    if (playingRef.current && !scrollingRef.current) {
+      if (clipPlayActiveRef.current) {
+        const followEnd = clipPlayFollowEndRef.current;
+        if (
+          followEnd &&
+          hsAnchorRef.current + win < followEnd
+        ) {
+          const target = Math.min(
+            clipPlayAnchorStartRef.current + (t - clipPlayStartRef.current),
+            Math.max(0, followEnd - win),
+          );
+          s = Math.max(hsAnchorRef.current, target);
+        }
+      } else if (clipPlaySkipRef.current) {
+        s = hsAnchorRef.current;
+      } else {
+        s = Math.max(
+          0,
+          Math.min(t - HS_FOLLOW_FRAC * win, hsMaxStartRef.current),
+        );
+      }
+    }
+    hsSmoothRef.current = s;
+    const pxPerSec = (innerEl.clientWidth || 1) / win;
+    track.style.transform = `translateX(${(-(s - hsAnchorRef.current) * pxPerSec).toFixed(2)}px)`;
+  }, [getCurrentTime]);
+
+  // Commits a new window anchor by re-rendering the bars. The ref + transform
+  // are then paired with the freshly-rendered bars in the layout effect below,
+  // so an auto-follow commit can never leave a frame where the transform leads
+  // the bars actually in the DOM.
+  const commitAnchor = useCallback((target: number) => {
+    setHsAnchor(target);
+  }, [setHsAnchor]);
+
+  // Gesture commit: updates the refs synchronously so the transform/cursor
+  // follow the pointer immediately (gestures read live values, so a transient
+  // React render lag is imperceptible).
+  const commitAnchorNow = useCallback(
+    (target: number) => {
+      hsAnchorRef.current = target;
+      hsSmoothRef.current = target;
+      setHsAnchor(target);
+      drawFrame();
+    },
+    [drawFrame, setHsAnchor],
+  );
+
+  // Runs synchronously right after React swaps in the new bars (before the
+  // browser paints), so the transform always matches the bars rendered for the
+  // committed anchor — atomic per frame, no 1-frame displacement on commits.
+  useLayoutEffect(() => {
+    hsAnchorRef.current = hsAnchor;
+    drawFrame();
+  }, [hsAnchor, drawFrame]);
+
+  // Auto-follow the playhead. `currentTime` (the Redux clock, ~4Hz timeupdate
+  // cadence) merely trips re-evaluation; the actual commit target is computed
+  // from the LIVE clock inside the rAF so the anchor lands exactly where the
+  // glide has already moved `s`. If the commit used the lagging Redux time, the
+  // transform would snap forward on every commit and the waveform would shake.
   const clipPlaySkipRef = useRef(false);
 
   // Live-value refs for gesture handlers (kept in sync so handlers never go stale).
@@ -165,33 +253,32 @@ export const RowWaveform = memo(function RowWaveform({
     if (scrolling) return;
     if (!playing) return;
     if (clipPlaySkipRef.current) {
+      const t = getCurrentTime();
+      if (t <= hsAnchorRef.current + hsWinLenRef.current) return;
       clipPlaySkipRef.current = false;
-      return;
     }
-    if (clipPlayActive) {
-      const followEnd = clipPlayFollowEndRef.current;
-      if (!followEnd) return;
-      if (hsAnchorRef.current + hsWinLenRef.current >= followEnd) return;
-      const elapsed = currentTime - clipPlayStartRef.current;
-      const target = Math.min(
-        clipPlayAnchorStartRef.current + elapsed,
-        Math.max(0, followEnd - hsWinLen),
-      );
-      if (target <= hsAnchorRef.current) return;
-      const id = requestAnimationFrame(() => {
-        setHsAnchor((a) => (Math.abs(target - a) > 0.05 ? target : a));
-      });
-      return () => cancelAnimationFrame(id);
-    }
-    const target = Math.max(
-      0,
-      Math.min(currentTime - HS_FOLLOW_FRAC * hsWinLen, hsMaxStart),
-    );
     const id = requestAnimationFrame(() => {
-      setHsAnchor((a) => (Math.abs(target - a) > 0.05 ? target : a));
+      const t = getCurrentTime();
+      if (clipPlayActive) {
+        const followEnd = clipPlayFollowEndRef.current;
+        if (!followEnd) return;
+        if (hsAnchorRef.current + hsWinLenRef.current >= followEnd) return;
+        const elapsed = t - clipPlayStartRef.current;
+        const target = Math.min(
+          clipPlayAnchorStartRef.current + elapsed,
+          Math.max(0, followEnd - hsWinLenRef.current),
+        );
+        if (Math.abs(target - hsAnchorRef.current) > 0.05) commitAnchor(target);
+        return;
+      }
+      const target = Math.max(
+        0,
+        Math.min(t - HS_FOLLOW_FRAC * hsWinLenRef.current, hsMaxStartRef.current),
+      );
+      if (Math.abs(target - hsAnchorRef.current) > 0.05) commitAnchor(target);
     });
     return () => cancelAnimationFrame(id);
-  }, [currentTime, hsWinLen, hsMaxStart, scrolling, playing, clipPlayActive]);
+  }, [currentTime, hsWinLen, hsMaxStart, scrolling, playing, clipPlayActive, commitAnchor, getCurrentTime]);
 
   const playClip = useCallback(
     (start: number, end: number, reps: number) => {
@@ -202,7 +289,7 @@ export const RowWaveform = memo(function RowWaveform({
       const w = hsWinLenRef.current;
       clipPlayAnchorStartRef.current = a;
       if (start < a) {
-        setHsAnchor(Math.max(0, Math.min(start, hsMaxStartRef.current)));
+        commitAnchor(Math.max(0, Math.min(start, hsMaxStartRef.current)));
       } else if (end > a + w) {
         clipPlayFollowEndRef.current = end;
       }
@@ -211,7 +298,7 @@ export const RowWaveform = memo(function RowWaveform({
         setClipPlayActiveLocal(false);
       });
     },
-    [onPlayRange, setClipPlayActiveLocal, setHsAnchor],
+    [onPlayRange, setClipPlayActiveLocal, commitAnchor],
   );
 
   // Panning.
@@ -254,7 +341,7 @@ export const RowWaveform = memo(function RowWaveform({
         0,
         Math.min(drag.startAnchor - dx * secPerPx, hsMaxStartRef.current),
       );
-      setHsAnchor(target);
+      commitAnchorNow(target);
       bumpScrolling();
     };
     const onEnd = (ev: PointerEvent) => {
@@ -277,7 +364,7 @@ export const RowWaveform = memo(function RowWaveform({
           best = i;
         }
       }
-      setHsAnchor(
+      commitAnchorNow(
         Math.max(0, Math.min(clips[best].vStart, hsMaxStartRef.current)),
       );
       onActiveClipChange(best);
@@ -308,68 +395,33 @@ export const RowWaveform = memo(function RowWaveform({
           (hsWinLenRef.current || 1),
         ),
       );
-      setHsAnchor((a) =>
-        Math.max(0, Math.min(a + dSec, hsMaxStartRef.current)),
+      commitAnchorNow(
+        Math.max(0, Math.min(hsAnchorRef.current + dSec, hsMaxStartRef.current)),
       );
       bumpScrolling();
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, [bumpScrolling]);
+  }, [bumpScrolling, commitAnchorNow]);
 
-  // Dance loop: drives the waveform glide (track transform) imperatively on
-  // top of the auto-follow anchor commits. The cursor and time label run their
-  // own rAF loop inside WaveformCursor.
-  const trackRef = useRef<HTMLDivElement>(null);
-  const hsSmoothRef = useRef(0);
+  // Dance loop: drives the waveform glide (track transform) and the cursor
+  // position imperatively every frame via `drawFrame` — a single source of
+  // truth so neither the cursor nor the bars can desync from a stale anchor.
   useEffect(() => {
-    const track = trackRef.current;
-    if (!track) return;
-
     let raf = 0;
     const frame = () => {
       raf = requestAnimationFrame(frame);
-      const innerEl = track.parentElement;
-      if (innerEl && getCurrentTime) {
-        const t = getCurrentTime();
-        const win = hsWinLenRef.current || 1;
-        const s =
-          playing && !scrolling
-            ? (() => {
-              if (clipPlayActive) {
-                const followEnd = clipPlayFollowEndRef.current;
-                if (
-                  !followEnd ||
-                  hsAnchorRef.current + (hsWinLenRef.current || 1) >=
-                  followEnd
-                ) {
-                  return hsAnchorRef.current;
-                }
-                const elapsed = t - clipPlayStartRef.current;
-                const target = Math.min(
-                  clipPlayAnchorStartRef.current + elapsed,
-                  Math.max(0, followEnd - (hsWinLenRef.current || 1)),
-                );
-                return Math.max(hsAnchorRef.current, target);
-              }
-              if (clipPlaySkipRef.current) return hsAnchorRef.current;
-              return Math.max(
-                0,
-                Math.min(t - HS_FOLLOW_FRAC * win, hsMaxStartRef.current),
-              );
-            })()
-            : hsAnchorRef.current;
-        hsSmoothRef.current = s;
-        const pxPerSec = (innerEl.clientWidth || 1) / win;
-        track.style.transform = `translateX(${(-(s - hsAnchorRef.current) * pxPerSec).toFixed(2)}px)`;
-      }
+      drawFrame();
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [getCurrentTime, playing, scrolling, clipPlayActive]);
+  }, [drawFrame]);
 
   const getPlayedPct = useCallback(() => {
     return Math.max(0, Math.min(1, (getCurrentTime() - hsAnchorRef.current) / hsWinLenRef.current));
+  }, [getCurrentTime]);
+  const getSmoothPlayedPct = useCallback(() => {
+    return Math.max(0, Math.min(1, (getCurrentTime() - hsSmoothRef.current) / hsWinLenRef.current));
   }, [getCurrentTime]);
   return (
     <div
@@ -400,66 +452,70 @@ export const RowWaveform = memo(function RowWaveform({
           navIndexRef.current = -1;
         }}
       >
-        <DancingLines getAnalyser={getAnalyser} />
+        <DancingLines
+          getAnalyser={getAnalyser}
+          getCurrentTime={getCurrentTime}
+          waveform={waveform}
+        />
         <div className="row-waveform__track" ref={trackRef}>
           <svg
             className="row-waveform__svg"
             viewBox={`0 0 ${VB_W} ${VB_H}`}
             preserveAspectRatio="none"
           >
-            <WaveformBars
-              data={waveform.data}
-              sampleRate={waveform.sampleRate}
-              window={{
-                windowStartSec: hsAnchor,
-                windowLen: hsWinLen,
-                innerH,
-                vbW: VB_W,
-                vbH: VB_H,
-              }}
-              fracPlayed={getPlayedPct()}
-              idPrefix="hs"
-              strokeWidth={1.6}
-            />
-            <Clip
-              clips={displayClips}
-              window={{
-                windowStartSec: hsAnchor,
-                windowLen: hsWinLen,
-                innerH,
-                vbW: VB_W,
-                vbH: VB_H,
-              }}
-              onPlayRange={playClip}
-              repetitions={repetitions}
-              activeClip={activeClip}
-              onActivate={(idx) => {
-                onActiveClipChange(idx);
-                navIndexRef.current = idx;
-              }}
-            />
-          </svg>
+              <WaveformBars
+                data={waveform.data}
+                sampleRate={waveform.sampleRate}
+                window={{
+                  windowStartSec: hsAnchor,
+                  windowLen: hsWinLen,
+                  innerH,
+                  vbW: VB_W,
+                  vbH: VB_H,
+                }}
+                fracPlayed={getPlayedPct()}
+                idPrefix="hs"
+                strokeWidth={1.6}
+              />
+              <Clip
+                clips={displayClips}
+                window={{
+                  windowStartSec: hsAnchor,
+                  windowLen: hsWinLen,
+                  innerH,
+                  vbW: VB_W,
+                  vbH: VB_H,
+                }}
+                onPlayRange={playClip}
+                repetitions={repetitions}
+                activeClip={activeClip}
+                onActivate={(idx) => {
+                  onActiveClipChange(idx);
+                  navIndexRef.current = idx;
+                }}
+              />
+            </svg>
+            {displayClips.map((s, idx) => {
+              if (s.vEnd <= hsAnchor || s.vStart >= hsAnchor + hsWinLen)
+                return null;
+              const center =
+                ((s.vStart + (s.vEnd - s.vStart) / 2 - hsAnchor) / hsWinLen) * 100;
+              return (
+                <ClipLabel
+                  key={`hlbl-${idx}`}
+                  index={idx}
+                  duration={s.vEnd - s.vStart}
+                  left={center}
+                  active={idx === activeClip}
+                />
+              );
+            })}
+          </div>
           <WaveformCursor
             view="row"
-            getPlayedPct={getPlayedPct}
+            getPlayedPct={getSmoothPlayedPct}
             getCurrentTime={getCurrentTime}
           />
-          {displayClips.map((s, idx) => {
-            if (s.vEnd <= hsAnchor || s.vStart >= hsAnchor + hsWinLen)
-              return null;
-            const center =
-              ((s.vStart + (s.vEnd - s.vStart) / 2 - hsAnchor) / hsWinLen) * 100;
-            return (
-              <ClipLabel
-                key={`hlbl-${idx}`}
-                index={idx}
-                duration={s.vEnd - s.vStart}
-                left={center}
-                active={idx === activeClip}
-              />
-            );
-          })}
-        </div>
       </div>
     </div>
   );

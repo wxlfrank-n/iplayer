@@ -43,22 +43,29 @@ export const WaveformBars = memo(function WaveformBars({
   // a dimmed min-height tick so silent stretches stay visible.
   const { waveD, silentD } = useMemo(() => {
     if (data.length === 0 || windowLen <= 0) return { waveD: "", silentD: "" };
+    // Bars are computed on a GLOBAL absolute sample lattice: every column f
+    // always covers [lat0 + f*step, lat0 + (f+1)*step) where `lat0` is an exact
+    // multiple of `step`. Re-rendering after a window-anchor commit therefore
+    // produces pixel-identical bars (the same absolute columns are shown at the
+    // same pixels), so auto-scroll commits can't re-grid/re-min-max the pattern
+    // and shake the waveform. (Relative slicing `perFrame = total/frames` would
+    // aggregate a different sample set per column on every anchor change.)
+    const step = Math.max(1, Math.round((windowLen / vbW) * sampleRate));
     const i0 = Math.max(0, Math.floor(windowStartSec * sampleRate));
+    const lat0 = Math.floor(i0 / step) * step;
     const i1 = Math.min(
       data.length,
       Math.ceil((windowStartSec + windowLen) * sampleRate),
     );
-    const total = Math.max(1, i1 - i0);
-    const frames = Math.max(1, Math.floor(vbW));
-    const perFrame = total / frames;
+    const frames = Math.max(1, Math.min(vbW, Math.ceil((i1 - lat0) / step)));
     const midY = vbH / 2;
     const scaleY = innerH / 2;
 
     const topPts: number[] = [];
     const botPts: number[] = [];
     for (let f = 0; f < frames; f++) {
-      const s0 = i0 + Math.floor(f * perFrame);
-      const s1 = Math.min(i1, i0 + Math.floor((f + 1) * perFrame));
+      const s0 = lat0 + f * step;
+      const s1 = Math.min(i1, s0 + step);
       let min = s0 < i1 ? data[s0] : 0;
       let max = min;
       for (let s = s0; s < s1; s++) {

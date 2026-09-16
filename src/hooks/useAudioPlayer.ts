@@ -285,7 +285,9 @@ export function useAudioPlayer(skipSeconds: number) {
 
   const pause = useCallback(() => {
     stopRangeMonitoring();
-    audioRef.current.pause();
+    const audio = audioRef.current;
+    audio.pause();
+    dispatch(setCurrentTime(audio.currentTime));
     dispatch(setIsPlaying(false));
   }, [dispatch, stopRangeMonitoring]);
 
@@ -295,6 +297,7 @@ export function useAudioPlayer(skipSeconds: number) {
       // Pause playback
       stopRangeMonitoring();
       audio.pause();
+      dispatch(setCurrentTime(audio.currentTime));
       dispatch(setIsPlaying(false));
       return;
     }
