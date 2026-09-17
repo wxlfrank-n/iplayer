@@ -75,29 +75,25 @@ export const RowWaveform = memo(function RowWaveform({
   scrollTimeoutRef,
 }: RowWaveformProps) {
   const innerH = VB_H - PAD * 2;
-  const navIndexRef = useRef(-1);
   const hsRef = useRef<HTMLDivElement>(null);
 
   // `hs` = horizontal scroll window: the visible slice of the full waveform
   // that the user pans across. `anchor` = window start time (secs), `winLen` =
   // window length (secs), `maxStart` = largest allowed anchor (dur - winLen).
   // Live-value refs (kept in sync below) so gesture/resize handlers never go stale.
-  const winWidthRef = useRef(window.innerWidth);
-  const clipsRef = useRef(displayClips);
-  const hsMaxStartRef = useRef(0);
+  const [winWidth, setWinWidth] = useState(window.innerWidth);
+  const hsWinLenRef = useRef(Math.min(getWindowSecs(winWidth), waveform.duration));
+  const hsMaxStartRef = useRef(Math.max(0, waveform.duration - hsWinLenRef.current));
   const hsAnchorRef = useRef(0);
   // Frame-by-frame paint targets, written by `drawFrame` every rAF tick.
   const hsSmoothRef = useRef(0);
   const trackRef = useRef<HTMLDivElement>(null);
 
   const [hsAnchor, setHsAnchor] = useState(0);
-  const [winWidth, setWinWidth] = useState(window.innerWidth);
   const applyWidth = useCallback((width: number) => {
-    winWidthRef.current = width;
     setWinWidth(width);
-    const clips = clipsRef.current;
-    const dur = clips.length > 0 ? clips[clips.length - 1].end : 1;
-    const maxStart = Math.max(0, dur - Math.min(getWindowSecs(width), dur));
+    hsWinLenRef.current = Math.min(getWindowSecs(width), waveform.duration);
+    const maxStart = Math.max(0, waveform.duration - hsWinLenRef.current);
     hsMaxStartRef.current = maxStart;
     setHsAnchor((a) => Math.min(a, maxStart));
   }, []);
@@ -122,12 +118,6 @@ export const RowWaveform = memo(function RowWaveform({
       window.removeEventListener("resize", onResize);
     };
   }, [applyWidth]);
-
-  // Window state.
-  const totalDuration =
-    displayClips.length > 0 ? displayClips[displayClips.length - 1].end : 1;
-  const hsWinLen = Math.min(getWindowSecs(winWidth), totalDuration);
-  const hsMaxStart = Math.max(0, totalDuration - hsWinLen);
 
   // Clip play tracking.
   const [clipPlayActive, setClipPlayActiveLocal] = useState(false);
@@ -233,16 +223,6 @@ export const RowWaveform = memo(function RowWaveform({
   const clipPlaySkipRef = useRef(false);
 
   // Live-value refs for gesture handlers (kept in sync so handlers never go stale).
-  const hsWinLenRef = useRef(hsWinLen);
-  useEffect(() => {
-    hsWinLenRef.current = hsWinLen;
-  }, [hsWinLen]);
-  useEffect(() => {
-    hsMaxStartRef.current = hsMaxStart;
-  }, [hsMaxStart]);
-  useEffect(() => {
-    clipsRef.current = displayClips;
-  }, [displayClips]);
   useEffect(() => {
     if (prevClipPlayActiveRef.current && !clipPlayActive) {
       clipPlaySkipRef.current = true;
@@ -278,7 +258,7 @@ export const RowWaveform = memo(function RowWaveform({
       if (Math.abs(target - hsAnchorRef.current) > 0.05) commitAnchor(target);
     });
     return () => cancelAnimationFrame(id);
-  }, [currentTime, hsWinLen, hsMaxStart, scrolling, playing, clipPlayActive, commitAnchor, getCurrentTime]);
+  }, [currentTime, scrolling, playing, clipPlayActive, commitAnchor, getCurrentTime]);
 
   const playClip = useCallback(
     (start: number, end: number, reps: number) => {
@@ -352,7 +332,7 @@ export const RowWaveform = memo(function RowWaveform({
       hsDragRef.current = null;
       if (!drag.panned) return;
       hsSuppressClickRef.current = true;
-      const clips = clipsRef.current;
+      const clips = displayClips;
       if (clips.length === 0) return;
       const now = hsAnchorRef.current;
       let best = 0;
@@ -368,7 +348,6 @@ export const RowWaveform = memo(function RowWaveform({
         Math.max(0, Math.min(clips[best].vStart, hsMaxStartRef.current)),
       );
       onActiveClipChange(best);
-      navIndexRef.current = best;
     };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onEnd);
@@ -447,9 +426,8 @@ export const RowWaveform = memo(function RowWaveform({
             0,
             Math.min(1, (e.clientX - rect.left) / rect.width),
           );
-          onSeek(hsSmoothRef.current + f * hsWinLen);
+          onSeek(hsSmoothRef.current + f * hsWinLenRef.current);
           onActiveClipChange(-1);
-          navIndexRef.current = -1;
         }}
       >
         <DancingLines
@@ -468,7 +446,7 @@ export const RowWaveform = memo(function RowWaveform({
                 sampleRate={waveform.sampleRate}
                 window={{
                   windowStartSec: hsAnchor,
-                  windowLen: hsWinLen,
+                  windowLen: hsWinLenRef.current,
                   innerH,
                   vbW: VB_W,
                   vbH: VB_H,
@@ -481,7 +459,7 @@ export const RowWaveform = memo(function RowWaveform({
                 clips={displayClips}
                 window={{
                   windowStartSec: hsAnchor,
-                  windowLen: hsWinLen,
+                  windowLen: hsWinLenRef.current,
                   innerH,
                   vbW: VB_W,
                   vbH: VB_H,
@@ -491,15 +469,16 @@ export const RowWaveform = memo(function RowWaveform({
                 activeClip={activeClip}
                 onActivate={(idx) => {
                   onActiveClipChange(idx);
-                  navIndexRef.current = idx;
                 }}
               />
             </svg>
             {displayClips.map((s, idx) => {
-              if (s.vEnd <= hsAnchor || s.vStart >= hsAnchor + hsWinLen)
+              if (s.vEnd <= hsAnchor || s.vStart >= hsAnchor + hsWinLenRef.current)
                 return null;
               const center =
-                ((s.vStart + (s.vEnd - s.vStart) / 2 - hsAnchor) / hsWinLen) * 100;
+                ((s.vStart + (s.vEnd - s.vStart) / 2 - hsAnchor) /
+                  hsWinLenRef.current) *
+                100;
               return (
                 <ClipLabel
                   key={`hlbl-${idx}`}

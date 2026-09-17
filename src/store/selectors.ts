@@ -12,8 +12,6 @@ import type { CurrentAudio } from "../types";
 // ---- config ----
 export const selectSkipSeconds = (s: RootState) => s.config.skipSeconds;
 export const selectWaveformView = (s: RootState) => s.config.waveformView;
-export const selectBlockSamples = (s: RootState) => s.config.blockSamples;
-export const selectsilenceRatio = (s: RootState) => s.config.silenceRatio;
 /**
  * Shortest acceptable clip in seconds, independent of `silenceRatio`. Seeds the
  * merge slider's smallest step; ProgressBar uses it to drive its own merge gap
@@ -27,19 +25,11 @@ export const selectTracks = (s: RootState) => s.player.tracks;
 export const selectCurrentTrackIndex = (s: RootState) =>
   s.player.currentTrackIndex;
 export const selectIsPlaying = (s: RootState) => s.player.isPlaying;
-export const selectCurrentTime = (s: RootState) => s.player.currentTime;
-export const selectDuration = (s: RootState) => s.player.duration;
 
 export const selectCurrentTrack = (s: RootState) => {
   const t = s.player.tracks[s.player.currentTrackIndex];
   return t ?? null;
 };
-
-// ---- analysis ----
-export const selectWaveform = (s: RootState) => s.analysis.waveform;
-export const selectWaveformStatus = (s: RootState) => s.analysis.waveformStatus;
-export const selectClips = (s: RootState) => s.analysis.clips;
-export const selectActiveClip = (s: RootState) => s.analysis.activeClip;
 
 export const selectCanPlay = (s: RootState) => s.player.tracks.length > 0;
 

@@ -56,7 +56,7 @@ export function useWaveform(url: string | null): {
 
         if (cancelled) return;
         dispatch(
-          setWaveform({ data: mono, sampleRate: audioBuffer.sampleRate }),
+          setWaveform({ data: mono, sampleRate: audioBuffer.sampleRate, duration: mono.length / audioBuffer.sampleRate }),
         );
         dispatch(setWaveformStatus("ready"));
       } catch {

@@ -28,6 +28,7 @@ export interface Track {
 export interface WaveformData {
   data: Float32Array;
   sampleRate: number;
+  duration: number;
 }
 
 /**

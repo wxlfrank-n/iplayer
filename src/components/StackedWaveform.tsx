@@ -79,8 +79,7 @@ export const StackedWaveform = memo(function StackedWaveform({
     if (cur) rows.push(cur);
     if (rows && rows.length > 0) {
       rows[0].start = 0; // first row always starts at 0
-      const duration = waveform.data.length / waveform.sampleRate;
-      rows[rows.length - 1].end = Math.max(rows[rows.length - 1].end, duration); // last row always ends at the waveform end
+      rows[rows.length - 1].end = Math.max(rows[rows.length - 1].end, waveform.duration); // last row always ends at the waveform end
     }
     return rows;
   }, [displayClips]);
