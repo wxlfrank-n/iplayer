@@ -20,14 +20,11 @@ export const ClipLabel = memo(function ClipLabel({
   duration,
   left,
   active,
-  minLeft = 0,
-  maxLeft = 100,
 }: ClipLabelProps) {
-  const clamped = Math.max(minLeft, Math.min(maxLeft, left));
   return (
     <span
       className={`stacked-clip-label ${active ? "stacked-clip-label--active" : ""}`}
-      style={{ left: `${clamped}%` }}
+      style={{ left: `${left}%` }}
     >
       {index + 1}
       <span className="stacked-clip-dur">{duration.toFixed(1)}s</span>

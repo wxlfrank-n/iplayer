@@ -618,6 +618,7 @@ body {
   position: relative;
   width: 100%;
   will-change: transform;
+  overflow-x: hidden;
 }
 
 .row-waveform__svg {

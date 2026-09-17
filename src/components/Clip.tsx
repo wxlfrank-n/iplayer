@@ -42,7 +42,7 @@ export const Clip = memo(function Clip({
     c.vEnd > windowStartSec && c.vStart < windowStartSec + windowLen;
   const rect = (c: ClipData) => {
     const x = Math.max(0, ((c.vStart - windowStartSec) / windowLen) * vbW);
-    const right = Math.min(((c.vEnd - windowStartSec) / windowLen) * vbW, vbW);
+    const right = ((c.vEnd - windowStartSec) / windowLen) * vbW;
     return { x, w: Math.max(1, right - x) };
   };
 
