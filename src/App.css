@@ -570,6 +570,55 @@ body {
   opacity: 0.9;
 }
 
+.stacked-clip-swipe-arrow {
+  position: absolute;
+  left: 50%;
+  width: 10px;
+  height: 7px;
+  display: block;
+  color: #fff;
+  transform: translateX(-50%);
+  animation: clip-swipe-hint-pulse 1.8s ease-in-out infinite;
+}
+
+.stacked-clip-swipe-arrow--up {
+  bottom: calc(100% + 4px);
+}
+
+.stacked-clip-swipe-arrow--down {
+  top: calc(100% + 4px);
+}
+
+.stacked-clip-swipe-arrow::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  width: 6px;
+  height: 6px;
+  border-left: 1px solid currentColor;
+  border-top: 1px solid currentColor;
+}
+
+.stacked-clip-swipe-arrow--up::before {
+  top: 1px;
+  transform: rotate(45deg);
+}
+
+.stacked-clip-swipe-arrow--down::before {
+  top: 0;
+  transform: rotate(225deg);
+}
+
+@keyframes clip-swipe-hint-pulse {
+  0%,
+  100% {
+    opacity: 0.65;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 .stacked-waveform__cursor {
   position: absolute;
   top: 0;
@@ -633,6 +682,8 @@ body {
   display: block;
   width: 100%;
   pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .row-waveform__cursor {
@@ -664,6 +715,8 @@ body {
   z-index: 3;
   pointer-events: none;
   white-space: nowrap;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .waveform-loading--stacked {
@@ -833,6 +886,7 @@ body {
 .waveform-clip {
   cursor: pointer;
   fill: rgba(88, 166, 255, 0.32);
+  touch-action: pan-y;
   transition:
     fill 0.15s ease,
     filter 0.2s ease;

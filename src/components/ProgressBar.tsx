@@ -22,6 +22,7 @@ import {
 } from "../store/selectors";
 import { setActiveClip } from "../store/analysisSlice";
 import { mergeClipsByGap, clipGaps } from "../utils/clips";
+import { getClipSwipeResult } from "../utils/swipe";
 
 interface ProgressBarProps {
   /** Seek to an absolute track time (seconds). */
@@ -82,6 +83,22 @@ export function ProgressBar({
     [audio.clips, dispatch],
   );
 
+  const handleClipSwipe = useCallback(
+    (idx: number, direction: "up" | "down") => {
+      const result = getClipSwipeResult(
+        clips,
+        displayClips,
+        idx,
+        direction,
+        minSilenceLength,
+      );
+      if (!result) return;
+      setMergeGap(result.mergeGap);
+      dispatch(setActiveClip(result.activeClip));
+    },
+    [clips, dispatch, displayClips, minSilenceLength],
+  );
+
   return (
     <>
       <div className="progress-container">
@@ -106,6 +123,7 @@ export function ProgressBar({
               repetitions={repetitions}
               activeClip={activeClip}
               onActiveClipChange={handleActiveClipChange}
+              onSwipeClip={playing ? undefined : handleClipSwipe}
               getAnalyser={getAnalyser}
               getCurrentTime={getCurrentTime}
               playing={playing}
@@ -118,8 +136,10 @@ export function ProgressBar({
               waveform={waveform!}
               displayClips={displayClips}
               currentTime={currentTime}
+              playing={playing}
               activeClip={activeClip}
               repetitions={repetitions}
+              onSwipeClip={playing ? undefined : handleClipSwipe}
               onSeek={onSeek}
               onPlayRange={onPlayRange}
               getCurrentTime={getCurrentTime}

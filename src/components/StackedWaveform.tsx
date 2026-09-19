@@ -26,8 +26,10 @@ interface StackedWaveformProps {
   waveform: WaveformData;
   displayClips: ClipData[];
   currentTime: number;
+  playing: boolean;
   activeClip: number;
   repetitions: number;
+  onSwipeClip?: (idx: number, direction: "up" | "down") => void;
   onSeek: (time: number) => void;
   onActiveClipChange: (idx: number) => void;
   onPlayRange: (
@@ -51,8 +53,10 @@ export const StackedWaveform = memo(function StackedWaveform({
   waveform,
   displayClips,
   currentTime,
+  playing,
   activeClip,
   repetitions,
+  onSwipeClip,
   onSeek,
   onActiveClipChange,
   onPlayRange,
@@ -214,6 +218,7 @@ export const StackedWaveform = memo(function StackedWaveform({
                 onActivate={(idx) => {
                   onActiveClipChange(idx);
                 }}
+                onSwipe={onSwipeClip}
               />
             </svg>
             {currentTime >= rowStart && currentTime < row.end && (
@@ -233,6 +238,8 @@ export const StackedWaveform = memo(function StackedWaveform({
                   duration={s.vEnd - s.vStart}
                   left={center}
                   active={idx === activeClip}
+                  canSplit={!playing && !!s.children && s.children.length > 1}
+                  canMerge={!playing && (idx > 0 || idx < displayClips.length - 1)}
                 />
               );
             })}

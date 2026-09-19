@@ -50,6 +50,7 @@ export interface RowWaveformProps {
   repetitions: number;
   activeClip: number;
   onActiveClipChange: (idx: number) => void;
+  onSwipeClip?: (idx: number, direction: "up" | "down") => void;
   getAnalyser?: (resume: boolean) => AnalyserNode | null;
   getCurrentTime: () => number;
   playing: boolean;
@@ -68,6 +69,7 @@ export const RowWaveform = memo(function RowWaveform({
   repetitions,
   activeClip,
   onActiveClipChange,
+  onSwipeClip,
   getAnalyser,
   getCurrentTime,
   playing,
@@ -465,6 +467,7 @@ export const RowWaveform = memo(function RowWaveform({
                 onActivate={(idx) => {
                   onActiveClipChange(idx);
                 }}
+                onSwipe={onSwipeClip}
               />
             </svg>
             {displayClips.map((s, idx) => {
@@ -481,6 +484,8 @@ export const RowWaveform = memo(function RowWaveform({
                   duration={s.vEnd - s.vStart}
                   left={center}
                   active={idx === activeClip}
+                  canSplit={!playing && !!s.children && s.children.length > 1}
+                  canMerge={!playing && (idx > 0 || idx < displayClips.length - 1)}
                 />
               );
             })}

@@ -11,6 +11,8 @@ interface ClipLabelProps {
   duration: number;
   left: number;
   active: boolean;
+  canSplit: boolean;
+  canMerge: boolean;
   minLeft?: number;
   maxLeft?: number;
 }
@@ -20,6 +22,8 @@ export const ClipLabel = memo(function ClipLabel({
   duration,
   left,
   active,
+  canSplit,
+  canMerge,
 }: ClipLabelProps) {
   return (
     <span
@@ -28,6 +32,20 @@ export const ClipLabel = memo(function ClipLabel({
     >
       {index + 1}
       <span className="stacked-clip-dur">{duration.toFixed(1)}s</span>
+      {active && canSplit && (
+        <span
+          className="stacked-clip-swipe-arrow stacked-clip-swipe-arrow--up"
+          title="Swipe up to split"
+          aria-hidden="true"
+        />
+      )}
+      {active && canMerge && (
+        <span
+          className="stacked-clip-swipe-arrow stacked-clip-swipe-arrow--down"
+          title="Swipe down to merge"
+          aria-hidden="true"
+        />
+      )}
     </span>
   );
 });
