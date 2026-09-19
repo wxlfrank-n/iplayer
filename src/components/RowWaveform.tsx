@@ -18,7 +18,7 @@ import { WaveformCursor } from "./WaveformCursor";
 import { WaveformBars } from "./Waveform";
 import { type WaveformData } from "../hooks/useWaveform";
 import type { Clip as ClipData } from "../utils/clips";
-import { endPan, panTarget } from "../utils/pan";
+import { panTarget } from "../utils/pan";
 
 const getWindowSecs = (w: number) => {
   if (w >= 1600) return 32;
@@ -303,6 +303,10 @@ export const RowWaveform = memo(function RowWaveform({
   const onHsPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0 && e.pointerType === "mouse") return;
     if (hsDragRef.current) return;
+    // A previous gesture's suppression may never have been consumed by a click
+    // (e.g. pointercancel releases with no click); always start fresh so the
+    // first real click of this gesture is honored.
+    hsSuppressClickRef.current = false;
     const el = e.currentTarget;
     const drag = {
       pointerId: e.pointerId,
@@ -334,12 +338,11 @@ export const RowWaveform = memo(function RowWaveform({
       window.removeEventListener("pointercancel", onEnd);
       hsDragRef.current = null;
       if (!drag.panned) return;
+      // A drag is pure navigation: it must never change the active clip (only
+      // clicking a clip to play it does). Just swallow the synthetic click the
+      // browser fires after pointerup so it can't activate the clip under the
+      // finger.
       hsSuppressClickRef.current = true;
-      const clips = displayClips;
-      if (clips.length === 0) return;
-      const now = hsAnchorRef.current;
-      const { index } = endPan(now, displayClips);
-      onActiveClipChange(index);
     };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onEnd);

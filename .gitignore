@@ -28,4 +28,4 @@ dist-ssr
 *.sln
 *.sw?
 package-lock.json
-.iplayer
+iplayer
