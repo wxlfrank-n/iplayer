@@ -159,6 +159,7 @@ export default function App() {
               key={currentTrack?.url ?? "none"}
               onSeek={seek}
               onPlayRange={playRange}
+              onStopPlayback={togglePlay}
               getAnalyser={getAnalyser}
               getCurrentTime={getCurrentTime}
             />

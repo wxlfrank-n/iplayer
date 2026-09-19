@@ -29,6 +29,7 @@ interface StackedWaveformProps {
   playing: boolean;
   activeClip: number;
   repetitions: number;
+  onStopPlayback?: () => void;
   onSwipeClip?: (idx: number, direction: "up" | "down") => void;
   onSeek: (time: number) => void;
   onActiveClipChange: (idx: number) => void;
@@ -56,6 +57,7 @@ export const StackedWaveform = memo(function StackedWaveform({
   playing,
   activeClip,
   repetitions,
+  onStopPlayback,
   onSwipeClip,
   onSeek,
   onActiveClipChange,
@@ -214,6 +216,8 @@ export const StackedWaveform = memo(function StackedWaveform({
                 }}
                 onPlayRange={stackedPlayClip}
                 repetitions={repetitions}
+                playing={playing}
+                onStopPlayback={onStopPlayback}
                 activeClip={activeClip}
                 onActivate={(idx) => {
                   onActiveClipChange(idx);

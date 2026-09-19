@@ -14,6 +14,8 @@ interface ClipProps {
   window: WaveWindow;
   onPlayRange: (start: number, end: number, repetitions: number) => void;
   repetitions: number;
+  playing: boolean;
+  onStopPlayback?: () => void;
   activeClip: number;
   onActivate: (idx: number) => void;
   onSwipe?: (idx: number, direction: "up" | "down") => void;
@@ -27,6 +29,8 @@ export const Clip = memo(function Clip({
   window,
   onPlayRange,
   repetitions,
+  playing,
+  onStopPlayback,
   activeClip,
   onActivate,
   onSwipe,
@@ -38,6 +42,10 @@ export const Clip = memo(function Clip({
   const suppressClickRef = useRef(false);
 
   const activateClip = (idx: number, start: number, end: number) => {
+    if (playing) {
+      onStopPlayback?.();
+      return;
+    }
     onActivate(idx);
     onPlayRange(start, end, repetitions);
   };

@@ -48,6 +48,7 @@ export interface RowWaveformProps {
   ) => void;
   onClipPlayActiveChange?: (active: boolean) => void;
   repetitions: number;
+  onStopPlayback?: () => void;
   activeClip: number;
   onActiveClipChange: (idx: number) => void;
   onSwipeClip?: (idx: number, direction: "up" | "down") => void;
@@ -67,6 +68,7 @@ export const RowWaveform = memo(function RowWaveform({
   onPlayRange,
   onClipPlayActiveChange,
   repetitions,
+  onStopPlayback,
   activeClip,
   onActiveClipChange,
   onSwipeClip,
@@ -463,6 +465,8 @@ export const RowWaveform = memo(function RowWaveform({
                 }}
                 onPlayRange={playClip}
                 repetitions={repetitions}
+                playing={playing}
+                onStopPlayback={onStopPlayback}
                 activeClip={activeClip}
                 onActivate={(idx) => {
                   onActiveClipChange(idx);

@@ -35,6 +35,7 @@ interface ProgressBarProps {
     repetitions: number,
     onComplete?: () => void,
   ) => void;
+  onStopPlayback: () => void;
   onClipPlayActiveChange?: (active: boolean) => void;
   onWaveformScrollChange?: (scrolling: boolean) => void;
   getAnalyser?: () => AnalyserNode | null;
@@ -45,6 +46,7 @@ interface ProgressBarProps {
 export function ProgressBar({
   onSeek,
   onPlayRange,
+  onStopPlayback,
   getAnalyser,
   getCurrentTime,
 }: ProgressBarProps) {
@@ -120,6 +122,7 @@ export function ProgressBar({
               currentTime={currentTime}
               onSeek={onSeek}
               onPlayRange={onPlayRange}
+              onStopPlayback={onStopPlayback}
               repetitions={repetitions}
               activeClip={activeClip}
               onActiveClipChange={handleActiveClipChange}
@@ -142,6 +145,7 @@ export function ProgressBar({
               onSwipeClip={playing ? undefined : handleClipSwipe}
               onSeek={onSeek}
               onPlayRange={onPlayRange}
+              onStopPlayback={onStopPlayback}
               getCurrentTime={getCurrentTime}
               onActiveClipChange={handleActiveClipChange}
             />
