@@ -18,6 +18,7 @@ import { WaveformCursor } from "./WaveformCursor";
 import { WaveformBars } from "./Waveform";
 import { type WaveformData } from "../hooks/useWaveform";
 import type { Clip as ClipData } from "../utils/clips";
+import { endPan, panTarget } from "../utils/pan";
 
 const getWindowSecs = (w: number) => {
   if (w >= 1600) return 32;
@@ -316,10 +317,12 @@ export const RowWaveform = memo(function RowWaveform({
       const dx = ev.clientX - drag.startX;
       if (!drag.panned && Math.abs(dx) < HS_PAN_DECIDE_PX) return;
       drag.panned = true;
-      const secPerPx = (hsWinLenRef.current || 1) / (el.clientWidth || 1);
-      const target = Math.max(
-        0,
-        Math.min(drag.startAnchor - dx * secPerPx, hsMaxStartRef.current),
+      const target = panTarget(
+        drag.startAnchor,
+        dx,
+        hsWinLenRef.current,
+        el.clientWidth,
+        hsMaxStartRef.current,
       );
       commitAnchorNow(target);
       bumpScrolling();
@@ -335,19 +338,8 @@ export const RowWaveform = memo(function RowWaveform({
       const clips = displayClips;
       if (clips.length === 0) return;
       const now = hsAnchorRef.current;
-      let best = 0;
-      let bestDist = Infinity;
-      for (let i = 0; i < clips.length; i++) {
-        const d = Math.abs(clips[i].vStart - now);
-        if (d < bestDist) {
-          bestDist = d;
-          best = i;
-        }
-      }
-      commitAnchorNow(
-        Math.max(0, Math.min(clips[best].vStart, hsMaxStartRef.current)),
-      );
-      onActiveClipChange(best);
+      const { index } = endPan(now, displayClips);
+      onActiveClipChange(index);
     };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onEnd);
