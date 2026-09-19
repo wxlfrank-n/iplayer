@@ -103,7 +103,10 @@ export function ProgressBar({
 
   return (
     <>
-      <div className="progress-container">
+      <div
+        className="progress-container"
+        onWheel={(e) => e.stopPropagation()}
+      >
         <div
           className={`progress-row ${waveformView === "horizontal" ? "progress-row--horizontal" : ""}`}
         >

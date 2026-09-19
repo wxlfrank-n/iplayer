@@ -26,3 +26,24 @@ describe("panTarget", () => {
     expect(panTarget(0, -10, 12, 0, 1000)).toBe(120);
   });
 });
+
+describe("row scrolling regression cases", () => {
+  const scrollLeft = (startAnchor: number) =>
+    panTarget(startAnchor, -100, 12, 600, 88);
+
+  it("scrolls directly after the app starts", () => {
+    expect(scrollLeft(0)).toBe(2);
+  });
+
+  it("scrolls after swiping down to merge a clip", () => {
+    expect(scrollLeft(10)).toBe(12);
+  });
+
+  it("scrolls while the audio track is playing", () => {
+    expect(scrollLeft(20)).toBe(22);
+  });
+
+  it("scrolls while a clip is playing", () => {
+    expect(scrollLeft(30)).toBe(32);
+  });
+});

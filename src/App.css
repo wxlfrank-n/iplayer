@@ -349,6 +349,7 @@ body {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  touch-action: pan-y;
   scrollbar-width: none;
   position: relative;
   background: linear-gradient(180deg, #1a2130 0%, #141a26 55%, #1a2130 100%);
@@ -382,6 +383,10 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.progress-row:not(.progress-row--horizontal) {
+  flex: 0 0 auto;
 }
 
 /* Single-row ("horizontal") view: the waveform strip stretches to fill the
@@ -529,9 +534,10 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  flex: 1;
+  flex: 0 0 auto;
   width: 100%;
   align-self: stretch;
+  touch-action: pan-y;
   padding: 0 clamp(24px, 6vw, 48px);
 }
 
@@ -539,6 +545,8 @@ body {
   display: flex;
   align-items: center;
   position: relative;
+  flex: 0 0 auto;
+  touch-action: pan-y;
 }
 
 .stacked-clip-label {

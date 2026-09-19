@@ -227,13 +227,21 @@ export const RowWaveform = memo(function RowWaveform({
   // transform would snap forward on every commit and the waveform would shake.
   const clipPlaySkipRef = useRef(false);
 
+  useEffect(() => {
+    if (playing || !clipPlayActive) return;
+    setClipPlayActiveLocal(false);
+    clipPlayFollowEndRef.current = 0;
+    clipPlaySkipRef.current = false;
+  }, [clipPlayActive, playing]);
+
   // Live-value refs for gesture handlers (kept in sync so handlers never go stale).
   useEffect(() => {
     if (prevClipPlayActiveRef.current && !clipPlayActive) {
       clipPlaySkipRef.current = true;
+      setScrolling(false);
     }
     prevClipPlayActiveRef.current = clipPlayActive;
-  }, [clipPlayActive]);
+  }, [clipPlayActive, setScrolling]);
   useEffect(() => {
     if (scrolling) return;
     if (!playing) return;
@@ -290,11 +298,12 @@ export const RowWaveform = memo(function RowWaveform({
   const bumpScrolling = useCallback(() => {
     setScrolling(true);
     window.clearTimeout(scrollTimeoutRef.current);
+    if (clipPlayActive) return;
     scrollTimeoutRef.current = window.setTimeout(
       () => setScrolling(false),
       1500,
     );
-  }, [setScrolling, scrollTimeoutRef]);
+  }, [clipPlayActive, setScrolling, scrollTimeoutRef]);
 
   // Drag pan (mouse + touch).
   const hsDragRef = useRef<{
@@ -306,7 +315,10 @@ export const RowWaveform = memo(function RowWaveform({
   const hsSuppressClickRef = useRef(false);
   const onHsPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0 && e.pointerType === "mouse") return;
-    if (hsDragRef.current) return;
+    if (hsDragRef.current?.pointerId === e.pointerId) return;
+    // Recover if a clip gesture was cancelled before the window cleanup event
+    // reached this component; a stale drag must not block later row scrolling.
+    hsDragRef.current = null;
     // A previous gesture's suppression may never have been consumed by a click
     // (e.g. pointercancel releases with no click); always start fresh so the
     // first real click of this gesture is honored.

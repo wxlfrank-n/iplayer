@@ -120,24 +120,6 @@ export default function App() {
     ),
   );
 
-  // Stop the page from scrolling/zooming on wheel anywhere in the app, except
-  // inside the playlist's own scrollable track list.
-  useEffect(() => {
-    const onWheel = (e: WheelEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (
-        target?.closest(".track-list") ||
-        target?.closest(".stacked-waveform") ||
-        target?.closest(".row-waveform") ||
-        target?.closest(".settings-panel")
-      )
-        return;
-      e.preventDefault();
-    };
-    window.addEventListener("wheel", onWheel, { passive: false });
-    return () => window.removeEventListener("wheel", onWheel);
-  }, []);
-
   return (
     <div
       className={`app ${isOver ? "drag-over" : ""}`}
