@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mergeClipsByGap, type Clip } from "./clips";
+import { mergeClipsByGap, addNewClip, type Clip } from "./clips";
 
 const mk = (start: number, end: number): Clip => ({
   start,
@@ -9,6 +9,90 @@ const mk = (start: number, end: number): Clip => ({
 });
 
 const bounds = (clips: Clip[]) => clips.map((c) => [c.start, c.end]);
+
+describe("addNewClip", () => {
+  it("pushes the clip when the list is empty", () => {
+    const cur = mk(0, 1);
+    const clips: Clip[] = [];
+    addNewClip(clips, cur);
+    expect(clips).toEqual([cur]);
+  });
+
+  it("pushes the clip when the previous clip is not short", () => {
+    const prev = mk(0, 1);
+    const cur = mk(1.2, 2);
+    addNewClip([prev], cur);
+    expect(bounds([prev, cur])).toEqual([
+      [0, 1],
+      [1.2, 2],
+    ]);
+  });
+
+  it("pushes the clip when the previous clip length exactly equals the threshold", () => {
+    const prev = mk(0, 0.3);
+    const cur = mk(1, 2);
+    addNewClip([prev], cur);
+    expect(bounds([prev, cur])).toEqual([
+      [0, 0.3],
+      [1, 2],
+    ]);
+  });
+
+  it("extends a single short previous clip to the current clip's end", () => {
+    const prev = mk(0, 0.2);
+    const cur = mk(0.5, 1);
+    addNewClip([prev], cur);
+    expect(bounds([prev])).toEqual([[0, 1]]);
+    expect(prev.vStart).toBe(0);
+    expect(prev.vEnd).toBe(1);
+  });
+
+  it("extends the short clip when the gap before it is larger than the gap after it", () => {
+    const prevPrev = mk(0, 1);
+    const prev = mk(2, 2.2);
+    const cur = mk(2.5, 3);
+    addNewClip([prevPrev, prev], cur);
+    expect(bounds([prevPrev, prev])).toEqual([
+      [0, 1],
+      [2, 3],
+    ]);
+    expect(prev.vStart).toBe(2);
+    expect(prev.vEnd).toBe(3);
+  });
+
+  it("folds the short clip into the previous-previous when the gap before is <= the gap after", () => {
+    const prevPrev = mk(0, 2);
+    const prev = mk(2.1, 2.3);
+    const cur = mk(2.4, 3);
+    addNewClip([prevPrev, prev], cur);
+    expect(bounds([prevPrev, prev])).toEqual([
+      [0, 2.3],
+      [2.4, 3],
+    ]);
+    expect(prevPrev.vStart).toBe(0);
+    expect(prevPrev.vEnd).toBe(2.3);
+    expect(prev.vStart).toBe(2.4);
+    expect(prev.vEnd).toBe(3);
+  });
+
+  it("does not merge when a custom threshold makes the previous clip long enough", () => {
+    const prev = mk(0, 0.4);
+    const cur = mk(1, 2);
+    const clips = [prev];
+    addNewClip(clips, cur, 0.3);
+    expect(bounds(clips)).toEqual([
+      [0, 0.4],
+      [1, 2],
+    ]);
+  });
+
+  it("merges when a custom threshold makes the previous clip short", () => {
+    const prev = mk(0, 0.4);
+    const cur = mk(1, 2);
+    addNewClip([prev], cur, 0.5);
+    expect(bounds([prev])).toEqual([[0, 2]]);
+  });
+});
 
 describe("mergeClipsByGap", () => {
   it("returns [] for an empty input", () => {

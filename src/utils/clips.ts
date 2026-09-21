@@ -118,44 +118,49 @@ export function splitBySilence(
         clips[clips.length - 1].vEnd = b * blockSec;
         mergeClip = false;
       } else {
-        if (clips.length > 0) {
-          const prev = clips[clips.length - 1];
-          const prevLength = prev.end - prev.start;
-          if (prevLength < 0.3) {
-            if (clips.length > 1) {
-              const prevPrev = clips[clips.length - 2];
-              const silentGap1 = prev.start - prevPrev.end;
-              const silentGap2 = b * blockSec - prev.end;
-              if (silentGap1 < silentGap2) {
-                prevPrev.end = prev.end;
-                prevPrev.vEnd = prev.vEnd;
-                prev.start = clipStartBlock * blockSec;
-                prev.vStart = clipStartBlock * blockSec;
-                prev.end = b * blockSec;
-                prev.vEnd = b * blockSec;
-              } else {
-                prev.end = b * blockSec;
-                prev.vEnd = b * blockSec;
-    }
-            } else {
-              prev.end = b * blockSec;
-              prev.vEnd = b * blockSec;
-            }
-          } else {
-            clips.push({ start: clipStartBlock * blockSec, end: b * blockSec, vStart: clipStartBlock * blockSec, vEnd: b * blockSec });
-          }
-        } else {
-          clips.push({ start: clipStartBlock * blockSec, end: b * blockSec, vStart: clipStartBlock * blockSec, vEnd: b * blockSec });
-        }
+        addNewClip(clips, { start: clipStartBlock * blockSec, end: b * blockSec, vStart: clipStartBlock * blockSec, vEnd: b * blockSec });
       }
       clipStartBlock = -1;
     }
   }
 
+  expandClips(clips, audioDuration)
+
+  return clips;
+}
+
+export function addNewClip(clips: Clip[], curClip: Clip, clipThreshold: number = 0.3) {
+  if (clips.length > 0) {
+    const prevClip = clips[clips.length - 1];
+    const prevClipLength = prevClip.end - prevClip.start;
+    // Merge adjacent clips if the previous clip is short enough.
+    if (prevClipLength < clipThreshold) {
+      if (clips.length > 1) {
+        const prevPrevClip = clips[clips.length - 2];
+        // If the silence between the previous two clips is shorter than 
+        // the silence between the previous clip and the current clip, 
+        // merge the previous two clips into one.
+        if (prevClip.start - prevPrevClip.end <= curClip.start - prevClip.end) {
+          prevPrevClip.end = prevClip.end;
+          prevPrevClip.vEnd = prevClip.vEnd;
+          prevClip.start = curClip.start;
+          prevClip.vStart = curClip.start;
+        }
+      }
+      prevClip.end = curClip.end;
+      prevClip.vEnd = curClip.end;
+    } else {
+      clips.push(curClip);
+    }
+  } else {
+    clips.push(curClip);
+  }
+}
+
+function expandClips(clips: Clip[], audioDuration: number, expandRatio: number = 0.25) {
   // Expand each clip's start and end by a fraction of the surrounding silence, 
-  // up to 35% of the gap on each side, but not beyond 10% of the clip length. 
+  // up to 25% of the gap on each side, but not beyond 10% of the clip length. 
   // This makes clips more natural and less abrupt.
-  const expandRatio = 0.25;
   for (let i = 0; i < clips.length; i++) {
     const clip = clips[i];
     const prevEnd = i > 0 ? clips[i - 1].end : 0;
@@ -163,7 +168,6 @@ export function splitBySilence(
       i < clips.length - 1 ? clips[i + 1].start : audioDuration;
     expandClip(clip, expandRatio * (clip.start - prevEnd), expandRatio * (nextStart - clip.end), 0, audioDuration);
   }
-  return clips;
 }
 
 function expandClip(clip: Clip, startExpand: number, endExpand: number, minStart: number, maxEnd: number): void {
