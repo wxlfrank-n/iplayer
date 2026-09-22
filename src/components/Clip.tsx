@@ -42,7 +42,7 @@ export const Clip = memo(function Clip({
   const suppressClickRef = useRef(false);
 
   const activateClip = (idx: number, start: number, end: number) => {
-    if (playing) {
+    if (playing && idx === activeClip) {
       onStopPlayback?.();
       return;
     }

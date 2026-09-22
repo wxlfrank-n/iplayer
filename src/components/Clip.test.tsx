@@ -113,11 +113,12 @@ describe("Clip UI gestures", () => {
     expect(onPlayRange).not.toHaveBeenCalled();
   });
 
-  it("stops playback when a playing clip is clicked", () => {
+  it("stops playback when the playing clip is clicked again", () => {
     const onStopPlayback = vi.fn();
     const onPlayRange = vi.fn();
     const { rect } = renderClip({
       playing: true,
+      activeClip: 0,
       onStopPlayback,
       onPlayRange,
     });
@@ -126,5 +127,26 @@ describe("Clip UI gestures", () => {
 
     expect(onStopPlayback).toHaveBeenCalledTimes(1);
     expect(onPlayRange).not.toHaveBeenCalled();
+  });
+
+  it("plays a different clip instead of stopping while one is playing", () => {
+    const onStopPlayback = vi.fn();
+    const onPlayRange = vi.fn();
+    const onActivate = vi.fn();
+    const clipB: ClipData = { start: 4, end: 6, vStart: 4, vEnd: 6 };
+    const { container } = renderClip({
+      clips: [clip, clipB],
+      playing: true,
+      activeClip: 0,
+      onStopPlayback,
+      onPlayRange,
+      onActivate,
+    });
+
+    fireEvent.click(container.querySelectorAll("rect")[1]);
+
+    expect(onStopPlayback).not.toHaveBeenCalled();
+    expect(onActivate).toHaveBeenCalledWith(1);
+    expect(onPlayRange).toHaveBeenCalledWith(4, 6, 3);
   });
 });
