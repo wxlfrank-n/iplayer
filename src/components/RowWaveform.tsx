@@ -144,6 +144,30 @@ export const RowWaveform = memo(function RowWaveform({
   useEffect(() => {
     scrollingRef.current = scrolling;
   }, [scrolling]);
+  // Just like manual panning, playhead follow (auto-glide + anchor commits)
+  // only engages while the pointer actually hovers the waveform track. The
+  // track translates under the playhead, so hover is re-derived from the live
+  // pointer position on every mousemove rather than from enter/leave events on
+  // the moving element.
+  const [trackHovered, setTrackHovered] = useState(false);
+  const trackHoveredRef = useRef(false);
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      const rect = trackRef.current?.getBoundingClientRect();
+      const over =
+        !!rect &&
+        e.clientX >= rect.left &&
+        e.clientX <= rect.right &&
+        e.clientY >= rect.top &&
+        e.clientY <= rect.bottom;
+      if (over !== trackHoveredRef.current) {
+        trackHoveredRef.current = over;
+        setTrackHovered(over);
+      }
+    };
+    window.addEventListener("mousemove", onMove);
+    return () => window.removeEventListener("mousemove", onMove);
+  }, []);
   const clipPlayActiveRef = useRef(clipPlayActive);
   useEffect(() => {
     clipPlayActiveRef.current = clipPlayActive;
@@ -164,7 +188,7 @@ export const RowWaveform = memo(function RowWaveform({
     const win = hsWinLenRef.current || 1;
     const t = getCurrentTime ? getCurrentTime() : 0;
     let s = hsAnchorRef.current;
-    if (playingRef.current && !scrollingRef.current) {
+    if (trackHoveredRef.current && playingRef.current && !scrollingRef.current) {
       if (clipPlayActiveRef.current) {
         const followEnd = clipPlayFollowEndRef.current;
         if (
@@ -243,6 +267,7 @@ export const RowWaveform = memo(function RowWaveform({
     prevClipPlayActiveRef.current = clipPlayActive;
   }, [clipPlayActive, setScrolling]);
   useEffect(() => {
+    if (!trackHovered) return;
     if (scrolling) return;
     if (!playing) return;
     if (clipPlaySkipRef.current) {
@@ -271,7 +296,7 @@ export const RowWaveform = memo(function RowWaveform({
       if (Math.abs(target - hsAnchorRef.current) > 0.05) commitAnchor(target);
     });
     return () => cancelAnimationFrame(id);
-  }, [currentTime, scrolling, playing, clipPlayActive, commitAnchor, getCurrentTime]);
+  }, [currentTime, scrolling, playing, clipPlayActive, commitAnchor, getCurrentTime, trackHovered]);
 
   const playClip = useCallback(
     (start: number, end: number, reps: number) => {
@@ -315,6 +340,11 @@ export const RowWaveform = memo(function RowWaveform({
   const hsSuppressClickRef = useRef(false);
   const onHsPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0 && e.pointerType === "mouse") return;
+    const downTarget = e.target as Element;
+    if (!trackRef.current?.contains(downTarget)) return;
+    // Pressing a clip (or its label) must not drag-pan the waveform, or the
+    // clip would appear glued to the pointer instead of being clickable.
+    if (downTarget.closest(".waveform-clip, .clip-label, .stacked-clip-label")) return;
     if (hsDragRef.current?.pointerId === e.pointerId) return;
     // Recover if a clip gesture was cancelled before the window cleanup event
     // reached this component; a stale drag must not block later row scrolling.
@@ -371,6 +401,8 @@ export const RowWaveform = memo(function RowWaveform({
     const el = hsRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
+      const wheelTarget = e.target as Node;
+      if (!trackRef.current?.contains(wheelTarget)) return;
       e.preventDefault();
       const elNow = hsRef.current;
       if (!elNow) return;
@@ -446,7 +478,10 @@ export const RowWaveform = memo(function RowWaveform({
           getCurrentTime={getCurrentTime}
           waveform={waveform}
         />
-        <div className="row-waveform__track" ref={trackRef}>
+        <div
+          className="row-waveform__track"
+          ref={trackRef}
+        >
           <svg
             className="row-waveform__svg"
             viewBox={`0 0 ${VB_W} ${VB_H}`}
