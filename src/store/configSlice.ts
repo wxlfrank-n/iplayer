@@ -12,6 +12,8 @@
  * - minClipLength: Shortest clip to keep after silence splitting (default: 0.3).
  *   Clips shorter than this are folded into a neighbor when the gap is small.
  * - repetitions: How many times a clicked clip is repeated (default: 3).
+ * - showAdvancedControls: Whether the clip toolbar (merge gap + repeat
+ *   controls) is shown above the waveform (default: true).
  * - theme: Appearance palette (dark/light/midnight/paper/rose/nova). Each theme
  *   carries its own accent color, so there is no separate accent setting.
  *
@@ -34,6 +36,7 @@ interface ConfigState {
   minSilenceLength: number;
   minClipLength: number;
   repetitions: number;
+  showAdvancedControls: boolean;
   theme: ThemeId;
 }
 
@@ -45,6 +48,7 @@ export const DEFAULT_CONFIG: ConfigState = {
   minSilenceLength: 0.05,
   minClipLength: 0.3,
   repetitions: 3,
+  showAdvancedControls: false,
   theme: DEFAULT_THEME,
 };
 
@@ -73,6 +77,10 @@ function loadConfig(): ConfigState {
               Math.max(CONFIG_RANGES.repetitions.min, Math.round(parsed.repetitions)),
             )
           : DEFAULT_CONFIG.repetitions,
+        showAdvancedControls:
+          typeof parsed.showAdvancedControls === "boolean"
+            ? parsed.showAdvancedControls
+            : DEFAULT_CONFIG.showAdvancedControls,
       };
     }
   } catch {}

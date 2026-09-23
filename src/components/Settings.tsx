@@ -155,7 +155,12 @@ function AppearanceTab() {
 
 function PlaybackTab() {
   const { config, updateConfig } = useConfig();
-  const { waveformView, skipSeconds, repetitions } = config;
+  const {
+    waveformView,
+    skipSeconds,
+    repetitions,
+    showAdvancedControls,
+  } = config;
   return (
     <>
       <div className="settings-field">
@@ -197,6 +202,23 @@ function PlaybackTab() {
         step={1}
         onChange={(v) => updateConfig({ repetitions: v })}
       />
+      <div className="settings-field">
+        <label className="settings-checkbox">
+          <input
+            type="checkbox"
+            checked={showAdvancedControls}
+            onChange={(e) =>
+              updateConfig({ showAdvancedControls: e.target.checked })
+            }
+          />
+          <span>
+            Show advanced controls
+            <small>
+              Merge-gap slider and repeat stepper above the waveform.
+            </small>
+          </span>
+        </label>
+      </div>
     </>
   );
 }

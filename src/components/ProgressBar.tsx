@@ -20,6 +20,7 @@ import {
   selectIsPlaying,
   selectminSilenceLength,
   selectRepetitions,
+  selectShowAdvancedControls,
 } from "../store/selectors";
 import { setActiveClip } from "../store/analysisSlice";
 import { updateConfig } from "../store/configSlice";
@@ -58,6 +59,7 @@ export function ProgressBar({
   const playing = useAppSelector(selectIsPlaying);
   const minSilenceLength = useAppSelector(selectminSilenceLength);
   const repetitions = useAppSelector(selectRepetitions);
+  const showAdvancedControls = useAppSelector(selectShowAdvancedControls);
 
   const { waveform, waveformStatus, clips, currentTime, activeClip } = audio;
   const hasWaveform = waveform !== null && waveform.data.length > 0;
@@ -167,7 +169,7 @@ export function ProgressBar({
           </div>
         )}
       </div>
-      {clips.length > 0 && (
+      {clips.length > 0 && showAdvancedControls && (
         <div
           className={`clip-toolbar ${playing ? "clip-toolbar--disabled" : ""}`}
         >

@@ -310,6 +310,33 @@ body {
   accent-color: var(--accent);
 }
 
+.settings-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+}
+
+.settings-checkbox input {
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+  margin: 1px 0 0;
+  cursor: pointer;
+  flex: none;
+}
+
+.settings-checkbox small {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  margin-top: 2px;
+  font-weight: 400;
+}
+
 .settings-range-captions {
   display: flex;
   justify-content: space-between;
