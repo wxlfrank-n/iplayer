@@ -12,13 +12,7 @@ import { useCallback, type ReactNode } from "react";
 import { useConfig } from "../hooks/useConfig";
 import { CONFIG_RANGES, DEFAULT_CONFIG } from "../store/configSlice";
 import { useFocusTrap } from "../hooks/useFocusTrap";
-import {
-  ACCENTS,
-  ACCENT_IDS,
-  THEMES,
-  THEME_IDS,
-  type ThemeId,
-} from "../themes";
+import { THEMES, THEME_IDS, type ThemeId } from "../themes";
 import CloseIcon from "../assets/icons/close.svg?react";
 
 interface SettingsProps {
@@ -134,7 +128,7 @@ function ThemeCardPreview({ theme }: { theme: ThemeId }) {
       </span>
       <span
         className="theme-card__dot"
-        style={{ background: ACCENTS.blue.accent }}
+        style={{ background: t.accent }}
       />
     </span>
   );
@@ -190,25 +184,6 @@ export function Settings({ onClose }: SettingsProps) {
                     <ThemeCardPreview theme={id} />
                     <span className="theme-card__label">{THEMES[id].label}</span>
                   </button>
-                ))}
-              </div>
-            </div>
-            <div className="settings-field">
-              <div className="settings-field-head">
-                <label id="accent-label" className="settings-label">
-                  Accent color
-                </label>
-              </div>
-              <div className="accent-row" role="group" aria-labelledby="accent-label">
-                {ACCENT_IDS.map((id) => (
-                  <button
-                    key={id}
-                    className={`accent-dot ${config.accent === id ? "accent-dot--active" : ""}`}
-                    style={{ background: ACCENTS[id].accent }}
-                    onClick={() => updateConfig({ accent: id })}
-                    aria-label={ACCENTS[id].label}
-                    aria-pressed={config.accent === id}
-                  />
                 ))}
               </div>
             </div>

@@ -7,9 +7,9 @@
   --text-primary: #e7eaee;
   --text-secondary: #9aa3ad;
   --accent: #58a6ff;
-  --accent-dim: #1f6feb;
-  --accent-rgb: 56, 139, 253;
-  --accent-dim-rgb: 31, 111, 235;
+  --accent-dim: #388bfd;
+  --accent-rgb: 88, 166, 255;
+  --accent-dim-rgb: 56, 139, 253;
   --danger: #ef5350;
   --text-tertiary: #6a7480;
   --waveform-bg-top: #23272e;
@@ -363,37 +363,6 @@ body {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-}
-
-.accent-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding-top: 2px;
-}
-
-.accent-dot {
-  width: 26px;
-  height: 26px;
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-  transition:
-    transform 0.1s,
-    box-shadow 0.15s;
-}
-
-.accent-dot:hover {
-  transform: scale(1.18);
-}
-
-.accent-dot:active {
-  transform: scale(0.95);
-}
-
-.accent-dot--active {
-  box-shadow: 0 0 0 2px var(--bg-secondary), 0 0 0 4px var(--text-primary);
 }
 
 .settings-value {

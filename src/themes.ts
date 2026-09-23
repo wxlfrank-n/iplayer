@@ -1,9 +1,11 @@
 /**
- * Theme and accent definitions.
+ * Theme definitions.
  *
- * A "theme" is the full surface/text/border palette (light vs dark looks).
- * An "accent" is an independent color choice layered on top of any theme.
- * Together they drive the CSS custom properties consumed by App.css.
+ * A "theme" is the full surface/text/border palette (light vs dark looks) plus
+ * the accent color tuned for that palette. Together they drive the CSS custom
+ * properties consumed by App.css. Each theme ships its own accent: on dark
+ * surfaces the accent is lifted brighter for glow/contrast, on light surfaces
+ * it is deepened so interactive elements stay readable.
  */
 
 export type ThemeId =
@@ -13,7 +15,6 @@ export type ThemeId =
   | "paper"
   | "rose"
   | "nova";
-export type AccentId = "blue" | "violet" | "pink" | "orange" | "green" | "cyan";
 
 export interface Theme {
   label: string;
@@ -42,6 +43,14 @@ export interface Theme {
   clipLabelText: string;
   /** Clip label badge border. */
   clipLabelBorder: string;
+  /** Accent color tuned for this theme. */
+  accent: string;
+  /** Slightly deeper/muted accent for borders and pressed states. */
+  accentDim: string;
+  /** Accent as "r, g, b" for rgba() tints. */
+  accentRgb: string;
+  /** accentDim as "r, g, b" for rgba() tints. */
+  accentDimRgb: string;
 }
 
 export const THEMES: Record<ThemeId, Theme> = {
@@ -65,6 +74,10 @@ export const THEMES: Record<ThemeId, Theme> = {
     clipLabelBg: "rgba(22, 25, 30, 0.72)",
     clipLabelText: "#e7eaee",
     clipLabelBorder: "rgba(255, 255, 255, 0.16)",
+    accent: "#58a6ff",
+    accentDim: "#388bfd",
+    accentRgb: "88, 166, 255",
+    accentDimRgb: "56, 139, 253",
   },
   light: {
     label: "Mist",
@@ -86,6 +99,10 @@ export const THEMES: Record<ThemeId, Theme> = {
     clipLabelBg: "rgba(255, 255, 255, 0.72)",
     clipLabelText: "#171c21",
     clipLabelBorder: "rgba(0, 0, 0, 0.10)",
+    accent: "#2f80ed",
+    accentDim: "#1c64d6",
+    accentRgb: "47, 128, 237",
+    accentDimRgb: "28, 100, 214",
   },
   midnight: {
     label: "Midnight",
@@ -107,6 +124,10 @@ export const THEMES: Record<ThemeId, Theme> = {
     clipLabelBg: "rgba(13, 39, 93, 0.72)",
     clipLabelText: "#d7e6ff",
     clipLabelBorder: "rgba(255, 255, 255, 0.18)",
+    accent: "#4ad1dc",
+    accentDim: "#1ea1ad",
+    accentRgb: "74, 209, 220",
+    accentDimRgb: "30, 161, 173",
   },
   paper: {
     label: "Sky",
@@ -128,6 +149,10 @@ export const THEMES: Record<ThemeId, Theme> = {
     clipLabelBg: "rgba(235, 244, 255, 0.72)",
     clipLabelText: "#0b2a66",
     clipLabelBorder: "rgba(0, 0, 0, 0.08)",
+    accent: "#2b74d8",
+    accentDim: "#1a5cb8",
+    accentRgb: "43, 116, 216",
+    accentDimRgb: "26, 92, 184",
   },
   nova: {
     label: "Nova",
@@ -149,6 +174,10 @@ export const THEMES: Record<ThemeId, Theme> = {
     clipLabelBg: "rgba(43, 24, 74, 0.72)",
     clipLabelText: "#f0e8ff",
     clipLabelBorder: "rgba(255, 255, 255, 0.18)",
+    accent: "#b18cff",
+    accentDim: "#9366f2",
+    accentRgb: "177, 140, 255",
+    accentDimRgb: "147, 102, 242",
   },
   rose: {
     label: "Lilac",
@@ -170,78 +199,24 @@ export const THEMES: Record<ThemeId, Theme> = {
     clipLabelBg: "rgba(245, 240, 255, 0.72)",
     clipLabelText: "#3a2390",
     clipLabelBorder: "rgba(0, 0, 0, 0.08)",
-  },
-};
-
-export interface Accent {
-  label: string;
-  accent: string;
-  accentDim: string;
-  /** accent as "r, g, b" for rgba() tints. */
-  rgb: string;
-  /** accentDim as "r, g, b" for rgba() tints. */
-  dimRgb: string;
-}
-
-export const ACCENTS: Record<AccentId, Accent> = {
-  blue: {
-    label: "Blue",
-    accent: "#388bfd",
-    accentDim: "#1f6feb",
-    rgb: "56, 139, 253",
-    dimRgb: "31, 111, 235",
-  },
-  violet: {
-    label: "Violet",
-    accent: "#a371f7",
-    accentDim: "#8957e5",
-    rgb: "163, 113, 247",
-    dimRgb: "137, 87, 229",
-  },
-  pink: {
-    label: "Pink",
-    accent: "#f778ba",
-    accentDim: "#db61a2",
-    rgb: "247, 120, 186",
-    dimRgb: "219, 97, 162",
-  },
-  orange: {
-    label: "Orange",
-    accent: "#f0883e",
-    accentDim: "#d4621e",
-    rgb: "240, 136, 62",
-    dimRgb: "212, 98, 30",
-  },
-  green: {
-    label: "Green",
-    accent: "#4ac762",
-    accentDim: "#238636",
-    rgb: "74, 199, 98",
-    dimRgb: "35, 134, 54",
-  },
-  cyan: {
-    label: "Cyan",
-    accent: "#39c5cf",
-    accentDim: "#14919b",
-    rgb: "57, 197, 207",
-    dimRgb: "20, 145, 155",
+    accent: "#7a52d6",
+    accentDim: "#5f3cbf",
+    accentRgb: "122, 82, 214",
+    accentDimRgb: "95, 60, 191",
   },
 };
 
 export const THEME_IDS = Object.keys(THEMES) as ThemeId[];
-export const ACCENT_IDS = Object.keys(ACCENTS) as AccentId[];
 
 export const DEFAULT_THEME: ThemeId = "dark";
-export const DEFAULT_ACCENT: AccentId = "blue";
 
 /**
- * Applies the given theme + accent to the document root as inline CSS custom
+ * Applies the given theme to the document root as inline CSS custom
  * properties, overriding the static `:root` fallbacks in App.css.
  */
-export function applyThemeVars(theme: ThemeId, accent: AccentId): void {
+export function applyThemeVars(theme: ThemeId): void {
   const t = THEMES[theme];
-  const a = ACCENTS[accent];
-  if (!t || !a) return;
+  if (!t) return;
 
   const root = document.documentElement;
   root.style.colorScheme = t.colorScheme;
@@ -263,10 +238,10 @@ export function applyThemeVars(theme: ThemeId, accent: AccentId): void {
     ["--clip-label-bg", t.clipLabelBg],
     ["--clip-label-text", t.clipLabelText],
     ["--clip-label-border", t.clipLabelBorder],
-    ["--accent", a.accent],
-    ["--accent-dim", a.accentDim],
-    ["--accent-rgb", a.rgb],
-    ["--accent-dim-rgb", a.dimRgb],
+    ["--accent", t.accent],
+    ["--accent-dim", t.accentDim],
+    ["--accent-rgb", t.accentRgb],
+    ["--accent-dim-rgb", t.accentDimRgb],
   ];
   for (const [key, value] of vars) {
     root.style.setProperty(key, value);
