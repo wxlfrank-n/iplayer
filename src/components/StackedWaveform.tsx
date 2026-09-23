@@ -145,11 +145,22 @@ export const StackedWaveform = memo(function StackedWaveform({
     return () => ro.disconnect();
   }, []);
 
+  // Row separation scales gently with the container height so a taller
+  // progress area reads as more air between rows. Every page shares the same
+  // container, so the gap is identical across pages.
+  const rowGap = useMemo(
+    () =>
+      containerH
+        ? Math.min(24, Math.max(ROW_GAP, Math.floor(containerH / 45)))
+        : ROW_GAP,
+    [containerH],
+  );
+
   // Rows per page is derived from the fixed height: `floor(H / (ROW_H + gap))`.
   const rowsPerPage = useMemo(() => {
     if (!containerH) return 1;
-    return Math.max(1, Math.floor(containerH / (ROW_H + ROW_GAP)));
-  }, [containerH]);
+    return Math.max(1, Math.floor(containerH / (ROW_H + rowGap)));
+  }, [containerH, rowGap]);
 
   const pagedRows = useMemo<StackedRowEntry[][]>(() => {
     const out: StackedRowEntry[][] = [];
@@ -323,12 +334,18 @@ export const StackedWaveform = memo(function StackedWaveform({
           <div
             key={pi}
             className="stacked-waveform__page"
-            style={containerH ? { height: containerH } : undefined}
           >
             {page.map(({ row, gi }) => {
               const rowStart = row.start;
-              const rowLen = Math.max(0, row.end - row.start);
-              if (rowLen <= 0) return null;
+              // Every row renders on the same time scale: a full-width row is
+              // always STACK_ROW_TARGET_SECS (unless a single clip is longer).
+              // Content that ends early just leaves blank space on the right,
+              // so short rows don't stretch (which would change per-row cursor
+              // and clip animation speeds).
+              const rowLen = Math.max(
+                STACK_ROW_TARGET_SECS,
+                row.end - row.start,
+              );
               const getPlayedPct = () =>
                 Math.max(0, Math.min(1, (getCurrentTime() - rowStart) / rowLen));
               return (
@@ -361,9 +378,10 @@ export const StackedWaveform = memo(function StackedWaveform({
                       }}
                       fracPlayed={getPlayedPct()}
                       idPrefix={`stack-${gi}`}
+                      contentEndSec={row.end}
                     />
                     <Clip
-                      clips={displayClips}
+                      clips={row.clips.map(({ clip }) => clip)}
                       window={{
                         windowStartSec: rowStart,
                         windowLen: rowLen,
@@ -380,6 +398,7 @@ export const StackedWaveform = memo(function StackedWaveform({
                         onActiveClipChange(idx);
                       }}
                       onSwipe={onSwipeClip}
+                      getIdx={(_c, i) => row.clips[i].idx}
                     />
                   </svg>
                   {currentTime >= rowStart && currentTime < row.end && (
@@ -414,6 +433,17 @@ export const StackedWaveform = memo(function StackedWaveform({
                 </div>
               );
             })}
+            {/* The last page may hold fewer rows than a full page: pad it with
+                invisible placeholders that occupy the same row space so the
+                page keeps the same vertical rhythm (and height) as the others. */}
+            {Array.from({
+              length: Math.max(0, rowsPerPage - page.length),
+            }).map((_, vi) => (
+              <div
+                key={`virtual-${vi}`}
+                className="stacked-waveform__row stacked-waveform__row--virtual"
+              />
+            ))}
           </div>
         ))}
       </div>

@@ -19,6 +19,10 @@ interface ClipProps {
   activeClip: number;
   onActivate: (idx: number) => void;
   onSwipe?: (idx: number, direction: "up" | "down") => void;
+  /** Maps a clip's position in `clips` to the global clip index it reports
+   *  (default: the array position). Lets a row render only its own clips while
+   *  still reporting real indices for activation/swiping. */
+  getIdx?: (c: ClipData, indexInArray: number) => number;
 }
 
 const SWIPE_THRESHOLD_PX = 24;
@@ -34,6 +38,7 @@ export const Clip = memo(function Clip({
   activeClip,
   onActivate,
   onSwipe,
+  getIdx,
 }: ClipProps) {
   const { windowStartSec, windowLen, innerH, vbW, vbH } = window;
   const pointerStartRef = useRef<{ x: number; y: number; idx: number } | null>(
@@ -122,20 +127,21 @@ export const Clip = memo(function Clip({
       {clips.map((c, idx) => {
         if (!visible(c)) return null;
         const { x, w } = rect(c);
-        const isActive = idx === activeClip;
+        const id = getIdx ? getIdx(c, idx) : idx;
+        const isActive = id === activeClip;
         const y = vbH / 2 - innerH / 4;
         return (
           <rect
-            key={idx}
+            key={id}
             className={`waveform-clip ${isActive ? "waveform-clip--active" : ""}`}
             x={x}
             y={y}
             width={w}
             height={innerH / 2}
-            onClick={(e) => handleClick(e, idx, c.vStart, c.vEnd)}
-            onPointerDown={(e) => handlePointerDown(e, idx)}
+            onClick={(e) => handleClick(e, id, c.vStart, c.vEnd)}
+            onPointerDown={(e) => handlePointerDown(e, id)}
             onPointerUp={(e) =>
-              handlePointerUp(e, idx, c.vStart, c.vEnd)
+              handlePointerUp(e, id, c.vStart, c.vEnd)
             }
             onPointerCancel={handlePointerCancel}
           >

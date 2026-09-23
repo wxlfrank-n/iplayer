@@ -20,6 +20,10 @@ interface WaveformBarsProps {
   fracPlayed: number;
   idPrefix?: string;
   strokeWidth?: number;
+  /** Optional time (sec) at which drawn content ends; columns at/after it are
+   *  left blank. Used to stop the bars bleeding into the padded (empty)
+   *  portion of a row while keeping the same pixels-per-second scale. */
+  contentEndSec?: number;
 }
 
 const BASE_STYLE = { stroke: "var(--waveform-bar)" } as const;
@@ -34,6 +38,7 @@ export const WaveformBars = memo(function WaveformBars({
   fracPlayed,
   idPrefix = "playedClip",
   strokeWidth = 1,
+  contentEndSec,
 }: WaveformBarsProps) {
   const { windowStartSec, windowLen, innerH, vbW, vbH } = window;
   // One vertical bar per horizontal pixel "frame": each frame covers a slice of
@@ -57,6 +62,10 @@ export const WaveformBars = memo(function WaveformBars({
       data.length,
       Math.ceil((windowStartSec + windowLen) * sampleRate),
     );
+    const endSample =
+      contentEndSec !== undefined
+        ? Math.min(i1, Math.max(i0, Math.floor(contentEndSec * sampleRate)))
+        : i1;
     const frames = Math.max(1, Math.min(vbW, Math.ceil((i1 - lat0) / step)));
     const midY = vbH / 2;
     const scaleY = innerH / 2;
@@ -65,6 +74,7 @@ export const WaveformBars = memo(function WaveformBars({
     const botPts: number[] = [];
     for (let f = 0; f < frames; f++) {
       const s0 = lat0 + f * step;
+      if (s0 >= endSample) continue;
       const s1 = Math.min(i1, s0 + step);
       let min = s0 < i1 ? data[s0] : 0;
       let max = min;
@@ -92,7 +102,7 @@ export const WaveformBars = memo(function WaveformBars({
 
     let waveD = "";
     let silentD = "";
-    for (let f = 0; f < frames; f++) {
+    for (let f = 0; f < topSm.length; f++) {
       const top = topSm[f];
       const bot = botSm[f];
       if (bot - top >= MIN_BAR_PX) {
@@ -104,7 +114,16 @@ export const WaveformBars = memo(function WaveformBars({
       silentD += `M${f} ${(mid - half).toFixed(2)}L${f} ${(mid + half).toFixed(2)}`;
     }
     return { waveD, silentD };
-  }, [data, sampleRate, windowStartSec, windowLen, innerH, vbW, vbH]);
+  }, [
+    data,
+    sampleRate,
+    windowStartSec,
+    windowLen,
+    innerH,
+    vbW,
+    vbH,
+    contentEndSec,
+  ]);
 
   const clipWidth = Math.max(fracPlayed * vbW, 1);
 

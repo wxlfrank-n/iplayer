@@ -661,6 +661,7 @@ body {
 }
 
 .progress-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -814,7 +815,6 @@ body {
 }
 
 .stacked-waveform {
-  position: relative;
   display: block;
   height: 100%;
   width: 100%;
@@ -867,6 +867,7 @@ body {
   scroll-snap-align: start;
   scroll-snap-stop: always;
   overflow: hidden;
+  justify-content: space-evenly;
 }
 
 .stacked-waveform__row {
@@ -875,6 +876,12 @@ body {
   flex: none;
   height: var(--stack-row-h, 64px);
   touch-action: pan-y;
+}
+
+/* Invisible placeholders that only hold the same space as a real row, so a
+   short last page keeps the same height and row rhythm as full pages. */
+.stacked-waveform__row--virtual {
+  pointer-events: none;
 }
 
 .stacked-clip-label {
