@@ -1,14 +1,14 @@
 /**
  * Settings panel overlay.
  *
- * Settings are grouped into domain sections (Playback / Clip detection). Every
- * numeric option uses the same slider field: value readout on the right, slider
- * in the middle with min/max captions underneath, and quick presets as subtle
- * ghost chips below. Ranges live in `CONFIG_RANGES`; values are clamped to
- * stay valid.
+ * Settings are grouped into domain sections, switched with tabs (Appearance /
+ * Playback / Clip detection). Every numeric option uses the same slider field:
+ * value readout on the right, slider in the middle with min/max captions
+ * underneath, and quick presets as subtle ghost chips below. Ranges live in
+ * `CONFIG_RANGES`; values are clamped to stay valid.
  */
 
-import { useCallback, type ReactNode } from "react";
+import { useCallback, useState, type KeyboardEvent } from "react";
 import { useConfig } from "../hooks/useConfig";
 import { CONFIG_RANGES, DEFAULT_CONFIG } from "../store/configSlice";
 import { useFocusTrap } from "../hooks/useFocusTrap";
@@ -19,23 +19,16 @@ interface SettingsProps {
   onClose: () => void;
 }
 
+const SETTINGS_TABS = [
+  { id: "theme", label: "Appearance" },
+  { id: "playback", label: "Playback" },
+  { id: "clips", label: "Clip detection" },
+] as const;
+
+type SettingsTabId = (typeof SETTINGS_TABS)[number]["id"];
+
 const clamp = (v: number, min: number, max: number) =>
   Math.min(max, Math.max(min, v));
-
-function SettingSection({
-  title,
-  children,
-}: {
-  title: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className="settings-section">
-      <h3 className="settings-section-title">{title}</h3>
-      {children}
-    </section>
-  );
-}
 
 interface SliderSettingProps {
   label: string;
@@ -134,18 +127,143 @@ function ThemeCardPreview({ theme }: { theme: ThemeId }) {
   );
 }
 
-export function Settings({ onClose }: SettingsProps) {
+function AppearanceTab() {
   const { config, updateConfig } = useConfig();
+  return (
+    <div className="settings-field">
+      <div className="settings-field-head">
+        <label id="theme-label" className="settings-label">
+          Theme
+        </label>
+      </div>
+      <div className="theme-grid" role="group" aria-labelledby="theme-label">
+        {THEME_IDS.map((id) => (
+          <button
+            key={id}
+            className={`theme-card ${config.theme === id ? "theme-card--active" : ""}`}
+            onClick={() => updateConfig({ theme: id })}
+            aria-pressed={config.theme === id}
+          >
+            <ThemeCardPreview theme={id} />
+            <span className="theme-card__label">{THEMES[id].label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PlaybackTab() {
+  const { config, updateConfig } = useConfig();
+  const { waveformView, skipSeconds } = config;
+  return (
+    <>
+      <div className="settings-field">
+        <div className="settings-field-head">
+          <label className="settings-label">Waveform view</label>
+        </div>
+        <div className="settings-row">
+          <button
+            className={`settings-chip ${waveformView === "stacked" ? "settings-chip--active" : ""}`}
+            onClick={() => updateConfig({ waveformView: "stacked" })}
+          >
+            Stacked
+          </button>
+          <button
+            className={`settings-chip ${waveformView === "horizontal" ? "settings-chip--active" : ""}`}
+            onClick={() => updateConfig({ waveformView: "horizontal" })}
+          >
+            Single row
+          </button>
+        </div>
+      </div>
+      <SliderSetting
+        label="Skip forward / back by"
+        presets={[5, 10, 15, 20, 30]}
+        value={skipSeconds}
+        min={CONFIG_RANGES.skipSeconds.min}
+        max={CONFIG_RANGES.skipSeconds.max}
+        step={1}
+        unit="s"
+        onChange={(v) => updateConfig({ skipSeconds: v })}
+      />
+    </>
+  );
+}
+
+function ClipDetectionTab() {
+  const { config, updateConfig } = useConfig();
+  const { blockMs, silenceRatio, minSilenceLength, minClipLength } = config;
+  return (
+    <>
+      <SliderSetting
+        label="Silence threshold"
+        hint="How quiet a block must be to count as silence. Lower values = only very quiet parts are detected."
+        presets={[0.005, 0.01, 0.02, 0.05]}
+        value={silenceRatio}
+        min={CONFIG_RANGES.silenceRatio.min}
+        max={CONFIG_RANGES.silenceRatio.max}
+        step={0.005}
+        onChange={(v) => updateConfig({ silenceRatio: v })}
+      />
+      <SliderSetting
+        label="Analysis detail"
+        hint="Audio chunk granularity in milliseconds. Smaller = more precise splits, larger = faster processing."
+        presets={[4, 8, 12, 24]}
+        value={blockMs}
+        min={CONFIG_RANGES.blockMs.min}
+        max={CONFIG_RANGES.blockMs.max}
+        step={1}
+        unit="ms"
+        onChange={(v) => updateConfig({ blockMs: v })}
+      />
+      <SliderSetting
+        label="Minimum gap between clips"
+        hint="Shortest silence duration that splits two clips apart. Lower = more granular splits."
+        presets={[0.1, 0.2]}
+        value={minSilenceLength}
+        min={CONFIG_RANGES.minSilenceLength.min}
+        max={CONFIG_RANGES.minSilenceLength.max}
+        step={0.01}
+        unit="s"
+        onChange={(v) => updateConfig({ minSilenceLength: v })}
+      />
+      <SliderSetting
+        label="Minimum clip length"
+        hint="Shortest clip kept after splitting. Shorter clips are folded into a neighbor when the gap is small."
+        presets={[0.1, 0.2, 0.3, 0.5]}
+        value={minClipLength}
+        min={CONFIG_RANGES.minClipLength.min}
+        max={CONFIG_RANGES.minClipLength.max}
+        step={0.05}
+        unit="s"
+        onChange={(v) => updateConfig({ minClipLength: v })}
+      />
+    </>
+  );
+}
+
+export function Settings({ onClose }: SettingsProps) {
+  const { updateConfig } = useConfig();
   const close = useCallback(() => onClose(), [onClose]);
   const trapRef = useFocusTrap<HTMLDivElement>(true, close);
-  const {
-    skipSeconds,
-    waveformView,
-    blockMs,
-    silenceRatio,
-    minSilenceLength,
-    minClipLength,
-  } = config;
+  const [activeTab, setActiveTab] = useState<SettingsTabId>("theme");
+
+  const handleTabKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    const idx = SETTINGS_TABS.findIndex((t) => t.id === activeTab);
+    let next = -1;
+    if (e.key === "ArrowRight") next = (idx + 1) % SETTINGS_TABS.length;
+    else if (e.key === "ArrowLeft")
+      next = (idx - 1 + SETTINGS_TABS.length) % SETTINGS_TABS.length;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = SETTINGS_TABS.length - 1;
+    else return;
+    e.preventDefault();
+    const tabId = SETTINGS_TABS[next].id;
+    setActiveTab(tabId);
+    document.getElementById(`settings-tab-${tabId}`)?.focus();
+  };
+
   return (
     <div className="settings-overlay" onClick={onClose}>
       <div
@@ -165,105 +283,36 @@ export function Settings({ onClose }: SettingsProps) {
             <CloseIcon width={18} height={18} />
           </button>
         </div>
-        <div className="settings-body">
-          <SettingSection title="Appearance">
-            <div className="settings-field">
-              <div className="settings-field-head">
-                <label id="theme-label" className="settings-label">
-                  Theme
-                </label>
-              </div>
-              <div className="theme-grid" role="group" aria-labelledby="theme-label">
-                {THEME_IDS.map((id) => (
-                  <button
-                    key={id}
-                    className={`theme-card ${config.theme === id ? "theme-card--active" : ""}`}
-                    onClick={() => updateConfig({ theme: id })}
-                    aria-pressed={config.theme === id}
-                  >
-                    <ThemeCardPreview theme={id} />
-                    <span className="theme-card__label">{THEMES[id].label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </SettingSection>
-          <SettingSection title="Playback">
-            <div className="settings-field">
-              <div className="settings-field-head">
-                <label className="settings-label">Waveform view</label>
-              </div>
-              <div className="settings-row">
-                <button
-                  className={`settings-chip ${waveformView === "stacked" ? "settings-chip--active" : ""}`}
-                  onClick={() => updateConfig({ waveformView: "stacked" })}
-                >
-                  Stacked
-                </button>
-                <button
-                  className={`settings-chip ${waveformView === "horizontal" ? "settings-chip--active" : ""}`}
-                  onClick={() => updateConfig({ waveformView: "horizontal" })}
-                >
-                  Single row
-                </button>
-              </div>
-            </div>
-            <SliderSetting
-              label="Skip forward / back by"
-              presets={[5, 10, 15, 20, 30]}
-              value={skipSeconds}
-              min={CONFIG_RANGES.skipSeconds.min}
-              max={CONFIG_RANGES.skipSeconds.max}
-              step={1}
-              unit="s"
-              onChange={(v) => updateConfig({ skipSeconds: v })}
-            />
-          </SettingSection>
-          <SettingSection title="Clip detection">
-            <SliderSetting
-              label="Silence threshold"
-              hint="How quiet a block must be to count as silence. Lower values = only very quiet parts are detected."
-              presets={[0.005, 0.01, 0.02, 0.05]}
-              value={silenceRatio}
-              min={CONFIG_RANGES.silenceRatio.min}
-              max={CONFIG_RANGES.silenceRatio.max}
-              step={0.005}
-              onChange={(v) => updateConfig({ silenceRatio: v })}
-            />
-            <SliderSetting
-              label="Analysis detail"
-              hint="Audio chunk granularity in milliseconds. Smaller = more precise splits, larger = faster processing."
-              presets={[4, 8, 12, 24]}
-              value={blockMs}
-              min={CONFIG_RANGES.blockMs.min}
-              max={CONFIG_RANGES.blockMs.max}
-              step={1}
-              unit="ms"
-              onChange={(v) => updateConfig({ blockMs: v })}
-            />
-            <SliderSetting
-              label="Minimum gap between clips"
-              hint="Shortest silence duration that splits two clips apart. Lower = more granular splits."
-              presets={[0.1, 0.2]}
-              value={minSilenceLength}
-              min={CONFIG_RANGES.minSilenceLength.min}
-              max={CONFIG_RANGES.minSilenceLength.max}
-              step={0.01}
-              unit="s"
-              onChange={(v) => updateConfig({ minSilenceLength: v })}
-            />
-            <SliderSetting
-              label="Minimum clip length"
-              hint="Shortest clip kept after splitting. Shorter clips are folded into a neighbor when the gap is small."
-              presets={[0.1, 0.2, 0.3, 0.5]}
-              value={minClipLength}
-              min={CONFIG_RANGES.minClipLength.min}
-              max={CONFIG_RANGES.minClipLength.max}
-              step={0.05}
-              unit="s"
-              onChange={(v) => updateConfig({ minClipLength: v })}
-            />
-          </SettingSection>
+        <div
+          className="settings-tabs"
+          role="tablist"
+          aria-label="Settings sections"
+          onKeyDown={handleTabKeyDown}
+        >
+          {SETTINGS_TABS.map(({ id, label }) => (
+            <button
+              key={id}
+              id={`settings-tab-${id}`}
+              role="tab"
+              className={`settings-tab ${activeTab === id ? "settings-tab--active" : ""}`}
+              aria-selected={activeTab === id}
+              aria-controls={`settings-panel-${id}`}
+              tabIndex={activeTab === id ? 0 : -1}
+              onClick={() => setActiveTab(id)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div
+          id={`settings-panel-${activeTab}`}
+          role="tabpanel"
+          aria-labelledby={`settings-tab-${activeTab}`}
+          className="settings-body"
+        >
+          {activeTab === "theme" && <AppearanceTab />}
+          {activeTab === "playback" && <PlaybackTab />}
+          {activeTab === "clips" && <ClipDetectionTab />}
         </div>
         <div className="settings-footer">
           <button
