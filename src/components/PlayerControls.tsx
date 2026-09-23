@@ -18,6 +18,8 @@ import {
   selectIsPlaying,
   selectCanPlay,
   selectSkipSeconds,
+  selectCurrentTime,
+  selectDuration,
 } from "../store/selectors";
 import SkipBackIcon from "../assets/icons/skip-back.svg?react";
 import SkipForwardIcon from "../assets/icons/skip-forward.svg?react";
@@ -44,12 +46,16 @@ export const PlayerControls = memo(function PlayerControls({
   const isPlaying = useAppSelector(selectIsPlaying);
   const hasTrack = useAppSelector(selectCanPlay);
   const skipSeconds = useAppSelector(selectSkipSeconds);
+  const currentTime = useAppSelector(selectCurrentTime);
+  const duration = useAppSelector(selectDuration);
+  const atStart = currentTime <= 0;
+  const atEnd = duration > 0 && currentTime >= duration;
   return (
     <div className="player-controls">
       <button
         className="control-btn control-btn--skip"
         onClick={onSkipBackward}
-        disabled={!hasTrack}
+        disabled={!hasTrack || atStart}
         aria-label={`Back ${skipSeconds} seconds`}
         title={`Back ${skipSeconds}s`}
       >
@@ -88,7 +94,7 @@ export const PlayerControls = memo(function PlayerControls({
       <button
         className="control-btn control-btn--skip"
         onClick={onSkipForward}
-        disabled={!hasTrack}
+        disabled={!hasTrack || atEnd}
         aria-label={`Forward ${skipSeconds} seconds`}
         title={`Forward ${skipSeconds}s`}
       >

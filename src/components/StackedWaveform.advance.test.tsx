@@ -73,6 +73,18 @@ afterEach(() => {
 });
 
 describe("stacked waveform paged auto-advance", () => {
+  it("scrolls to the target page when skipping while paused", async () => {
+    const { scrollTo, rerender } = setup(0);
+    scrollTo.mockClear();
+
+    rerender({ currentTime: 45 });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(scrollTo).toHaveBeenCalledWith({ left: 1600, behavior: "smooth" });
+  });
+
   it("scrolls to the next page when the live clock crosses a page end", async () => {
     const { scrollTo, rerender } = setup(0);
     rerender({ playing: true });

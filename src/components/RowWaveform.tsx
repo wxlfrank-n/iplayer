@@ -253,6 +253,24 @@ export const RowWaveform = memo(function RowWaveform({
   // glide has already moved `s`. If the commit used the lagging Redux time, the
   // transform would snap forward on every commit and the waveform would shake.
   const clipPlaySkipRef = useRef(false);
+  const previousTimeRef = useRef(currentTime);
+
+  // Skip buttons seek the audio clock even when the pointer is outside the
+  // waveform, so they need an immediate anchor update independent of hover.
+  useEffect(() => {
+    const previousTime = previousTimeRef.current;
+    previousTimeRef.current = currentTime;
+    if (Math.abs(currentTime - previousTime) < 1) return;
+    commitAnchorNow(
+      Math.max(
+        0,
+        Math.min(
+          currentTime - HS_FOLLOW_FRAC * hsWinLenRef.current,
+          hsMaxStartRef.current,
+        ),
+      ),
+    );
+  }, [currentTime, commitAnchorNow]);
 
   useEffect(() => {
     if (playing || !clipPlayActive) return;

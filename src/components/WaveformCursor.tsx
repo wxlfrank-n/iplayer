@@ -25,17 +25,22 @@ export const WaveformCursor = memo(function WaveformCursor({
 }: WaveformCursorProps) {
   const cursorRef = useRef<HTMLDivElement>(null);
   const prevPctRef = useRef(getPlayedPct() * 100);
+  const prevTimeLabelRef = useRef(formatTime(getCurrentTime()));
   useEffect(() => {
     let raf = 0;
     const frame = () => {
       if (!cursorRef.current) return;
       raf = requestAnimationFrame(frame);
       const pct = getPlayedPct() * 100;
+      const timeLabel = formatTime(getCurrentTime());
       if (Math.abs(pct - prevPctRef.current) > 0.1) {
         prevPctRef.current = pct;
         cursorRef.current.style.setProperty("left", `${pct}%`);
+      }
+      if (timeLabel !== prevTimeLabelRef.current) {
+        prevTimeLabelRef.current = timeLabel;
         if (cursorRef.current.firstElementChild) {
-          cursorRef.current.firstElementChild.textContent = formatTime(getCurrentTime());
+          cursorRef.current.firstElementChild.textContent = timeLabel;
         }
       }
     };

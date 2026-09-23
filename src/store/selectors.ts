@@ -36,6 +36,8 @@ export const selectTracks = (s: RootState) => s.player.tracks;
 export const selectCurrentTrackIndex = (s: RootState) =>
   s.player.currentTrackIndex;
 export const selectIsPlaying = (s: RootState) => s.player.isPlaying;
+export const selectCurrentTime = (s: RootState) => s.player.currentTime;
+export const selectDuration = (s: RootState) => s.player.duration;
 
 export const selectCurrentTrack = (s: RootState) => {
   const t = s.player.tracks[s.player.currentTrackIndex];

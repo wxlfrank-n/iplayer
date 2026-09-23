@@ -106,6 +106,7 @@ export const StackedWaveform = memo(function StackedWaveform({
   const pendingAutoScrollRef = useRef(false);
   const autoScrollResetRef = useRef<number | undefined>(undefined);
   const currentPageRef = useRef(-1);
+  const previousTimeRef = useRef(currentTime);
   const userScrollTimerRef = useRef<number | undefined>(undefined);
   // Set when the user manually scrolls during playback: auto-advance pauses
   // until the playhead catches up to the page they are viewing (or playback
@@ -278,6 +279,20 @@ export const StackedWaveform = memo(function StackedWaveform({
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [playing, userScrolling, pageForTime, scrollToPage, getCurrentTime]);
+
+  // Explicit seeks, including skip buttons, must move to the target page even
+  // while paused and may need to move backwards.
+  useEffect(() => {
+    const previousTime = previousTimeRef.current;
+    previousTimeRef.current = currentTime;
+    if (Math.abs(currentTime - previousTime) < 1) return;
+    const idx = pageForTime(currentTime);
+    if (playing && idx > currentPageRef.current) return;
+    if (idx === currentPageRef.current) return;
+    currentPageRef.current = idx;
+    setViewPage(idx);
+    scrollToPage(idx);
+  }, [currentTime, pageForTime, playing, scrollToPage]);
 
   // A manual browse stays put across a pause; restarting playback or loading a
   // new track resets it so the follow can resume.
