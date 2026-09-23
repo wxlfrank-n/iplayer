@@ -591,10 +591,10 @@ body {
   scrollbar-width: none;
   position: relative;
   background: linear-gradient(
-    180deg,
-    var(--waveform-bg-top) 0%,
-    var(--waveform-bg-mid) 55%,
-    var(--waveform-bg-top) 100%
+      180deg,
+      var(--waveform-bg-top) 0%,
+      var(--waveform-bg-mid) 55%,
+      var(--waveform-bg-top) 100%
   );
   border-radius: 14px;
   box-shadow:
@@ -641,7 +641,9 @@ body {
 }
 
 .progress-row:not(.progress-row--horizontal) {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  align-items: stretch;
 }
 
 /* Single-row ("horizontal") view: the waveform strip stretches to fill the
@@ -786,21 +788,66 @@ body {
 }
 
 .stacked-waveform {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  flex: 0 0 auto;
+  position: relative;
+  display: block;
+  height: 100%;
   width: 100%;
   align-self: stretch;
-  touch-action: pan-y;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  touch-action: pan-x;
+}
+
+.stacked-waveform::-webkit-scrollbar {
+  display: none;
+}
+
+.stacked-waveform__pageno {
+  position: absolute;
+  top: -3px;
+  right: 6px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  font-size: 0.66rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 8px;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.stacked-waveform__pages {
+  display: flex;
+  flex: none;
+  min-width: 100%;
+  height: 100%;
+}
+
+.stacked-waveform__page {
+  flex: 0 0 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
   padding: 0 clamp(24px, 6vw, 48px);
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  overflow: hidden;
 }
 
 .stacked-waveform__row {
-  display: flex;
-  align-items: center;
+  display: block;
   position: relative;
-  flex: 0 0 auto;
+  flex: none;
+  height: var(--stack-row-h, 64px);
   touch-action: pan-y;
 }
 
@@ -900,9 +947,8 @@ body {
 }
 
 .stacked-waveform__svg {
-  flex: 1;
-  height: 62px;
   width: 100%;
+  height: 100%;
   display: block;
 }
 
