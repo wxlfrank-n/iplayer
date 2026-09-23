@@ -22,9 +22,9 @@ interface WaveformBarsProps {
   strokeWidth?: number;
 }
 
-const BASE_COLOR = "#8b949e";
-const PLAYED_COLOR = "#58a6ff";
-const SILENT_COLOR = "#4b545e";
+const BASE_STYLE = { stroke: "var(--waveform-bar)" } as const;
+const PLAYED_STYLE = { stroke: "var(--accent)" } as const;
+const SILENT_STYLE = { stroke: "var(--waveform-bar-silent)" } as const;
 const MIN_BAR_PX = 2;
 
 export const WaveformBars = memo(function WaveformBars({
@@ -113,7 +113,7 @@ export const WaveformBars = memo(function WaveformBars({
       <path
         d={waveD}
         fill="none"
-        stroke={BASE_COLOR}
+        style={BASE_STYLE}
         strokeWidth={strokeWidth}
         vectorEffect="non-scaling-stroke"
       />
@@ -121,7 +121,7 @@ export const WaveformBars = memo(function WaveformBars({
         <path
           d={silentD}
           fill="none"
-          stroke={SILENT_COLOR}
+          style={SILENT_STYLE}
           strokeWidth={strokeWidth}
           vectorEffect="non-scaling-stroke"
         />
@@ -129,7 +129,7 @@ export const WaveformBars = memo(function WaveformBars({
       <path
         d={waveD}
         fill="none"
-        stroke={PLAYED_COLOR}
+        style={PLAYED_STYLE}
         strokeWidth={strokeWidth}
         vectorEffect="non-scaling-stroke"
         clipPath={`url(#${idPrefix})`}

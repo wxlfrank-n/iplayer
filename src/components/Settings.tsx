@@ -8,9 +8,17 @@
  * stay valid.
  */
 
-import type { ReactNode } from "react";
+import { useCallback, type ReactNode } from "react";
 import { useConfig } from "../hooks/useConfig";
 import { CONFIG_RANGES, DEFAULT_CONFIG } from "../store/configSlice";
+import { useFocusTrap } from "../hooks/useFocusTrap";
+import {
+  ACCENTS,
+  ACCENT_IDS,
+  THEMES,
+  THEME_IDS,
+  type ThemeId,
+} from "../themes";
 import CloseIcon from "../assets/icons/close.svg?react";
 
 interface SettingsProps {
@@ -104,8 +112,38 @@ function SliderSetting({
   );
 }
 
+function ThemeCardPreview({ theme }: { theme: ThemeId }) {
+  const t = THEMES[theme];
+  return (
+    <span
+      className="theme-card__swatch"
+      style={{ background: t.bgPrimary }}
+      aria-hidden="true"
+    >
+      <span
+        className="theme-card__bar"
+        style={{
+          background: t.bgSecondary,
+          border: `1px solid ${t.border}`,
+        }}
+      >
+        <span
+          className="theme-card__bar-line"
+          style={{ background: t.textSecondary }}
+        />
+      </span>
+      <span
+        className="theme-card__dot"
+        style={{ background: ACCENTS.blue.accent }}
+      />
+    </span>
+  );
+}
+
 export function Settings({ onClose }: SettingsProps) {
   const { config, updateConfig } = useConfig();
+  const close = useCallback(() => onClose(), [onClose]);
+  const trapRef = useFocusTrap<HTMLDivElement>(true, close);
   const {
     skipSeconds,
     waveformView,
@@ -116,14 +154,65 @@ export function Settings({ onClose }: SettingsProps) {
   } = config;
   return (
     <div className="settings-overlay" onClick={onClose}>
-      <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="settings-panel"
+        ref={trapRef}
+        tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="settings-header">
           <h2>Settings</h2>
-          <button className="settings-close" onClick={onClose} title="Close">
+          <button
+            className="settings-close"
+            onClick={close}
+            aria-label="Close settings"
+            title="Close"
+          >
             <CloseIcon width={18} height={18} />
           </button>
         </div>
         <div className="settings-body">
+          <SettingSection title="Appearance">
+            <div className="settings-field">
+              <div className="settings-field-head">
+                <label id="theme-label" className="settings-label">
+                  Theme
+                </label>
+              </div>
+              <div className="theme-grid" role="group" aria-labelledby="theme-label">
+                {THEME_IDS.map((id) => (
+                  <button
+                    key={id}
+                    className={`theme-card ${config.theme === id ? "theme-card--active" : ""}`}
+                    onClick={() => updateConfig({ theme: id })}
+                    aria-pressed={config.theme === id}
+                  >
+                    <ThemeCardPreview theme={id} />
+                    <span className="theme-card__label">{THEMES[id].label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="settings-field">
+              <div className="settings-field-head">
+                <label id="accent-label" className="settings-label">
+                  Accent color
+                </label>
+              </div>
+              <div className="accent-row" role="group" aria-labelledby="accent-label">
+                {ACCENT_IDS.map((id) => (
+                  <button
+                    key={id}
+                    className={`accent-dot ${config.accent === id ? "accent-dot--active" : ""}`}
+                    style={{ background: ACCENTS[id].accent }}
+                    onClick={() => updateConfig({ accent: id })}
+                    aria-label={ACCENTS[id].label}
+                    aria-pressed={config.accent === id}
+                  />
+                ))}
+              </div>
+            </div>
+          </SettingSection>
           <SettingSection title="Playback">
             <div className="settings-field">
               <div className="settings-field-head">

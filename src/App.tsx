@@ -39,6 +39,7 @@ import { PlayerControls } from "./components/PlayerControls";
 import { Playlist } from "./components/Playlist";
 import { ProgressBar } from "./components/ProgressBar";
 import { Settings } from "./components/Settings";
+import { EmptyState } from "./components/EmptyState";
 import "./App.css";
 
 export default function App() {
@@ -67,8 +68,35 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
 
   // Temporary notification message (auto-hides after 4s)
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{
+    msg: string;
+    type: "info" | "error";
+  } | null>(null);
   const noticeTimerRef = useRef<number | undefined>(undefined);
+
+  // Remember which element opened an overlay so focus can be returned on close.
+  const lastFocusRef = useRef<HTMLElement | null>(null);
+  const restoreFocus = useCallback(() => {
+    requestAnimationFrame(() => lastFocusRef.current?.focus());
+  }, []);
+  const togglePlaylist = useCallback(() => {
+    if (!showPlaylist) {
+      lastFocusRef.current = (document.activeElement as HTMLElement) ?? null;
+    }
+    setShowPlaylist((v) => !v);
+  }, [showPlaylist]);
+  const openSettings = useCallback(() => {
+    lastFocusRef.current = (document.activeElement as HTMLElement) ?? null;
+    setShowSettings(true);
+  }, []);
+  const closePlaylist = useCallback(() => {
+    setShowPlaylist(false);
+    restoreFocus();
+  }, [restoreFocus]);
+  const closeSettings = useCallback(() => {
+    setShowSettings(false);
+    restoreFocus();
+  }, [restoreFocus]);
 
   // Get current playing track from the store
   const currentTrack = useAppSelector(selectCurrentTrack);
@@ -102,11 +130,14 @@ export default function App() {
     dispatch(setActiveClip(-1));
   }, [currentTrack?.url, dispatch]);
 
-  const showNotice = useCallback((msg: string) => {
-    setNotice(msg);
-    window.clearTimeout(noticeTimerRef.current);
-    noticeTimerRef.current = window.setTimeout(() => setNotice(null), 4000);
-  }, []);
+  const showNotice = useCallback(
+    (msg: string, type: "info" | "error" = "info") => {
+      setNotice({ msg, type });
+      window.clearTimeout(noticeTimerRef.current);
+      noticeTimerRef.current = window.setTimeout(() => setNotice(null), 4000);
+    },
+    [],
+  );
 
   // Adding files (file picker + drag-and-drop) with a skip notice for
   // non-MP3 files.
@@ -132,28 +163,32 @@ export default function App() {
         <div className="player-main">
           <PlayerActions
             playlistOpen={showPlaylist}
-            onTogglePlaylist={() => setShowPlaylist((v) => !v)}
-            onOpenSettings={() => setShowSettings(true)}
+            onTogglePlaylist={togglePlaylist}
+            onOpenSettings={openSettings}
           />
 
-          <div className="player-card">
-            <NowPlaying />
-            <ProgressBar
-              key={currentTrack?.url ?? "none"}
-              onSeek={seek}
-              onPlayRange={playRange}
-              onStopPlayback={togglePlay}
-              getAnalyser={getAnalyser}
-              getCurrentTime={getCurrentTime}
-            />
-            <PlayerControls
-              onTogglePlay={togglePlay}
-              onNext={next}
-              onPrev={prev}
-              onSkipForward={skipForward}
-              onSkipBackward={skipBackward}
-            />
-          </div>
+          {currentTrack ? (
+            <div className="player-card">
+              <NowPlaying />
+              <ProgressBar
+                key={currentTrack?.url ?? "none"}
+                onSeek={seek}
+                onPlayRange={playRange}
+                onStopPlayback={togglePlay}
+                getAnalyser={getAnalyser}
+                getCurrentTime={getCurrentTime}
+              />
+              <PlayerControls
+                onTogglePlay={togglePlay}
+                onNext={next}
+                onPrev={prev}
+                onSkipForward={skipForward}
+                onSkipBackward={skipBackward}
+              />
+            </div>
+          ) : (
+            <EmptyState onAddFiles={handleFiles} />
+          )}
         </div>
       </div>
 
@@ -162,13 +197,21 @@ export default function App() {
           onSelectTrack={selectTrack}
           onRemoveTrack={removeTrack}
           onAddFiles={handleFiles}
-          onClose={() => setShowPlaylist(false)}
+          onClose={closePlaylist}
         />
       )}
 
-      {showSettings && <Settings onClose={() => setShowSettings(false)} />}
+      {showSettings && <Settings onClose={closeSettings} />}
 
-      {notice && <div className="app-notice">{notice}</div>}
+      {notice && (
+        <div
+          className={`app-notice app-notice--${notice.type}`}
+          role="status"
+          aria-live="polite"
+        >
+          {notice.msg}
+        </div>
+      )}
     </div>
   );
 }

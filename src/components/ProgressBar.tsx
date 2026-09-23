@@ -154,6 +154,11 @@ export function ProgressBar({
             />
           ) : null}
         </div>
+        {hasWaveform && clips.length === 0 && (
+          <div className="waveform-empty-hint" role="status">
+            No clips detected — lower the Silence threshold in Settings.
+          </div>
+        )}
       </div>
       {clips.length > 0 && (
         <div

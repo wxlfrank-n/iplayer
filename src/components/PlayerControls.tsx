@@ -50,15 +50,19 @@ export const PlayerControls = memo(function PlayerControls({
         className="control-btn control-btn--skip"
         onClick={onSkipBackward}
         disabled={!hasTrack}
+        aria-label={`Back ${skipSeconds} seconds`}
         title={`Back ${skipSeconds}s`}
       >
         <SkipBackIcon width={36} height={36} />
-        <span className="control-btn__label">{skipSeconds}</span>
+        <span className="control-btn__label" aria-hidden="true">
+          {skipSeconds}
+        </span>
       </button>
       <button
         className="control-btn"
         onClick={onPrev}
         disabled={!hasTrack}
+        aria-label="Previous track"
         title="Previous"
       >
         <PrevIcon width={20} height={20} />
@@ -67,6 +71,7 @@ export const PlayerControls = memo(function PlayerControls({
         className={`control-btn control-btn--play ${isPlaying ? "control-btn--playing" : "control-btn--paused"}`}
         onClick={onTogglePlay}
         disabled={!hasTrack}
+        aria-label={isPlaying ? "Pause" : "Play"}
         title={isPlaying ? "Pause" : "Play"}
       >
         {isPlaying ? <PauseIcon width={22} height={22} /> : <PlayIcon width={22} height={22} />}
@@ -75,6 +80,7 @@ export const PlayerControls = memo(function PlayerControls({
         className="control-btn"
         onClick={onNext}
         disabled={!hasTrack}
+        aria-label="Next track"
         title="Next"
       >
         <NextIcon width={20} height={20} />
@@ -83,10 +89,13 @@ export const PlayerControls = memo(function PlayerControls({
         className="control-btn control-btn--skip"
         onClick={onSkipForward}
         disabled={!hasTrack}
+        aria-label={`Forward ${skipSeconds} seconds`}
         title={`Forward ${skipSeconds}s`}
       >
         <SkipForwardIcon width={36} height={36} />
-        <span className="control-btn__label">{skipSeconds}</span>
+        <span className="control-btn__label" aria-hidden="true">
+          {skipSeconds}
+        </span>
       </button>
     </div>
   );

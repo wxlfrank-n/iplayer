@@ -23,6 +23,8 @@ export const PlayerActions = memo(function PlayerActions({
       <button
         className={`playlist-toggle control-btn ${playlistOpen ? "playlist-toggle--active" : ""}`}
         onClick={onTogglePlaylist}
+        aria-pressed={playlistOpen}
+        aria-label={playlistOpen ? "Hide playlist" : "Show playlist"}
         title={playlistOpen ? "Hide playlist" : "Show playlist"}
       >
         <PlaylistIcon width={20} height={20} />
@@ -30,6 +32,7 @@ export const PlayerActions = memo(function PlayerActions({
       <button
         className="settings-btn control-btn"
         onClick={onOpenSettings}
+        aria-label="Settings"
         title="Settings"
       >
         <SettingsIcon width={20} height={20} />

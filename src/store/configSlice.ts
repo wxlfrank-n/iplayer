@@ -11,6 +11,8 @@
  *   how quiet a block must be to count as silence.
  * - minClipLength: Shortest clip to keep after silence splitting (default: 0.3).
  *   Clips shorter than this are folded into a neighbor when the gap is small.
+ * - theme: Appearance palette (dark/light/midnight/paper/rose/nova).
+ * - accent: Accent color choice layered on top of the theme (blue/violet/...).
  *
  * Changes persist to localStorage immediately.
  */
@@ -18,6 +20,13 @@
 import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import type { WaveformView } from "../types";
+import type { ThemeId, AccentId } from "../themes";
+import {
+  ACCENT_IDS,
+  DEFAULT_THEME,
+  DEFAULT_ACCENT,
+  THEME_IDS,
+} from "../themes";
 
 const STORAGE_KEY = "Listeenoop_config";
 
@@ -28,6 +37,8 @@ interface ConfigState {
   silenceRatio: number;
   minSilenceLength: number;
   minClipLength: number;
+  theme: ThemeId;
+  accent: AccentId;
 }
 
 export const DEFAULT_CONFIG: ConfigState = {
@@ -37,6 +48,8 @@ export const DEFAULT_CONFIG: ConfigState = {
   silenceRatio: 0.01,
   minSilenceLength: 0.05,
   minClipLength: 0.3,
+  theme: DEFAULT_THEME,
+  accent: DEFAULT_ACCENT,
 };
 
 /** Valid numeric ranges for each configurable value (drives the Settings UI). */
@@ -53,7 +66,14 @@ function loadConfig(): ConfigState {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      return { ...DEFAULT_CONFIG, ...parsed };
+      return {
+        ...DEFAULT_CONFIG,
+        ...parsed,
+        theme: THEME_IDS.includes(parsed.theme) ? parsed.theme : DEFAULT_THEME,
+        accent: ACCENT_IDS.includes(parsed.accent)
+          ? parsed.accent
+          : DEFAULT_ACCENT,
+      };
     }
   } catch {}
   return { ...DEFAULT_CONFIG };
