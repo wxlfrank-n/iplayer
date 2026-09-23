@@ -7,7 +7,7 @@
  * owned by ProgressBar itself (state + helpers) so App stays a thin shell.
  */
 
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useMemo, useCallback, useRef, useState } from "react";
 import { shallowEqual } from "react-redux";
 import { RowWaveform } from "./RowWaveform";
 import { StackedWaveform } from "./StackedWaveform";
@@ -19,8 +19,10 @@ import {
   selectWaveformView,
   selectIsPlaying,
   selectminSilenceLength,
+  selectRepetitions,
 } from "../store/selectors";
 import { setActiveClip } from "../store/analysisSlice";
+import { updateConfig } from "../store/configSlice";
 import { mergeClipsByGap, clipGaps } from "../utils/clips";
 import { getClipSwipeResult } from "../utils/swipe";
 
@@ -55,6 +57,7 @@ export function ProgressBar({
   const waveformView = useAppSelector(selectWaveformView);
   const playing = useAppSelector(selectIsPlaying);
   const minSilenceLength = useAppSelector(selectminSilenceLength);
+  const repetitions = useAppSelector(selectRepetitions);
 
   const { waveform, waveformStatus, clips, currentTime, activeClip } = audio;
   const hasWaveform = waveform !== null && waveform.data.length > 0;
@@ -63,7 +66,11 @@ export function ProgressBar({
   // value in seconds) rather than derived from `silenceRatio`, so the slider's
   // smallest step is decoupled from how loud "silence" is.
   const [mergeGap, setMergeGap] = useState(minSilenceLength);
-  const [repetitions, setRepetitions] = useState(3);
+
+  const handleRepetitionsChange = useCallback(
+    (value: number) => dispatch(updateConfig({ repetitions: value })),
+    [dispatch],
+  );
 
   const gapValues = useMemo(
     () => clipGaps(clips, minSilenceLength),
@@ -171,7 +178,11 @@ export function ProgressBar({
             onChange={setMergeGap}
             disabled={playing}
           />
-          <RepsStepper value={repetitions} onChange={setRepetitions} disabled={playing} />
+          <RepsStepper
+              value={repetitions}
+              onChange={handleRepetitionsChange}
+              disabled={playing}
+            />
         </div>
       )}
     </>

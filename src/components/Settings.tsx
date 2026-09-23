@@ -155,7 +155,7 @@ function AppearanceTab() {
 
 function PlaybackTab() {
   const { config, updateConfig } = useConfig();
-  const { waveformView, skipSeconds } = config;
+  const { waveformView, skipSeconds, repetitions } = config;
   return (
     <>
       <div className="settings-field">
@@ -186,6 +186,16 @@ function PlaybackTab() {
         step={1}
         unit="s"
         onChange={(v) => updateConfig({ skipSeconds: v })}
+      />
+      <SliderSetting
+        label="Repeats per clip"
+        hint="How many times each clip plays when you click it. Mirrors the toolbar stepper above the waveform."
+        presets={[1, 2, 3, 5, 10]}
+        value={repetitions}
+        min={CONFIG_RANGES.repetitions.min}
+        max={CONFIG_RANGES.repetitions.max}
+        step={1}
+        onChange={(v) => updateConfig({ repetitions: v })}
       />
     </>
   );

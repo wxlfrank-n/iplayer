@@ -12,6 +12,8 @@ import type { CurrentAudio } from "../types";
 // ---- config ----
 export const selectSkipSeconds = (s: RootState) => s.config.skipSeconds;
 export const selectWaveformView = (s: RootState) => s.config.waveformView;
+/** How many times a clicked clip is repeated. */
+export const selectRepetitions = (s: RootState) => s.config.repetitions ?? 3;
 /**
  * Shortest acceptable clip in seconds, independent of `silenceRatio`. Seeds the
  * merge slider's smallest step; ProgressBar uses it to drive its own merge gap

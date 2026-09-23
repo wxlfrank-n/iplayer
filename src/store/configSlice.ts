@@ -11,6 +11,7 @@
  *   how quiet a block must be to count as silence.
  * - minClipLength: Shortest clip to keep after silence splitting (default: 0.3).
  *   Clips shorter than this are folded into a neighbor when the gap is small.
+ * - repetitions: How many times a clicked clip is repeated (default: 3).
  * - theme: Appearance palette (dark/light/midnight/paper/rose/nova). Each theme
  *   carries its own accent color, so there is no separate accent setting.
  *
@@ -32,6 +33,7 @@ interface ConfigState {
   silenceRatio: number;
   minSilenceLength: number;
   minClipLength: number;
+  repetitions: number;
   theme: ThemeId;
 }
 
@@ -42,6 +44,7 @@ export const DEFAULT_CONFIG: ConfigState = {
   silenceRatio: 0.01,
   minSilenceLength: 0.05,
   minClipLength: 0.3,
+  repetitions: 3,
   theme: DEFAULT_THEME,
 };
 
@@ -52,6 +55,7 @@ export const CONFIG_RANGES = {
   silenceRatio: { min: 0.005, max: 0.1 },
   minSilenceLength: { min: 0.1, max: 0.5 },
   minClipLength: { min: 0.2, max: 1 },
+  repetitions: { min: 1, max: 20 },
 } as const;
 
 function loadConfig(): ConfigState {
@@ -63,6 +67,12 @@ function loadConfig(): ConfigState {
         ...DEFAULT_CONFIG,
         ...parsed,
         theme: THEME_IDS.includes(parsed.theme) ? parsed.theme : DEFAULT_THEME,
+        repetitions: Number.isFinite(parsed.repetitions)
+          ? Math.min(
+              CONFIG_RANGES.repetitions.max,
+              Math.max(CONFIG_RANGES.repetitions.min, Math.round(parsed.repetitions)),
+            )
+          : DEFAULT_CONFIG.repetitions,
       };
     }
   } catch {}
