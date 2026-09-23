@@ -621,6 +621,18 @@ body {
   pointer-events: none;
   border-radius: 2px;
 }
+.progress-container::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 10px;
+  right: 10px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.8;
+  pointer-events: none;
+  border-radius: 2px;
+}
 
 .progress-row {
   display: flex;
