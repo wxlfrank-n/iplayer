@@ -18,7 +18,13 @@ export const selectWaveformView = (s: RootState) => s.config.waveformView;
  * (the slider behaviour, not the split cutoff which stays silenceRatio-driven).
  */
 export const selectminSilenceLength = (s: RootState) =>
-  s.config.minSilenceLength ?? 0.05;
+  s.config.minSilenceLength ?? 0.1;
+/**
+ * Shortest clip to keep after silence splitting, in seconds. Clips shorter
+ * than this are folded into a neighbor when the separating gap is small.
+ */
+export const selectminClipLength = (s: RootState) =>
+  s.config.minClipLength ?? 0.3;
 
 // ---- player ----
 export const selectTracks = (s: RootState) => s.player.tracks;

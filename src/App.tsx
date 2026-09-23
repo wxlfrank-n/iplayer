@@ -85,12 +85,13 @@ export default function App() {
         waveform.data?.data ?? null,
         waveform.data?.sampleRate ?? 0,
         {
-          blockSamples: config.blockSamples,
+          blockMs: config.blockMs,
           silenceRatio: config.silenceRatio,
           minSilenceLength: config.minSilenceLength,
+          minClipLength: config.minClipLength,
         },
       ),
-    [waveform, config.blockSamples, config.silenceRatio, config.minSilenceLength],
+    [waveform, config.blockMs, config.silenceRatio, config.minSilenceLength, config.minClipLength],
   );
   useEffect(() => {
     dispatch(setClips(clips));

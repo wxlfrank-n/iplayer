@@ -6,7 +6,8 @@
  * windows and each window is classified sound/silent by its peak amplitude.
  *
  * Three user-configurable knobs are independent of one another:
- * - blockSamples  - width of the quantization window in samples
+ * - blockMs          - width of the quantization window, in milliseconds
+ *                   (converted to samples via the sample rate)
  * - silenceRatio   - window whose peak <= ratio * trackPeak counts as silence
  *                   (how QUIET, not how short)
  * - minSilenceLength - shortest acceptable clip in seconds, folded into the
@@ -26,18 +27,24 @@ export interface Clip {
 
 /** User-supplied silence-split parameters (config-driven). */
 export interface SplitOptions {
-  /** Block size in samples. Controls the quantization of clip boundaries. */
-  blockSamples: number;
+  /** Block size in milliseconds. Controls the quantization of clip boundaries. */
+  blockMs: number;
   /** A block whose peak is <= this ratio of the track peak counts as silence. */
   silenceRatio: number;
   /**
    * Shortest acceptable clip length in seconds, independent of `silenceRatio`.
    * A sound run that would leave a clip shorter than this is folded into the
    * previous clip instead of starting a new one. Optional so intact call sites
-   * that only pass `{ blockSamples, silenceRatio }` keep compiling; the merge
+   * that only pass `{ blockMs, silenceRatio }` keep compiling; the merge
    * slider and its seed come from the config selector `selectminSilenceLength`.
    */
   minSilenceLength: number;
+  /**
+   * Shortest clip to keep after splitting, in seconds. Runs shorter than this
+   * are merged into a neighbor (via `mergeShortClips`) when the separating
+   * silence is small.
+   */
+  minClipLength: number;
 }
 
 /**
@@ -55,18 +62,13 @@ export function splitBySilence(
 
   const audioDuration = data.length / sampleRate;
   // min blockSamples = 64 to avoid a pathological case where a single block is
-  const blockSamples = Math.max(64, Math.round(options.blockSamples));
+  // too short to compute a meaningful peak. blockMs is converted via the sample
+  // rate: e.g. 10ms at 48kHz is 480 samples.
+  const blockSamples = Math.max(64, Math.round((options.blockMs / 1000) * sampleRate));
   // silenceRatio is clamped to [0.0001, 0.01] so a single block can't be
   // misclassified as silence due to a single sample being quiet. A 0.01 ratio
   // is ~-40 dB, which is already very quiet.
   const silenceRatio = Math.min(0.01, Math.max(0.0001, options.silenceRatio));
-  // minSilenceLength is clamped to [0.001, 0.05] so a single block can't be
-  // misclassified as silence due to a single sample being quiet. A 0.1 s gap is
-  // already very short, and a 0.001 s gap is already very short.
-  const minSilenceLength = Math.min(
-    0.05,
-    Math.max(0.001, options.minSilenceLength),
-  );
 
   // peakStride is the number of samples to skip when computing the peak of a
   // block. A smaller stride gives a more accurate peak, but takes longer to
@@ -102,60 +104,153 @@ export function splitBySilence(
   }
 
   const silenceThreshold = silenceRatio * trackPeak;
-  const clips: Clip[] = [];
+  let clips: Clip[] = [];
   let clipStartBlock = -1;
-  let mergeClip = false;
   for (let b = 0; b <= numBlocks; b++) {
     const isSound = b < numBlocks && blockPeak[b] > silenceThreshold;
     if (isSound && clipStartBlock === -1) {
       clipStartBlock = b;
-      const prev = clips[clips.length - 1];
-      mergeClip =
-        prev !== undefined && clipStartBlock * blockSec - prev.end < minSilenceLength;
     } else if (!isSound && clipStartBlock != -1) {
-      if (mergeClip) {
-        clips[clips.length - 1].end = b * blockSec;
-        clips[clips.length - 1].vEnd = b * blockSec;
-        mergeClip = false;
-      } else {
-        addNewClip(clips, { start: clipStartBlock * blockSec, end: b * blockSec, vStart: clipStartBlock * blockSec, vEnd: b * blockSec });
-      }
+      clips.push({ start: clipStartBlock * blockSec, end: b * blockSec, vStart: clipStartBlock * blockSec, vEnd: b * blockSec });
       clipStartBlock = -1;
     }
   }
+  clips = mergeShortClips(clips, options);
 
   expandClips(clips, audioDuration)
 
   return clips;
 }
 
-export function addNewClip(clips: Clip[], curClip: Clip, clipThreshold: number = 0.3) {
-  if (clips.length > 0) {
-    const prevClip = clips[clips.length - 1];
-    const prevClipLength = prevClip.end - prevClip.start;
-    // Merge adjacent clips if the previous clip is short enough.
-    if (prevClipLength < clipThreshold) {
-      if (clips.length > 1) {
-        const prevPrevClip = clips[clips.length - 2];
-        // If the silence between the previous two clips is shorter than 
-        // the silence between the previous clip and the current clip, 
-        // merge the previous two clips into one.
-        if (prevClip.start - prevPrevClip.end <= curClip.start - prevClip.end) {
-          prevPrevClip.end = prevClip.end;
-          prevPrevClip.vEnd = prevClip.vEnd;
-          prevClip.start = curClip.start;
-          prevClip.vStart = curClip.start;
-        }
-      }
-      prevClip.end = curClip.end;
-      prevClip.vEnd = curClip.end;
-    } else {
-      clips.push(curClip);
-    }
-  } else {
-    clips.push(curClip);
+/**
+ * Merge short clips with neighboring clips when the separating
+ * silence is sufficiently short.
+ *
+ * Rules:
+ * 1. Only clips shorter than minClipLength are candidates.
+ * 2. Never merge across silence > minSilenceLength.
+ * 3. If both neighbors are eligible, merge across the shorter silence.
+ * 4. Repeat because merging changes clip lengths.
+ */
+export function mergeShortClips(
+  input: Clip[],
+  options: Partial<SplitOptions> = {},
+): Clip[] {
+  const { minClipLength = 0.3 } = options;
+
+  // Copy so the input array/clips are not modified.
+  const clips = input;
+
+  if (clips.length < 2) {
+    return clips;
   }
+
+  let i = 0;
+
+  while (i < clips.length) {
+    const clip = clips[i];
+
+    // This clip is already long enough.
+    if (length(clip) >= minClipLength) {
+      i++;
+      continue;
+    }
+
+    const left = i > 0 ? clips[i - 1] : undefined;
+    const right = i < clips.length - 1 ? clips[i + 1] : undefined;
+
+    const leftSilence = left
+      ? clip.start - left.end
+      : Infinity;
+
+    const rightSilence = right
+      ? right.start - clip.end
+      : Infinity;
+
+    const canMergeLeft =
+      left !== undefined &&
+      leftSilence >= 0;
+
+    const canMergeRight =
+      right !== undefined &&
+      rightSilence >= 0;
+
+    // No acceptable neighbor.
+    if (!canMergeLeft && !canMergeRight) {
+      i++;
+      continue;
+    }
+
+    /*
+     * Prefer the boundary with less silence.
+     *
+     * A -- 0.08 -- B -- 0.18 -- C
+     *               ↑
+     *             short
+     *
+     * => merge A + B
+     */
+    if (
+      canMergeLeft &&
+      (!canMergeRight || leftSilence <= rightSilence)
+    ) {
+      mergeIntoLeft(left!, clip);
+
+      // Remove the short clip.
+      clips.splice(i, 1);
+
+      /*
+       * The merged left clip has a new length.
+       * Go back to it so it can be evaluated again.
+       */
+      i = Math.max(0, i - 1);
+    } else {
+      mergeIntoRight(clip, right!);
+
+      // Remove the old short clip.
+      clips.splice(i, 1);
+
+      /*
+       * right moved into position i.
+       * Don't increment i because the resulting clip
+       * may still be shorter than minClipLength.
+       */
+    }
+  }
+
+  return clips;
 }
+
+function length(clip: Clip): number {
+  return clip.end - clip.start;
+}
+
+/**
+ * [left] silence [clip]
+ *
+ * becomes
+ *
+ * [      left       ]
+ */
+function mergeIntoLeft(left: Clip, clip: Clip): void {
+  left.end = clip.end;
+  left.vEnd = clip.vEnd;
+
+}
+
+/**
+ * [clip] silence [right]
+ *
+ * becomes
+ *
+ * [       right       ]
+ */
+function mergeIntoRight(clip: Clip, right: Clip): void {
+  right.start = clip.start;
+  right.vStart = clip.vStart;
+
+}
+
 
 function expandClips(clips: Clip[], audioDuration: number, expandRatio: number = 0.25) {
   // Expand each clip's start and end by a fraction of the surrounding silence, 
