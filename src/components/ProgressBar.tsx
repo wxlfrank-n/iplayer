@@ -24,7 +24,7 @@ import {
 } from "../store/selectors";
 import { setActiveClip } from "../store/analysisSlice";
 import { updateConfig } from "../store/configSlice";
-import { mergeClipsByGap, clipGaps, type Clip } from "../utils/clips";
+import { mergeClipsByGap, clipGaps } from "../utils/clips";
 import { getClipSplitResult, getClipMergeResult } from "../utils/swipe";
 
 interface ProgressBarProps {
@@ -74,22 +74,10 @@ export function ProgressBar({
     [dispatch],
   );
 
-// Swipe-down merges the active clip only with its nearest neighbor, without
-  // touching the slider. That hand-merged list overrides the threshold-derived
-  // grouping until the slider moves (or a swipe-up split re-runs the threshold).
-  const [manualMerge, setManualMerge] = useState<Clip[] | null>(null);
-
-  const displayClips = useMemo(() => {
-    const base = mergeClipsByGap(clips, mergeGap);
-    if (!manualMerge) return base;
-    // Drop a stale hand-merge (new audio file / re-analysis) by checking that
-    // every referenced clip still exists in the current `clips`.
-    const referenced = manualMerge.flatMap((group) =>
-      group.children ?? [group],
-    );
-    if (!referenced.every((child) => clips.includes(child))) return base;
-    return manualMerge;
-  }, [clips, mergeGap, manualMerge]);
+  const displayClips = useMemo(
+    () => mergeClipsByGap(clips, mergeGap),
+    [clips, mergeGap],
+  );
 
   const gapValues = useMemo(
     () => clipGaps(clips, minSilenceLength),
@@ -112,7 +100,7 @@ export function ProgressBar({
       if (direction === "down") {
         const result = getClipMergeResult(displayClips, idx);
         if (!result) return;
-        setManualMerge(result.clips);
+        setMergeGap(result.mergeGap);
         dispatch(setActiveClip(result.activeClip));
         return;
       }
@@ -124,7 +112,6 @@ export function ProgressBar({
         minSilenceLength,
       );
       if (!result) return;
-      setManualMerge(null);
       setMergeGap(result.mergeGap);
       dispatch(setActiveClip(result.activeClip));
     },
@@ -201,7 +188,6 @@ export function ProgressBar({
             gapValues={gapValues}
             clipCount={displayClips.length}
             onChange={(value) => {
-              setManualMerge(null);
               setMergeGap(value);
             }}
             disabled={playing}

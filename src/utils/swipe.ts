@@ -31,9 +31,8 @@ export interface ClipSplitResult {
 }
 
 /**
- * Swipe up (unpack): raise the merge threshold just below the largest internal
- * child gap so the merged group separates along it. This is a global threshold
- * change (the merge slider moves with it).
+ * Swipe up (unpack): set the merge slider to the smallest gap between the
+ * group's children. This is a global threshold change.
  */
 export function getClipSplitResult(
   clips: Clip[],
@@ -46,12 +45,12 @@ export function getClipSplitResult(
   if (!canSplitClip(clip, minSilenceLength)) return null;
 
   const children = clip.children as Clip[];
-  const largestChildGap = Math.max(
+  const smallestChildGap = Math.min(
     ...children.slice(1).map((child, childIdx) =>
       child.start - children[childIdx].end,
     ),
   );
-  const mergeGap = Math.max(minSilenceLength, largestChildGap - 0.000001);
+  const mergeGap = smallestChildGap;
   const nextClips = mergeClipsByGap(clips, mergeGap);
   const activeClip = groupContaining(nextClips, children[0]);
   return activeClip >= 0 ? { mergeGap, activeClip } : null;
@@ -62,13 +61,15 @@ export interface ClipMergeResult {
   clips: Clip[];
   /** Index of the newly merged group in `clips`. */
   activeClip: number;
+  /** The silence separating the selected clip from its nearest neighbor. */
+  mergeGap: number;
 }
 
 /**
  * Swipe down (pack): merge the clip at `idx` only with its nearest neighbor
  * (the adjacent group with the smallest inter-group gap), combining their
- * children into a single parent. Unlike the old threshold-based merge, this
- * touches just that one pair and never produces a `mergeGap`.
+ * children into a single parent. The merge slider follows the silence used
+ * for that pair.
  */
 export function getClipMergeResult(
   displayClips: Clip[],
@@ -84,6 +85,7 @@ export function getClipMergeResult(
   const neighborIdx = previousGap <= nextGap ? idx - 1 : idx + 1;
   const neighbor = displayClips[neighborIdx];
   if (!neighbor) return null;
+  const mergeGap = Math.min(previousGap, nextGap);
 
   const children = [...(clip.children ?? [clip]), ...(neighbor.children ?? [neighbor])].sort(
     (a, b) => a.start - b.start,
@@ -101,5 +103,6 @@ export function getClipMergeResult(
   return {
     clips: [...displayClips.slice(0, from), merged, ...displayClips.slice(to + 1)],
     activeClip: from,
+    mergeGap,
   };
 }
