@@ -31,8 +31,8 @@ export interface ClipSplitResult {
 }
 
 /**
- * Swipe up (unpack): set the merge slider to the smallest gap between the
- * group's children. This is a global threshold change.
+ * Swipe up (unpack): set the merge slider just below the largest gap between
+ * the group's children so the group separates at that boundary.
  */
 export function getClipSplitResult(
   clips: Clip[],
@@ -45,12 +45,12 @@ export function getClipSplitResult(
   if (!canSplitClip(clip, minSilenceLength)) return null;
 
   const children = clip.children as Clip[];
-  const smallestChildGap = Math.min(
+  const largestChildGap = Math.max(
     ...children.slice(1).map((child, childIdx) =>
       child.start - children[childIdx].end,
     ),
   );
-  const mergeGap = smallestChildGap;
+  const mergeGap = Math.max(minSilenceLength, largestChildGap - 0.000001);
   const nextClips = mergeClipsByGap(clips, mergeGap);
   const activeClip = groupContaining(nextClips, children[0]);
   return activeClip >= 0 ? { mergeGap, activeClip } : null;

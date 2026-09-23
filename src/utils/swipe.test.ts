@@ -46,13 +46,13 @@ describe("canSplitClip", () => {
 });
 
 describe("getClipSplitResult", () => {
-  it("sets the merge gap to the smallest child gap", () => {
+  it("sets the merge gap just below the largest child gap", () => {
     const clips = [mk(0, 1), mk(1.2, 2), mk(2.5, 3), mk(5, 6)];
     const displayClips = mergeClipsByGap(clips, 0.6);
 
     const result = getClipSplitResult(clips, displayClips, 0, 0.1);
 
-    expect(result?.mergeGap).toBeCloseTo(0.2);
+    expect(result?.mergeGap).toBeCloseTo(0.499999);
     expect(result?.activeClip).toBe(0);
     expect(mergeClipsByGap(clips, result!.mergeGap)[0].children).toEqual([
       clips[0],
