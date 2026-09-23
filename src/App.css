@@ -10,6 +10,7 @@
   --accent-dim: #388bfd;
   --accent-rgb: 88, 166, 255;
   --accent-dim-rgb: 56, 139, 253;
+  --clip-swipe: #58a6ff;
   --danger: #ef5350;
   --text-tertiary: #6a7480;
   --waveform-bg-top: #23272e;
@@ -913,53 +914,47 @@ body {
   opacity: 0.9;
 }
 
-.stacked-clip-swipe-arrow {
+.stacked-clip-action {
   position: absolute;
   left: 50%;
-  width: 10px;
-  height: 7px;
-  display: block;
-  color: #fff;
   transform: translateX(-50%);
-  animation: clip-swipe-hint-pulse 1.8s ease-in-out infinite;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--clip-swipe);
+  cursor: pointer;
+  z-index: 3;
+  pointer-events: auto;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
 }
 
-.stacked-clip-swipe-arrow--up {
-  bottom: calc(100% + 4px);
+.stacked-clip-action svg {
+  display: block;
+  width: 12px;
+  height: 16px;
 }
 
-.stacked-clip-swipe-arrow--down {
-  top: calc(100% + 4px);
+.stacked-clip-action:hover {
+  background: rgba(var(--accent-rgb), 0.16);
+  color: var(--accent);
+  transform: translateX(-50%) scale(1.12);
 }
 
-.stacked-clip-swipe-arrow::before {
-  content: "";
-  position: absolute;
-  left: 2px;
-  width: 6px;
-  height: 6px;
-  border-left: 1px solid currentColor;
-  border-top: 1px solid currentColor;
+.stacked-clip-action--split {
+  bottom: calc(100% + 2px);
 }
 
-.stacked-clip-swipe-arrow--up::before {
-  top: 1px;
-  transform: rotate(45deg);
-}
-
-.stacked-clip-swipe-arrow--down::before {
-  top: 0;
-  transform: rotate(225deg);
-}
-
-@keyframes clip-swipe-hint-pulse {
-  0%,
-  100% {
-    opacity: 0.65;
-  }
-  50% {
-    opacity: 1;
-  }
+.stacked-clip-action--merge {
+  top: calc(100% + 2px);
 }
 
 .stacked-waveform__cursor {

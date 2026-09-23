@@ -20,6 +20,7 @@ import { WaveformCursor } from "./WaveformCursor";
 import { WaveformBars } from "./Waveform";
 import { type WaveformData } from "../types";
 import type { Clip as ClipData } from "../utils/clips";
+import { canSplitClip } from "../utils/swipe";
 
 const STACK_ROW_TARGET_SECS = 10;
 const VB_W = 1000;
@@ -35,6 +36,7 @@ interface StackedWaveformProps {
   playing: boolean;
   activeClip: number;
   repetitions: number;
+  minSilenceLength: number;
   onStopPlayback?: () => void;
   onSwipeClip?: (idx: number, direction: "up" | "down") => void;
   onSeek: (time: number) => void;
@@ -64,6 +66,7 @@ export const StackedWaveform = memo(function StackedWaveform({
   playing,
   activeClip,
   repetitions,
+  minSilenceLength,
   onStopPlayback,
   onSwipeClip,
   onSeek,
@@ -421,11 +424,19 @@ export const StackedWaveform = memo(function StackedWaveform({
                         left={center}
                         active={idx === activeClip}
                         canSplit={
-                          !playing && !!s.children && s.children.length > 1
+                          !playing && canSplitClip(s, minSilenceLength)
                         }
                         canMerge={
                           !playing &&
                           (idx > 0 || idx < displayClips.length - 1)
+                        }
+                        onSplit={
+                          onSwipeClip ? () => onSwipeClip(idx, "up") : undefined
+                        }
+                        onMerge={
+                          onSwipeClip
+                            ? () => onSwipeClip(idx, "down")
+                            : undefined
                         }
                       />
                     );

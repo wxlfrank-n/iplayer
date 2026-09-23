@@ -41,6 +41,7 @@ function setup(initialTime = 0) {
     playing: false,
     activeClip: -1,
     repetitions: 3,
+    minSilenceLength: 0.1,
     onSeek: vi.fn(),
     onActiveClipChange: vi.fn(),
     onPlayRange: vi.fn(),

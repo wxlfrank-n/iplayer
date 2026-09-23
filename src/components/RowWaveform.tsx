@@ -18,6 +18,7 @@ import { WaveformCursor } from "./WaveformCursor";
 import { WaveformBars } from "./Waveform";
 import { type WaveformData } from "../hooks/useWaveform";
 import type { Clip as ClipData } from "../utils/clips";
+import { canSplitClip } from "../utils/swipe";
 import { panTarget } from "../utils/pan";
 
 const getWindowSecs = (w: number) => {
@@ -48,6 +49,7 @@ export interface RowWaveformProps {
   ) => void;
   onClipPlayActiveChange?: (active: boolean) => void;
   repetitions: number;
+  minSilenceLength: number;
   onStopPlayback?: () => void;
   activeClip: number;
   onActiveClipChange: (idx: number) => void;
@@ -68,6 +70,7 @@ export const RowWaveform = memo(function RowWaveform({
   onPlayRange,
   onClipPlayActiveChange,
   repetitions,
+  minSilenceLength,
   onStopPlayback,
   activeClip,
   onActiveClipChange,
@@ -535,8 +538,12 @@ export const RowWaveform = memo(function RowWaveform({
                   duration={s.vEnd - s.vStart}
                   left={center}
                   active={idx === activeClip}
-                  canSplit={!playing && !!s.children && s.children.length > 1}
+                  canSplit={!playing && canSplitClip(s, minSilenceLength)}
                   canMerge={!playing && (idx > 0 || idx < displayClips.length - 1)}
+                  onSplit={onSwipeClip ? () => onSwipeClip(idx, "up") : undefined}
+                  onMerge={
+                    onSwipeClip ? () => onSwipeClip(idx, "down") : undefined
+                  }
                 />
               );
             })}

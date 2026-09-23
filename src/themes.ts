@@ -51,6 +51,8 @@ export interface Theme {
   accentRgb: string;
   /** accentDim as "r, g, b" for rgba() tints. */
   accentDimRgb: string;
+  /** Clip swipe hint icon color (pack/unpack affordance on the active clip). */
+  clipSwipe: string;
 }
 
 export const THEMES: Record<ThemeId, Theme> = {
@@ -78,6 +80,7 @@ export const THEMES: Record<ThemeId, Theme> = {
     accentDim: "#388bfd",
     accentRgb: "88, 166, 255",
     accentDimRgb: "56, 139, 253",
+    clipSwipe: "#58a6ff",
   },
   light: {
     label: "Mist",
@@ -103,6 +106,7 @@ export const THEMES: Record<ThemeId, Theme> = {
     accentDim: "#1c64d6",
     accentRgb: "47, 128, 237",
     accentDimRgb: "28, 100, 214",
+    clipSwipe: "#1c64d6",
   },
   midnight: {
     label: "Midnight",
@@ -128,6 +132,7 @@ export const THEMES: Record<ThemeId, Theme> = {
     accentDim: "#1ea1ad",
     accentRgb: "74, 209, 220",
     accentDimRgb: "30, 161, 173",
+    clipSwipe: "#4ad1dc",
   },
   paper: {
     label: "Sky",
@@ -153,6 +158,7 @@ export const THEMES: Record<ThemeId, Theme> = {
     accentDim: "#1a5cb8",
     accentRgb: "43, 116, 216",
     accentDimRgb: "26, 92, 184",
+    clipSwipe: "#1a5cb8",
   },
   nova: {
     label: "Nova",
@@ -178,6 +184,7 @@ export const THEMES: Record<ThemeId, Theme> = {
     accentDim: "#9366f2",
     accentRgb: "177, 140, 255",
     accentDimRgb: "147, 102, 242",
+    clipSwipe: "#b18cff",
   },
   rose: {
     label: "Lilac",
@@ -203,6 +210,7 @@ export const THEMES: Record<ThemeId, Theme> = {
     accentDim: "#5f3cbf",
     accentRgb: "122, 82, 214",
     accentDimRgb: "95, 60, 191",
+    clipSwipe: "#5f3cbf",
   },
 };
 
@@ -242,6 +250,7 @@ export function applyThemeVars(theme: ThemeId): void {
     ["--accent-dim", t.accentDim],
     ["--accent-rgb", t.accentRgb],
     ["--accent-dim-rgb", t.accentDimRgb],
+    ["--clip-swipe", t.clipSwipe],
   ];
   for (const [key, value] of vars) {
     root.style.setProperty(key, value);
