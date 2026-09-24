@@ -1,12 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Dispatch, MutableRefObject, PointerEvent as ReactPointerEvent, SetStateAction } from "react";
-
-const getWindowSecs = (w: number) => {
-  if (w >= 1600) return 32;
-  if (w >= 1200) return 16;
-  if (w >= 800) return 12;
-  return 8;
-};
+import { clampWindowAnchor, getWindowSecs } from "../utils/rowWaveform";
 
 const HS_FOLLOW_FRAC = 0.6;
 const HS_PAN_DECIDE_PX = 8;
@@ -68,7 +62,7 @@ export function useRowWaveformScroll({
     hsWinLenRef.current = Math.min(getWindowSecs(width), waveformDuration);
     const maxStart = Math.max(0, waveformDuration - hsWinLenRef.current);
     hsMaxStartRef.current = maxStart;
-    setHsAnchor((a) => Math.min(a, maxStart));
+    setHsAnchor((a) => clampWindowAnchor(a, maxStart));
   }, [waveformDuration]);
 
   useEffect(() => {
@@ -195,10 +189,7 @@ export function useRowWaveformScroll({
     if (draggingRef.current) return;
     if (Math.abs(currentTime - previousTime) < 1) return;
     commitAnchorNow(
-      Math.max(
-        0,
-        Math.min(currentTime - HS_FOLLOW_FRAC * hsWinLenRef.current, hsMaxStartRef.current),
-      ),
+      clampWindowAnchor(currentTime - HS_FOLLOW_FRAC * hsWinLenRef.current, hsMaxStartRef.current),
     );
   }, [currentTime, commitAnchorNow]);
 
@@ -242,9 +233,9 @@ export function useRowWaveformScroll({
         if (Math.abs(target - hsAnchorRef.current) > 0.05) commitAnchor(target);
         return;
       }
-      const target = Math.max(
-        0,
-        Math.min(t - HS_FOLLOW_FRAC * hsWinLenRef.current, hsMaxStartRef.current),
+      const target = clampWindowAnchor(
+        t - HS_FOLLOW_FRAC * hsWinLenRef.current,
+        hsMaxStartRef.current,
       );
       if (Math.abs(target - hsAnchorRef.current) > 0.05) commitAnchor(target);
     });
@@ -260,7 +251,7 @@ export function useRowWaveformScroll({
       const w = hsWinLenRef.current;
       clipPlayAnchorStartRef.current = a;
       if (start < a) {
-        commitAnchor(Math.max(0, Math.min(start, hsMaxStartRef.current)));
+        commitAnchor(clampWindowAnchor(start, hsMaxStartRef.current));
       } else if (end > a + w) {
         clipPlayFollowEndRef.current = end;
       }
@@ -368,9 +359,7 @@ export function useRowWaveformScroll({
           ((delta * scale) / (elNow.clientWidth || 1)) * (hsWinLenRef.current || 1),
         ),
       );
-      commitAnchorNow(
-        Math.max(0, Math.min(hsAnchorRef.current + dSec, hsMaxStartRef.current)),
-      );
+      commitAnchorNow(clampWindowAnchor(hsAnchorRef.current + dSec, hsMaxStartRef.current));
       bumpScrolling();
     };
     el.addEventListener("wheel", onWheel, { passive: false });

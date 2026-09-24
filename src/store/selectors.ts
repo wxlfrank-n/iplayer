@@ -46,16 +46,42 @@ export const selectCurrentTrack = (s: RootState) => {
 
 export const selectCanPlay = (s: RootState) => s.player.tracks.length > 0;
 
-export function selectCurrentAudio(s: RootState): CurrentAudio {
-  const track = selectCurrentTrack(s);
+export interface CurrentAudioInput {
+  track: ReturnType<typeof selectCurrentTrack> | null;
+  waveform: RootState["analysis"]["waveform"];
+  waveformStatus: RootState["analysis"]["waveformStatus"];
+  clips: RootState["analysis"]["clips"];
+  currentTime: RootState["player"]["currentTime"];
+  activeClip: RootState["analysis"]["activeClip"];
+}
+
+export function toCurrentAudio({
+  track,
+  waveform,
+  waveformStatus,
+  clips,
+  currentTime,
+  activeClip,
+}: CurrentAudioInput): CurrentAudio {
   return {
     url: track?.url ?? null,
     title: track?.title ?? null,
-    waveform:
-      s.analysis.waveformStatus === "ready" ? s.analysis.waveform : null,
+    waveform: waveformStatus === "ready" ? waveform : null,
+    waveformStatus,
+    clips,
+    currentTime,
+    activeClip,
+  };
+}
+
+export function selectCurrentAudio(s: RootState): CurrentAudio {
+  const track = selectCurrentTrack(s);
+  return toCurrentAudio({
+    track,
+    waveform: s.analysis.waveform,
     waveformStatus: s.analysis.waveformStatus,
     clips: s.analysis.clips,
     currentTime: s.player.currentTime,
     activeClip: s.analysis.activeClip,
-  };
+  });
 }
