@@ -97,6 +97,7 @@ export const RowWaveform = memo(function RowWaveform({
   // Frame-by-frame paint targets, written by `drawFrame` every rAF tick.
   const hsSmoothRef = useRef(0);
   const trackRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef(false);
 
   const [hsAnchor, setHsAnchor] = useState(0);
   const applyWidth = useCallback((width: number) => {
@@ -192,7 +193,12 @@ export const RowWaveform = memo(function RowWaveform({
     const win = hsWinLenRef.current || 1;
     const t = getCurrentTime ? getCurrentTime() : 0;
     let s = hsAnchorRef.current;
-    if (trackHoveredRef.current && playingRef.current && !scrollingRef.current) {
+    if (
+      trackHoveredRef.current &&
+      playingRef.current &&
+      !scrollingRef.current &&
+      !draggingRef.current
+    ) {
       if (clipPlayActiveRef.current) {
         const followEnd = clipPlayFollowEndRef.current;
         if (
@@ -261,6 +267,7 @@ export const RowWaveform = memo(function RowWaveform({
   useEffect(() => {
     const previousTime = previousTimeRef.current;
     previousTimeRef.current = currentTime;
+    if (draggingRef.current) return;
     if (Math.abs(currentTime - previousTime) < 1) return;
     commitAnchorNow(
       Math.max(
@@ -291,6 +298,7 @@ export const RowWaveform = memo(function RowWaveform({
   useEffect(() => {
     if (!trackHovered) return;
     if (scrolling) return;
+    if (draggingRef.current) return;
     if (!playing) return;
     if (clipPlaySkipRef.current) {
       const t = getCurrentTime();
@@ -298,6 +306,7 @@ export const RowWaveform = memo(function RowWaveform({
       clipPlaySkipRef.current = false;
     }
     const id = requestAnimationFrame(() => {
+      if (draggingRef.current) return;
       const t = getCurrentTime();
       if (clipPlayActive) {
         const followEnd = clipPlayFollowEndRef.current;
@@ -343,6 +352,7 @@ export const RowWaveform = memo(function RowWaveform({
 
   // Panning.
   const bumpScrolling = useCallback(() => {
+    scrollingRef.current = true;
     setScrolling(true);
     window.clearTimeout(scrollTimeoutRef.current);
     if (clipPlayActive) return;
@@ -356,6 +366,7 @@ export const RowWaveform = memo(function RowWaveform({
   const hsDragRef = useRef<{
     pointerId: number;
     startX: number;
+    startY: number;
     startAnchor: number;
     panned: boolean;
   } | null>(null);
@@ -363,10 +374,7 @@ export const RowWaveform = memo(function RowWaveform({
   const onHsPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0 && e.pointerType === "mouse") return;
     const downTarget = e.target as Element;
-    if (!trackRef.current?.contains(downTarget)) return;
-    // Pressing a clip (or its label) must not drag-pan the waveform, or the
-    // clip would appear glued to the pointer instead of being clickable.
-    if (downTarget.closest(".waveform-clip, .clip-label, .stacked-clip-label")) return;
+    if (!hsRef.current?.contains(downTarget)) return;
     if (hsDragRef.current?.pointerId === e.pointerId) return;
     // Recover if a clip gesture was cancelled before the window cleanup event
     // reached this component; a stale drag must not block later row scrolling.
@@ -379,15 +387,22 @@ export const RowWaveform = memo(function RowWaveform({
     const drag = {
       pointerId: e.pointerId,
       startX: e.clientX,
+      startY: e.clientY,
       startAnchor: hsAnchorRef.current,
       panned: false,
     };
     hsDragRef.current = drag;
+    draggingRef.current = true;
 
     const onMove = (ev: PointerEvent) => {
       if (ev.pointerId !== drag.pointerId) return;
       const dx = ev.clientX - drag.startX;
-      if (!drag.panned && Math.abs(dx) < HS_PAN_DECIDE_PX) return;
+      const dy = ev.clientY - drag.startY;
+      if (!drag.panned) {
+        if (Math.abs(dx) < HS_PAN_DECIDE_PX && Math.abs(dy) < HS_PAN_DECIDE_PX) return;
+        if (Math.abs(dy) >= Math.abs(dx)) return;
+      }
+      ev.preventDefault();
       drag.panned = true;
       const target = panTarget(
         drag.startAnchor,
@@ -401,10 +416,12 @@ export const RowWaveform = memo(function RowWaveform({
     };
     const onEnd = (ev: PointerEvent) => {
       if (ev.pointerId !== drag.pointerId) return;
+      ev.preventDefault();
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onEnd);
       window.removeEventListener("pointercancel", onEnd);
       hsDragRef.current = null;
+      draggingRef.current = false;
       if (!drag.panned) return;
       // A drag is pure navigation: it must never change the active clip (only
       // clicking a clip to play it does). Just swallow the synthetic click the

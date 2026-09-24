@@ -989,6 +989,10 @@ body {
   position: relative;
   padding: 0 12px;
   touch-action: none;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .row-waveform__inner {
