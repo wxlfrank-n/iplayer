@@ -8,7 +8,7 @@
  * internal rAF loop, so the displayed time always reflects the live playhead.
  */
 
-import { memo, useEffect, useRef } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { formatTime } from "../utils/format";
 
 interface WaveformCursorProps {
@@ -24,7 +24,8 @@ export const WaveformCursor = memo(function WaveformCursor({
   getCurrentTime,
 }: WaveformCursorProps) {
   const cursorRef = useRef<HTMLDivElement>(null);
-  const prevPctRef = useRef(getPlayedPct() * 100);
+  const [initialPct] = useState(() => getPlayedPct() * 100);
+  const prevPctRef = useRef(initialPct);
   const prevTimeLabelRef = useRef(formatTime(getCurrentTime()));
   useEffect(() => {
     let raf = 0;
@@ -46,13 +47,13 @@ export const WaveformCursor = memo(function WaveformCursor({
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [getCurrentTime, getPlayedPct]);
 
   return (
     <div
       ref={cursorRef}
       className={`${view}-waveform__cursor`}
-      style={{ left: `${prevPctRef.current}%` }}
+      style={{ left: `${initialPct}%` }}
     >
       <div
         className={`${view}-waveform__time`}

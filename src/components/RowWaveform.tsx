@@ -90,6 +90,7 @@ export const RowWaveform = memo(function RowWaveform({
   // window length (secs), `maxStart` = largest allowed anchor (dur - winLen).
   // Live-value refs (kept in sync below) so gesture/resize handlers never go stale.
   const [winWidth, setWinWidth] = useState(window.innerWidth);
+  const waveformDuration = waveform.duration;
   const hsWinLenRef = useRef(Math.min(getWindowSecs(winWidth), waveform.duration));
   const hsMaxStartRef = useRef(Math.max(0, waveform.duration - hsWinLenRef.current));
   const hsAnchorRef = useRef(0);
@@ -100,11 +101,11 @@ export const RowWaveform = memo(function RowWaveform({
   const [hsAnchor, setHsAnchor] = useState(0);
   const applyWidth = useCallback((width: number) => {
     setWinWidth(width);
-    hsWinLenRef.current = Math.min(getWindowSecs(width), waveform.duration);
-    const maxStart = Math.max(0, waveform.duration - hsWinLenRef.current);
+    hsWinLenRef.current = Math.min(getWindowSecs(width), waveformDuration);
+    const maxStart = Math.max(0, waveformDuration - hsWinLenRef.current);
     hsMaxStartRef.current = maxStart;
     setHsAnchor((a) => Math.min(a, maxStart));
-  }, []);
+  }, [waveformDuration]);
   useEffect(() => {
     const el = hsRef.current;
     const onResize = () => {

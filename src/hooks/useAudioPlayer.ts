@@ -46,6 +46,7 @@ export function useAudioPlayer(skipSeconds: number) {
   const audioRef = useRef<HTMLAudioElement>(new Audio());
   const nextRef = useRef<() => void>(() => {});
   const expectedRawUrlRef = useRef<string | null>(null);
+  const trackLoadIdRef = useRef(0);
   const wavBlobCacheRef = useRef<Map<string, string>>(new Map());
   // Lazily-created Web Audio graph wired through the audio element; feeding the
   // final music through the analyser lets the UI draw live dancing lines.
@@ -71,6 +72,7 @@ export function useAudioPlayer(skipSeconds: number) {
   const getAnalyser = useCallback(
     (resume: boolean = true): AnalyserNode | null => {
       if (isIOS) return null;
+      if (!resume && !analyserRef.current) return null;
       // Return existing analyser if already created
       if (analyserRef.current) {
         // Resume context if needed (e.g., after pause)
@@ -152,11 +154,14 @@ export function useAudioPlayer(skipSeconds: number) {
     async (audio: HTMLAudioElement, url: string) => {
       // Initialize AudioContext on user gesture (from next/prev buttons or click)
       getAnalyser();
+      const loadId = ++trackLoadIdRef.current;
+      audio.pause();
+      dispatch(setIsPlaying(false));
       expectedRawUrlRef.current = url;
       try {
         const playableUrl = await getPlayableUrl(url);
         // Only update if this is still the expected URL
-        if (expectedRawUrlRef.current === url) {
+        if (trackLoadIdRef.current === loadId && expectedRawUrlRef.current === url) {
           audio.src = playableUrl;
           audio.load();
           audio
@@ -169,7 +174,7 @@ export function useAudioPlayer(skipSeconds: number) {
       } catch (error) {
         console.error("Failed to decode audio for playback:", error);
         // Fallback to raw URL if decoding fails
-        if (expectedRawUrlRef.current === url) {
+        if (trackLoadIdRef.current === loadId && expectedRawUrlRef.current === url) {
           audio.src = url;
           audio.load();
           audio
@@ -205,6 +210,8 @@ export function useAudioPlayer(skipSeconds: number) {
       dispatch(setCurrentTime(audio.currentTime));
     };
     const onLoadedMetadata = () => dispatch(setDuration(audio.duration));
+    const onPlay = () => dispatch(setIsPlaying(true));
+    const onPause = () => dispatch(setIsPlaying(false));
     const onEnded = () => {
       // While a clip/sector is looping, the range owns the element's `ended`
       // event — a clip ending exactly at the file end must not jump to the
@@ -212,16 +219,23 @@ export function useAudioPlayer(skipSeconds: number) {
       if (audioRef.current.dataset.clipLoopActive === "1") return;
       nextRef.current();
     };
-    const onError = () => console.error("Audio error", audio.error);
+    const onError = () => {
+      dispatch(setIsPlaying(false));
+      console.error("Audio error", audio.error);
+    };
 
     audio.addEventListener("timeupdate", onTimeUpdate);
     audio.addEventListener("loadedmetadata", onLoadedMetadata);
+    audio.addEventListener("play", onPlay);
+    audio.addEventListener("pause", onPause);
     audio.addEventListener("ended", onEnded);
     audio.addEventListener("error", onError);
 
     return () => {
       audio.removeEventListener("timeupdate", onTimeUpdate);
       audio.removeEventListener("loadedmetadata", onLoadedMetadata);
+      audio.removeEventListener("play", onPlay);
+      audio.removeEventListener("pause", onPause);
       audio.removeEventListener("ended", onEnded);
       audio.removeEventListener("error", onError);
     };
@@ -388,6 +402,8 @@ export function useAudioPlayer(skipSeconds: number) {
 
       if (index === s.currentTrackIndex) {
         if (newTracks.length === 0) {
+          trackLoadIdRef.current += 1;
+          expectedRawUrlRef.current = null;
           newIndex = -1;
           audio.pause();
           audio.src = "";

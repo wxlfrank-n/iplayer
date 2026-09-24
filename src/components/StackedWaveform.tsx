@@ -100,7 +100,7 @@ export const StackedWaveform = memo(function StackedWaveform({
       ); // last row always ends at the waveform end
     }
     return rows;
-  }, [displayClips]);
+  }, [displayClips, waveform.duration]);
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const pendingAutoScrollRef = useRef(false);
