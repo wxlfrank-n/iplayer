@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   clipGaps,
+  expandClip,
   mergeClipsByGap,
   mergeShortClips,
   splitBySilence,
@@ -85,6 +86,35 @@ describe("splitBySilence", () => {
     expect(splitWith(0.05)).toHaveLength(2);
     // With a higher threshold the short runs fold together.
     expect(bounds(splitWith(0.2))).toEqual([[0, 0.2]]);
+  });
+});
+
+describe("expandClip", () => {
+  it("expands clip bounds into neighboring silence without exceeding 10% of the clip length", () => {
+    const clip = { start: 0.6, end: 1.0, vStart: 0.6, vEnd: 1.0 };
+
+    expandClip(clip, 0.2, 1.8, 0.25, 2.0);
+
+    expect(clip.vStart).toBeCloseTo(0.56, 5);
+    expect(clip.vEnd).toBeCloseTo(1.04, 5);
+  });
+
+  it("leaves a clip unchanged when there is no surrounding silence to absorb", () => {
+    const clip = { start: 0.5, end: 1.0, vStart: 0.5, vEnd: 1.0 };
+
+    expandClip(clip, 0.5, 1.0, 0.25, 2.0);
+
+    expect(clip.vStart).toBe(0.5);
+    expect(clip.vEnd).toBe(1.0);
+  });
+
+  it("caps expansion at 10% of the clip length even with very large surrounding gaps", () => {
+    const clip = { start: 1.0, end: 2.0, vStart: 1.0, vEnd: 2.0 };
+
+    expandClip(clip, 0.0, 100.0, 0.25, 100.0);
+
+    expect(clip.vStart).toBeCloseTo(0.9, 5);
+    expect(clip.vEnd).toBeCloseTo(2.1, 5);
   });
 });
 

@@ -261,13 +261,21 @@ function expandClips(clips: Clip[], audioDuration: number, expandRatio: number =
     const prevEnd = i > 0 ? clips[i - 1].end : 0;
     const nextStart =
       i < clips.length - 1 ? clips[i + 1].start : audioDuration;
-    expandClip(clip, expandRatio * (clip.start - prevEnd), expandRatio * (nextStart - clip.end), 0, audioDuration);
+    expandClip(clip, prevEnd, nextStart, expandRatio, audioDuration);
   }
 }
 
-function expandClip(clip: Clip, startExpand: number, endExpand: number, minStart: number, maxEnd: number): void {
+export function expandClip(
+  clip: Clip,
+  prevEnd: number,
+  nextStart: number,
+  expandRatio: number,
+  maxEnd: number,
+): void {
   const maxRange = 0.1 * (clip.end - clip.start);
-  clip.vStart = Math.max(minStart, clip.start - Math.min(maxRange, startExpand));
+  const startExpand = expandRatio * (clip.start - prevEnd);
+  const endExpand = expandRatio * (nextStart - clip.end);
+  clip.vStart = Math.max(0, clip.start - Math.min(maxRange, startExpand));
   clip.vEnd = Math.min(maxEnd, clip.end + Math.min(maxRange, endExpand));
 }
 
