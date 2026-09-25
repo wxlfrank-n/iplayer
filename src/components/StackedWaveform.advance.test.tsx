@@ -191,4 +191,35 @@ describe("stacked waveform paged auto-advance", () => {
     });
     expect(scrollTo.mock.lastCall?.[0].left).toBe(1600);
   });
+
+  it("does not snap back to the playing clip's page once the user scrolls away", async () => {
+    const { scrollTo, rerender, scroller } = setup(0);
+
+    // Click clip 0's rect to start its (repeating) clip playback.
+    const firstClip = scroller.querySelector(".waveform-clip")!;
+    fireEvent.click(firstClip);
+    rerender({ playing: true, activeClip: 0, currentTime: 0 });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    // Let the "select active clip" auto-scroll guard lapse before browsing.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1100);
+    });
+    expect(scrollTo.mock.lastCall?.[0].left).toBe(0);
+
+    // User scrolls to clip 4's page while clip 0 keeps playing.
+    scroller.scrollLeft = 3200;
+    fireEvent.scroll(scroller);
+    scrollTo.mockClear();
+
+    // The clip's clock wraps when it repeats: currentTime jumps back to ~0.
+    rerender({ currentTime: 20 });
+    rerender({ currentTime: 0.5 });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(scrollTo).not.toHaveBeenCalled();
+  });
 });

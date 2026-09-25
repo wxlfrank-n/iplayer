@@ -118,6 +118,11 @@ export const StackedWaveform = memo(function StackedWaveform({
   const [userScrolling, setUserScrolling] = useState(false);
   const [viewPage, setViewPage] = useState(0);
 
+  const [clipPlayActive, setClipPlayActive] = useState(false);
+  useEffect(() => {
+    onClipPlayActiveChange?.(clipPlayActive);
+  }, [clipPlayActive, onClipPlayActiveChange]);
+
   // Mouse-wheel users have no deltaX: translate vertical wheel motion into
   // horizontal paging so the pages can always be scrolled by hand.
   useEffect(() => {
@@ -278,18 +283,21 @@ export const StackedWaveform = memo(function StackedWaveform({
   }, [playing, userScrolling, pageForTime, scrollToPage, getCurrentTime]);
 
   // Explicit seeks, including skip buttons, must move to the target page even
-  // while paused and may need to move backwards.
+  // while paused and may need to move backwards. During clip playback the clock
+  // wraps (repeat loops) and must not yank a manually-browsed view back to the
+  // clip's page.
   useEffect(() => {
     const previousTime = previousTimeRef.current;
     previousTimeRef.current = currentTime;
     if (Math.abs(currentTime - previousTime) < 1) return;
     const idx = pageForTime(currentTime);
     if (playing && idx > currentPageRef.current) return;
+    if (clipPlayActive && idx < currentPageRef.current) return;
     if (idx === currentPageRef.current) return;
     currentPageRef.current = idx;
     setViewPage(idx);
     scrollToPage(idx);
-  }, [currentTime, pageForTime, playing, scrollToPage]);
+  }, [currentTime, pageForTime, playing, clipPlayActive, scrollToPage]);
 
   // A manual browse stays put across a pause; restarting playback or loading a
   // new track resets it so the follow can resume.
@@ -323,11 +331,6 @@ export const StackedWaveform = memo(function StackedWaveform({
     },
     [onSeek, onActiveClipChange, pageForTime, scrollToPage],
   );
-
-  const [clipPlayActive, setClipPlayActive] = useState(false);
-  useEffect(() => {
-    onClipPlayActiveChange?.(clipPlayActive);
-  }, [clipPlayActive, onClipPlayActiveChange]);
 
   const stackedPlayClip = useCallback(
     (start: number, end: number, reps: number) => {

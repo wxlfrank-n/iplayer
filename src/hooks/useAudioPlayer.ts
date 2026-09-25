@@ -48,6 +48,11 @@ export function useAudioPlayer(skipSeconds: number) {
   const expectedRawUrlRef = useRef<string | null>(null);
   const trackLoadIdRef = useRef(0);
   const wavBlobCacheRef = useRef<Map<string, string>>(new Map());
+  // True while a clip range is paused only to seek back to its start for the
+  // next repetition. During that window the element's native `pause` event and
+  // the range restart must not publish isPlaying=false, or the waveform views
+  // would see playback "stop" at every loop.
+  const suppressRangePauseRef = useRef(false);
   // Lazily-created Web Audio graph wired through the audio element; feeding the
   // final music through the analyser lets the UI draw live dancing lines.
   const analyserRef = useRef<{
@@ -211,7 +216,13 @@ export function useAudioPlayer(skipSeconds: number) {
     };
     const onLoadedMetadata = () => dispatch(setDuration(audio.duration));
     const onPlay = () => dispatch(setIsPlaying(true));
-    const onPause = () => dispatch(setIsPlaying(false));
+    const onPause = () => {
+      // A transient pause fired purely to seek a clip range back to its start.
+      // The loop is still "playing" — publishing isPlaying=false here would
+      // flip the waveform views' follow state off at every repetition.
+      if (suppressRangePauseRef.current) return;
+      dispatch(setIsPlaying(false));
+    };
     const onEnded = () => {
       // While a clip/sector is looping, the range owns the element's `ended`
       // event — a clip ending exactly at the file end must not jump to the
@@ -295,6 +306,7 @@ export function useAudioPlayer(skipSeconds: number) {
       rangeEndedRef.current = null;
     }
     audio.dataset.clipLoopActive = "0";
+    suppressRangePauseRef.current = false;
   }, []);
 
   const pause = useCallback(() => {
@@ -534,11 +546,16 @@ export function useAudioPlayer(skipSeconds: number) {
         seeking = true;
         seekRequestTs = performance.now();
         cancelResume();
+        // The pause+seek below is a loop restart, not a user pause: keep
+        // isPlaying true across it so the waveform views never see playback
+        // stop mid-range.
+        suppressRangePauseRef.current = true;
         audio.pause();
         audio.currentTime = start;
         dispatch(setCurrentTime(start));
         // Let the paused seek settle before resuming so iOS honors it.
         resumeTimer = window.setTimeout(() => {
+          suppressRangePauseRef.current = false;
           if (runId !== rangeRunIdRef.current) return;
           resumeTimer = 0;
           snatchToStart(audio, start);

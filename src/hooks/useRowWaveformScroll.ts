@@ -102,6 +102,10 @@ export function useRowWaveformScroll({
     playingRef.current = playing;
   }, [playing]);
 
+  // Previous playing value so clip-play state is only torn down on a real
+  // play -> stop transition (not when a clip is armed while still paused).
+  const prevPlayingRef = useRef(playing);
+
   const scrollingRef = useRef(scrolling);
   useEffect(() => {
     scrollingRef.current = scrolling;
@@ -144,11 +148,14 @@ export function useRowWaveformScroll({
       if (clipPlayActiveRef.current) {
         const followEnd = clipPlayFollowEndRef.current;
         if (followEnd && hsAnchorRef.current + win < followEnd) {
-          const target = Math.min(
-            clipPlayAnchorStartRef.current + (t - clipPlayStartRef.current),
-            Math.max(0, followEnd - win),
-          );
-          s = Math.max(hsAnchorRef.current, target);
+          const inView = t >= hsAnchorRef.current && t <= hsAnchorRef.current + win;
+          if (inView) {
+            const target = Math.min(
+              clipPlayAnchorStartRef.current + (t - clipPlayStartRef.current),
+              Math.max(0, followEnd - win),
+            );
+            s = Math.max(hsAnchorRef.current, target);
+          } 
         }
       } else if (clipPlaySkipRef.current) {
         s = hsAnchorRef.current;
@@ -188,13 +195,25 @@ export function useRowWaveformScroll({
     previousTimeRef.current = currentTime;
     if (draggingRef.current) return;
     if (Math.abs(currentTime - previousTime) < 1) return;
+    if (clipPlayActiveRef.current) {
+      const a = hsAnchorRef.current;
+      const w = hsWinLenRef.current;
+      if (currentTime < a || currentTime > a + w) return;
+    }
     commitAnchorNow(
       clampWindowAnchor(currentTime - HS_FOLLOW_FRAC * hsWinLenRef.current, hsMaxStartRef.current),
     );
   }, [currentTime, commitAnchorNow]);
 
   useEffect(() => {
-    if (playing || !clipPlayActive) return;
+    const wasPlaying = prevPlayingRef.current;
+    prevPlayingRef.current = playing;
+    // Only a genuine play -> stop transition ends a clip range. Arming a clip
+    // while paused takes a moment to set playing=true; clearing here would
+    // disarm the clip-follow protection before the range ever starts.
+    if (!wasPlaying) return;
+    if (playing) return;
+    if (!clipPlayActive) return;
     setClipPlayActiveLocal(false);
     clipPlayFollowEndRef.current = 0;
     clipPlaySkipRef.current = false;
@@ -225,6 +244,7 @@ export function useRowWaveformScroll({
         const followEnd = clipPlayFollowEndRef.current;
         if (!followEnd) return;
         if (hsAnchorRef.current + hsWinLenRef.current >= followEnd) return;
+        if (t < hsAnchorRef.current || t > hsAnchorRef.current + hsWinLenRef.current) return;
         const elapsed = t - clipPlayStartRef.current;
         const target = Math.min(
           clipPlayAnchorStartRef.current + elapsed,
