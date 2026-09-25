@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { Dispatch, MutableRefObject, PointerEvent as ReactPointerEvent, SetStateAction } from "react";
+import type { Dispatch, RefObject, PointerEvent as ReactPointerEvent, SetStateAction } from "react";
 import { clampWindowAnchor, getWindowSecs } from "../utils/rowWaveform";
 import { panTarget } from "../utils/pan";
 
@@ -13,6 +13,10 @@ const CURSOR_CLICK_HOLD_MS = 400;
 const VB_W = 1000;
 const VB_H = 200;
 const PAD = 4;
+export const BARS_QUANT_SEC = 0.1;
+export const BARS_TAIL_SEC = 0.2;
+export const quantizeBarsAnchor = (a: number) =>
+  Math.floor(a / BARS_QUANT_SEC) * BARS_QUANT_SEC;
 
 export interface UseRowWaveformScrollArgs {
   waveformDuration: number;
@@ -34,7 +38,8 @@ export interface UseRowWaveformScrollArgs {
   playing: boolean;
   scrolling: boolean;
   setScrolling: Dispatch<SetStateAction<boolean>>;
-  scrollTimeoutRef: MutableRefObject<number | undefined>;
+  scrollTimeoutRef: RefObject<number | undefined>;
+  cursorElementRef?: RefObject<HTMLDivElement | null>;
 }
 
 export function useRowWaveformScroll({
@@ -49,6 +54,7 @@ export function useRowWaveformScroll({
   scrolling,
   setScrolling,
   scrollTimeoutRef,
+  cursorElementRef,
 }: UseRowWaveformScrollArgs) {
   const innerH = VB_H - PAD * 2;
   const hsRef = useRef<HTMLDivElement>(null);
@@ -57,7 +63,9 @@ export function useRowWaveformScroll({
   const hsWinLenRef = useRef(Math.min(getWindowSecs(winWidth), waveformDuration));
   const hsMaxStartRef = useRef(Math.max(0, waveformDuration - hsWinLenRef.current));
   const hsAnchorRef = useRef(0);
+  const barAnchorRef = useRef(0);
   const hsSmoothRef = useRef(0);
+  const cursorLeftPctRef = useRef(0);
   const trackRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
 
@@ -187,8 +195,40 @@ export function useRowWaveformScroll({
     }
     hsSmoothRef.current = s;
     const pxPerSec = (innerEl.clientWidth || 1) / win;
-    track.style.transform = `translateX(${(-(s - hsAnchorRef.current) * pxPerSec).toFixed(2)}px)`;
-  }, [getCurrentTime]);
+    track.style.transform = `translateX(${(-(s - barAnchorRef.current) * pxPerSec).toFixed(2)}px)`;
+    const wpx = innerEl.clientWidth || 1;
+    const barStart = barAnchorRef.current;
+    let cp;
+    if (t <= s) cp = (s - barStart) / win;
+    // Right pin: keep the 2px line clear of the viewport edge (6px inset), so
+    // the playhead pinned at the end is plainly visible instead of hugging
+    // (and visually disappearing against) the window boundary.
+    else if (t >= s + win) cp = 1 + (s - barStart) / win - 8 / wpx;
+    else cp = (t - barStart) / win;
+    cursorLeftPctRef.current = cp;
+    const curEl = cursorElementRef ? cursorElementRef.current : null;
+    if (curEl) {
+      const px = cp * wpx;
+      curEl.style.transform = `translateX(${px.toFixed(2)}px)`;
+      const lbl = curEl.firstElementChild as HTMLElement | null;
+      if (lbl) {
+        const viewFrac = (t - s) / win;
+        if (viewFrac < 0.02) {
+          lbl.style.left = "6px";
+          lbl.style.right = "auto";
+          lbl.style.transform = "translateX(0)";
+        } else if (viewFrac > 0.98) {
+          lbl.style.right = "6px";
+          lbl.style.left = "auto";
+          lbl.style.transform = "translateX(0)";
+        } else {
+          lbl.style.left = "auto";
+          lbl.style.right = "auto";
+          lbl.style.transform = "translateX(-50%)";
+        }
+      }
+    }
+  }, [getCurrentTime, cursorElementRef]);
 
   const commitAnchor = useCallback((target: number) => {
     setHsAnchor(target);
@@ -206,6 +246,7 @@ export function useRowWaveformScroll({
 
   useLayoutEffect(() => {
     hsAnchorRef.current = hsAnchor;
+    barAnchorRef.current = quantizeBarsAnchor(hsAnchor);
     drawFrame();
   }, [hsAnchor, drawFrame]);
 
@@ -219,6 +260,11 @@ const previousTimeRef = useRef(currentTime);
     const previousTime = previousTimeRef.current;
     previousTimeRef.current = currentTime;
     if (draggingRef.current) return;
+    // While playing the rAF follow loop below owns all live-clock commits
+    // (read straight from getCurrentTime()). The Redux clock only updates on
+    // media timeupdate events, so committing on it would lag the window behind
+    // the audio by a media event and lurch it on every tick.
+    if (playingRef.current) return;
     if (Math.abs(currentTime - previousTime) < 1) return;
     // While a clip range owns playback the view must not be repositioned:
     // the initial seek into the clip and every loop wrap would otherwise
@@ -267,42 +313,50 @@ const previousTimeRef = useRef(currentTime);
   }, [clipPlayActive, setFollowEpoch, setScrolling]);
 
   useEffect(() => {
-    if (scrolling) return;
-    if (draggingRef.current) return;
     if (!playing) return;
-    if (clipPlaySkipRef.current) {
-      const t = getCurrentTime();
-      if (t <= hsAnchorRef.current + hsWinLenRef.current) return;
-      clipPlaySkipRef.current = false;
-    }
-    const id = requestAnimationFrame(() => {
-      if (draggingRef.current) return;
-      if (performance.now() < cursorClickUntilRef.current) return;
-      const t = getCurrentTime();
-      if (clipPlayActive) {
-        const followEnd = clipPlayFollowEndRef.current;
-        if (!followEnd) return;
-        if (hsAnchorRef.current + hsWinLenRef.current >= followEnd) return;
-        if (t < hsAnchorRef.current || t > hsAnchorRef.current + hsWinLenRef.current) return;
-        const elapsed = t - clipPlayStartRef.current;
-        const target = Math.min(
-          clipPlayAnchorStartRef.current + elapsed,
-          Math.max(0, followEnd - hsWinLenRef.current),
-        );
+    // Self-scheduling rAF loop: follow the live clock every frame instead of
+    // only when the Redux currentTime ticks. Committing the window start each
+    // frame (~1px steps) keeps the right edge of the window re-rendered in
+    // lock-step with the audio clock, so auto-scroll glides smoothly instead
+    // of popping the new bars in ~250ms chunks as the redux clock arrives.
+    let id = 0;
+    const tick = () => {
+      id = requestAnimationFrame(() => {
+        tick();
+        if (draggingRef.current) return;
+        if (scrollingRef.current) return;
+        if (performance.now() < cursorClickUntilRef.current) return;
+        const t = getCurrentTime();
+        if (clipPlayActiveRef.current) {
+          const followEnd = clipPlayFollowEndRef.current;
+          if (!followEnd) return;
+          if (hsAnchorRef.current + hsWinLenRef.current >= followEnd) return;
+          if (t < hsAnchorRef.current || t > hsAnchorRef.current + hsWinLenRef.current) return;
+          const elapsed = t - clipPlayStartRef.current;
+          const target = Math.min(
+            clipPlayAnchorStartRef.current + elapsed,
+            Math.max(0, followEnd - hsWinLenRef.current),
+          );
+          if (Math.abs(target - hsAnchorRef.current) > 0.05) commitAnchor(target);
+          return;
+        }
+        if (clipPlaySkipRef.current) {
+          if (t <= hsAnchorRef.current + hsWinLenRef.current) return;
+          clipPlaySkipRef.current = false;
+        }
+        const ep = followEpochRef.current;
+        const target = ep.align
+          ? clampWindowAnchor(
+              t - HS_FOLLOW_FRAC * hsWinLenRef.current,
+              hsMaxStartRef.current,
+            )
+          : clampWindowAnchor(ep.anchor + (t - ep.time), hsMaxStartRef.current);
         if (Math.abs(target - hsAnchorRef.current) > 0.05) commitAnchor(target);
-        return;
-      }
-      const ep = followEpochRef.current;
-      const target = ep.align
-        ? clampWindowAnchor(
-            t - HS_FOLLOW_FRAC * hsWinLenRef.current,
-            hsMaxStartRef.current,
-          )
-        : clampWindowAnchor(ep.anchor + (t - ep.time), hsMaxStartRef.current);
-      if (Math.abs(target - hsAnchorRef.current) > 0.05) commitAnchor(target);
-    });
+      });
+    };
+    tick();
     return () => cancelAnimationFrame(id);
-  }, [currentTime, scrolling, playing, clipPlayActive, commitAnchor, getCurrentTime]);
+  }, [scrolling, playing, commitAnchor, getCurrentTime]);
 
   const playClip = useCallback(
     (start: number, end: number, reps: number) => {
@@ -447,12 +501,12 @@ const previousTimeRef = useRef(currentTime);
   }, [drawFrame]);
 
   const getPlayedPct = useCallback(() => {
-    return Math.max(0, Math.min(1, (getCurrentTime() - hsAnchorRef.current) / hsWinLenRef.current));
+    return Math.max(0, Math.min(1, (getCurrentTime() - barAnchorRef.current) / (hsWinLenRef.current + BARS_TAIL_SEC)));
   }, [getCurrentTime]);
 
-  const getSmoothPlayedPct = useCallback(() => {
-    return Math.max(0, Math.min(1, (getCurrentTime() - hsSmoothRef.current) / hsWinLenRef.current));
-  }, [getCurrentTime]);
+  const getStripPlayedPct = useCallback(() => {
+    return cursorLeftPctRef.current;
+  }, []);
 
   const onWaveformClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -500,7 +554,7 @@ const previousTimeRef = useRef(currentTime);
     onRootClickCapture,
     onWaveformClick,
     getPlayedPct,
-    getSmoothPlayedPct,
+    getStripPlayedPct,
     playClip,
   };
 }

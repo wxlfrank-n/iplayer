@@ -366,6 +366,20 @@ export const StackedWaveform = memo(function StackedWaveform({
               );
               const getPlayedPct = () =>
                 Math.max(0, Math.min(1, (getCurrentTime() - rowStart) / rowLen));
+              // The cursor pins at the end of the row's *audio content*, not
+              // the row's right edge: a short last row is blank past its
+              // content, so a playhead at the track end would float over empty
+              // space instead of sitting on the last rendered samples.
+              const getCursorPct = () =>
+                Math.min(getPlayedPct(), (row.end - rowStart) / rowLen);
+              const isLastRow = row.end >= waveform.duration - 1e-6;
+              // The cursor lives on a row while the playhead is inside it.
+              // At the exact track end the playhead equals the final row's end,
+              // which the "inside" test would exclude — keep it rendered.
+              const showCursor =
+                currentTime >= rowStart &&
+                (currentTime < row.end ||
+                  (isLastRow && currentTime >= row.end - 1e-6));
               return (
                 <div
                   key={gi}
@@ -420,10 +434,10 @@ export const StackedWaveform = memo(function StackedWaveform({
                       getIdx={(_c, i) => row.clips[i].idx}
                     />
                   </svg>
-                  {currentTime >= rowStart && currentTime < row.end && (
+                  {showCursor && (
                     <WaveformCursor
                       view="stacked"
-                      getPlayedPct={getPlayedPct}
+                      getPlayedPct={getCursorPct}
                       getCurrentTime={getCurrentTime}
                     />
                   )}

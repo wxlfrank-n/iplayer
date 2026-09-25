@@ -20,6 +20,11 @@ interface DancingLinesProps {
   getCurrentTime?: () => number;
   /** iOS fallback: decoded mono samples (full track). */
   waveform?: WaveformData | null;
+  /** Redux-confirmed playhead; reflects seeks immediately, while the audio
+   *  element's `currentTime` readback lags a seek on some platforms. The
+   *  fallback prefers this when playback isn't advancing and the live element
+   *  time while it is. */
+  currentTime?: number;
 }
 
 const BAR_COUNT = 56;
@@ -33,8 +38,12 @@ export const DancingLines = memo(function DancingLines({
   getAnalyser,
   getCurrentTime,
   waveform,
+  currentTime,
 }: DancingLinesProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const currentTimeRef = useRef(currentTime);
+  currentTimeRef.current = currentTime;
+  const prevLiveRef = useRef(-1);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -80,7 +89,10 @@ export const DancingLines = memo(function DancingLines({
         // playhead — bar 0 is the newest energy, the last bar the oldest.
         const samples = waveform.data;
         const rate = waveform.sampleRate;
-        const t = getCurrentTime();
+        const live = getCurrentTime();
+        const prevLive = prevLiveRef.current;
+        prevLiveRef.current = live;
+        const t = live > prevLive ? live : (currentTimeRef.current ?? live);
         const lead = Math.max(0, t - ENERGY_LEAD_SEC);
         const s0 = Math.floor(Math.max(0, lead - ENERGY_WINDOW_SEC) * rate);
         const s1 = Math.min(samples.length, Math.ceil(Math.max(0, lead) * rate));

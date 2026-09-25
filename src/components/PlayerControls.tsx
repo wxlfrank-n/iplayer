@@ -3,9 +3,9 @@
  *
  * Controls:
  * - Skip backward (configurable seconds, default 10s)
- * - Previous track
+ * - Back to start
  * - Play/Pause toggle (main control)
- * - Next track
+ * - Skip to end
  * - Skip forward (configurable seconds, default 10s)
  *
  * All buttons are disabled when no track is loaded.
@@ -68,8 +68,8 @@ export const PlayerControls = memo(function PlayerControls({
         className="control-btn"
         onClick={onPrev}
         disabled={!hasTrack}
-        aria-label="Previous track"
-        title="Previous"
+        aria-label="Back to start"
+        title="Back to start"
       >
         <PrevIcon width={20} height={20} />
       </button>
@@ -86,8 +86,8 @@ export const PlayerControls = memo(function PlayerControls({
         className="control-btn"
         onClick={onNext}
         disabled={!hasTrack}
-        aria-label="Next track"
-        title="Next"
+        aria-label="Skip to end"
+        title="Skip to end"
       >
         <NextIcon width={20} height={20} />
       </button>

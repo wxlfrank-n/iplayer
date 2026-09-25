@@ -166,21 +166,28 @@ function PlaybackTab() {
       <div className="settings-field">
         <div className="settings-field-head">
           <label className="settings-label">Waveform view</label>
+          <output className="settings-value">
+            {waveformView === "horizontal" ? "Single row" : "Stacked"}
+          </output>
         </div>
-        <div className="settings-row">
-          <button
-            className={`settings-chip ${waveformView === "stacked" ? "settings-chip--active" : ""}`}
-            onClick={() => updateConfig({ waveformView: "stacked" })}
-          >
-            Stacked
-          </button>
-          <button
-            className={`settings-chip ${waveformView === "horizontal" ? "settings-chip--active" : ""}`}
-            onClick={() => updateConfig({ waveformView: "horizontal" })}
-          >
+        <label className="settings-switch">
+          <input
+            type="checkbox"
+            checked={waveformView === "horizontal"}
+            onChange={(e) =>
+              updateConfig({
+                waveformView: e.target.checked ? "horizontal" : "stacked",
+              })
+            }
+          />
+          <span className="settings-switch__track" aria-hidden="true">
+            <span className="settings-switch__knob" />
+          </span>
+          <span className="settings-switch__label">
             Single row
-          </button>
-        </div>
+            <small>One scrollable row that follows the playhead.</small>
+          </span>
+        </label>
       </div>
       <SliderSetting
         label="Skip forward / back by"

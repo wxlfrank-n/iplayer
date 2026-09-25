@@ -38,7 +38,7 @@ interface ConfigState {
 
 export const DEFAULT_CONFIG: ConfigState = {
   skipSeconds: 10,
-  waveformView: "stacked",
+  waveformView: "horizontal",
   blockMs: 12,
   silenceRatio: 0.01,
   minClipLength: 0.3,

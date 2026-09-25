@@ -338,27 +338,18 @@ export function useAudioPlayer(skipSeconds: number) {
   }, [dispatch, getAnalyser, stopRangeMonitoring]);
 
   const next = useCallback(() => {
-    nextRef.current();
-  }, []);
+    const audio = audioRef.current;
+    const duration = audio.duration;
+    if (!Number.isFinite(duration) || duration <= 0) return;
+    audio.currentTime = duration;
+    dispatch(setCurrentTime(duration));
+  }, [dispatch]);
 
   const prev = useCallback(() => {
     const audio = audioRef.current;
-    const s = getPlayer();
-    if (s.tracks.length === 0) return;
-    if (audio.currentTime > 3) {
-      audio.currentTime = 0;
-      dispatch(setCurrentTime(0));
-      return;
-    }
-    const prevIndex =
-      (s.currentTrackIndex - 1 + s.tracks.length) % s.tracks.length;
-    const track = s.tracks[prevIndex];
-    if (!track) return;
-    startTrack(audio, track.url);
-    dispatch(setCurrentTrackIndex(prevIndex));
+    audio.currentTime = 0;
     dispatch(setCurrentTime(0));
-    dispatch(setDuration(0));
-  }, [dispatch, startTrack]);
+  }, [dispatch]);
 
   const seek = useCallback(
     (time: number) => {

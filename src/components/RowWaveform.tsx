@@ -10,14 +10,14 @@
  * - Pan/drag support for manual navigation
  */
 
-import { memo } from "react";
+import { memo, useRef } from "react";
 import { Clip } from "./Clip";
 import { ClipLabel } from "./ClipLabel";
 import { DancingLines } from "./DancingLines";
 import { WaveformCursor } from "./WaveformCursor";
 import { WaveformBars } from "./Waveform";
 import { type WaveformData } from "../hooks/useWaveform";
-import { useRowWaveformScroll, VB_W, VB_H } from "../hooks/useRowWaveformScroll";
+import { useRowWaveformScroll, VB_W, VB_H, quantizeBarsAnchor, BARS_TAIL_SEC } from "../hooks/useRowWaveformScroll";
 import type { Clip as ClipData } from "../utils/clips";
 
 const PAD = 4;
@@ -67,6 +67,7 @@ export const RowWaveform = memo(function RowWaveform({
   scrollTimeoutRef,
 }: RowWaveformProps) {
   const innerH = VB_H - PAD * 2;
+  const cursorElRef = useRef<HTMLDivElement>(null);
   const {
     hsRef,
     trackRef,
@@ -76,7 +77,7 @@ export const RowWaveform = memo(function RowWaveform({
     onRootClickCapture,
     onWaveformClick,
     getPlayedPct,
-    getSmoothPlayedPct,
+    getStripPlayedPct,
     playClip,
   } = useRowWaveformScroll({
     waveformDuration: waveform.duration,
@@ -94,7 +95,12 @@ export const RowWaveform = memo(function RowWaveform({
     scrolling,
     setScrolling,
     scrollTimeoutRef,
+    cursorElementRef: cursorElRef,
   });
+
+  const barsAnchor = quantizeBarsAnchor(hsAnchor);
+  const barsLen = hsWinLenRef.current + BARS_TAIL_SEC;
+  const vbW = VB_W * (barsLen / hsWinLenRef.current);
 
   return (
     <div
@@ -108,21 +114,23 @@ export const RowWaveform = memo(function RowWaveform({
           getAnalyser={getAnalyser}
           getCurrentTime={getCurrentTime}
           waveform={waveform}
+          currentTime={currentTime}
         />
         <div className="row-waveform__track" ref={trackRef}>
           <svg
             className="row-waveform__svg"
-            viewBox={`0 0 ${VB_W} ${VB_H}`}
+            viewBox={`0 0 ${vbW} ${VB_H}`}
             preserveAspectRatio="none"
+            style={{ width: `${(barsLen / hsWinLenRef.current) * 100}%` }}
           >
             <WaveformBars
               data={waveform.data}
               sampleRate={waveform.sampleRate}
               window={{
-                windowStartSec: hsAnchor,
-                windowLen: hsWinLenRef.current,
+                windowStartSec: barsAnchor,
+                windowLen: barsLen,
                 innerH,
-                vbW: VB_W,
+                vbW,
                 vbH: VB_H,
               }}
               fracPlayed={getPlayedPct()}
@@ -132,10 +140,10 @@ export const RowWaveform = memo(function RowWaveform({
             <Clip
               clips={displayClips}
               window={{
-                windowStartSec: hsAnchor,
-                windowLen: hsWinLenRef.current,
+                windowStartSec: barsAnchor,
+                windowLen: barsLen,
                 innerH,
-                vbW: VB_W,
+                vbW,
                 vbH: VB_H,
               }}
               onPlayRange={playClip}
@@ -150,9 +158,9 @@ export const RowWaveform = memo(function RowWaveform({
             />
           </svg>
           {displayClips.map((s, idx) => {
-            if (s.vEnd <= hsAnchor || s.vStart >= hsAnchor + hsWinLenRef.current) return null;
+            if (s.vEnd <= barsAnchor || s.vStart >= barsAnchor + hsWinLenRef.current) return null;
             const center =
-              ((s.vStart + (s.vEnd - s.vStart) / 2 - hsAnchor) /
+              ((s.vStart + (s.vEnd - s.vStart) / 2 - barsAnchor) /
                 hsWinLenRef.current) *
               100;
             return (
@@ -169,12 +177,13 @@ export const RowWaveform = memo(function RowWaveform({
               />
             );
           })}
+          <WaveformCursor
+            view="row"
+            getPlayedPct={getStripPlayedPct}
+            getCurrentTime={getCurrentTime}
+            cursorRef={cursorElRef}
+          />
         </div>
-        <WaveformCursor
-          view="row"
-          getPlayedPct={getSmoothPlayedPct}
-          getCurrentTime={getCurrentTime}
-        />
       </div>
     </div>
   );
