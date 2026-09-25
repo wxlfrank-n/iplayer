@@ -272,7 +272,7 @@ describe("RowWaveform clip play follow", () => {
   });
 
   it("auto-scrolls to keep the playhead in view while playing", () => {
-    const { windowStart, rerender } = renderRow({ playing: true });
+    const { windowStart, rerender } = renderRow({ playing: true, initialTime: 0 });
 
     // No hovering needed — the row keeps the playhead in view on its own.
     for (let t = 0.5; t <= 8; t += 0.5) {
@@ -328,7 +328,30 @@ describe("RowWaveform clip play follow", () => {
       rerender({ currentTime: t });
       act(() => flushRaf());
     }
-    // No frozen view after the clip: normal follow target at t=8 is 0.8.
-    expect(windowStart()).toBeCloseTo(0.8);
+    // Resumed playback keeps the resume-time on-screen fraction: the window
+    // glides with the playhead instead of yanking it to the 60% slot.
+    // follow target at t=8 is 0 + (8 - 7.5) = 0.5.
+    expect(windowStart()).toBeCloseTo(8 - 7.5);
+  });
+
+  it("does not jump the window when playback starts with a cursor inside it", () => {
+    // A narrow screen gives an 8s window; a cursor placed at t=6 sits inside
+    // a window that starts at 0. Starting playback must not re-anchor the
+    // window to the 60% slot, which would jump it to 6 - 0.6*8 = 1.2.
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: 799,
+    });
+    const { windowStart, rerender } = renderRow({ playing: true, initialTime: 6 });
+
+    // Playback starts with the cursor already in view: the window stays put.
+    act(() => flushRaf());
+    expect(windowStart()).toBe(0);
+
+    // As the playhead advances, the window glides from the same on-screen
+    // slot instead of snapping the playhead to the 60% position.
+    rerender({ currentTime: 7 });
+    act(() => flushRaf());
+    expect(windowStart()).toBeCloseTo(7 - 6);
   });
 });

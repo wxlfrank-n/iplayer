@@ -121,6 +121,38 @@ export function useRowWaveformScroll({
     clipPlayActiveRef.current = clipPlayActive;
   }, [clipPlayActive]);
 
+  const followEpochRef = useRef<{ anchor: number; time: number; align: boolean }>(
+    (() => {
+      const a = hsAnchorRef.current;
+      const w = hsWinLenRef.current;
+      const t = typeof getCurrentTime === "function" ? getCurrentTime() : 0;
+      return { anchor: a, time: t, align: !(t > a && t <= a + w) };
+    })(),
+  );
+  // Decides how the window tracks the playhead during normal playback.
+  // `align` keeps the playhead in the 60% slot (used when it starts at or left
+  // of the window); `preserve` glides the window so the playhead stays exactly
+  // where the user placed it — starting playback after a cursor click must
+  // never re-anchor the window to the 60% line.
+  const setFollowEpoch = useCallback(
+    (timeOverride?: number) => {
+      const a = hsAnchorRef.current;
+      const w = hsWinLenRef.current;
+      const t =
+        typeof timeOverride === "number"
+          ? timeOverride
+          : typeof getCurrentTime === "function"
+            ? getCurrentTime()
+            : 0;
+      followEpochRef.current = {
+        anchor: a,
+        time: t,
+        align: !(t > a && t <= a + w),
+      };
+    },
+    [getCurrentTime],
+  );
+
   const drawFrame = useCallback(() => {
     const track = trackRef.current;
     if (!track) return;
@@ -147,7 +179,10 @@ export function useRowWaveformScroll({
       } else if (performance.now() < cursorClickUntilRef.current) {
         s = hsAnchorRef.current;
       } else {
-        s = Math.max(0, Math.min(t - HS_FOLLOW_FRAC * win, hsMaxStartRef.current));
+        const ep = followEpochRef.current;
+        s = ep.align
+          ? Math.max(0, Math.min(t - HS_FOLLOW_FRAC * win, hsMaxStartRef.current))
+          : Math.max(0, Math.min(ep.anchor + (t - ep.time), hsMaxStartRef.current));
       }
     }
     hsSmoothRef.current = s;
@@ -193,14 +228,19 @@ const previousTimeRef = useRef(currentTime);
     // A click that placed the cursor inside the current window must not
     // re-center the window on the playhead.
     if (performance.now() < cursorClickUntilRef.current) return;
+    const ep = followEpochRef.current;
     commitAnchorNow(
-      clampWindowAnchor(currentTime - HS_FOLLOW_FRAC * hsWinLenRef.current, hsMaxStartRef.current),
+      ep.align
+        ? clampWindowAnchor(currentTime - HS_FOLLOW_FRAC * hsWinLenRef.current, hsMaxStartRef.current)
+        : clampWindowAnchor(ep.anchor + (currentTime - ep.time), hsMaxStartRef.current),
     );
-  }, [currentTime, commitAnchorNow]);
+    setFollowEpoch();
+  }, [currentTime, commitAnchorNow, setFollowEpoch]);
 
   useEffect(() => {
     const wasPlaying = prevPlayingRef.current;
     prevPlayingRef.current = playing;
+    if (!wasPlaying && playing) setFollowEpoch();
     // Only a genuine play -> stop transition ends a clip range. Arming a clip
     // while paused takes a moment to set playing=true; clearing here would
     // disarm the clip-follow protection before the range ever starts.
@@ -210,7 +250,7 @@ const previousTimeRef = useRef(currentTime);
     setClipPlayActiveLocal(false);
     clipPlayFollowEndRef.current = 0;
     clipPlaySkipRef.current = false;
-  }, [clipPlayActive, playing]);
+  }, [clipPlayActive, playing, setFollowEpoch]);
 
   useEffect(() => {
     if (prevClipPlayActiveRef.current && !clipPlayActive) {
@@ -221,9 +261,10 @@ const previousTimeRef = useRef(currentTime);
       clipPlaySkipRef.current =
         Math.abs(hsAnchorRef.current - clipPlayAnchorStartRef.current) > 0.05;
       setScrolling(false);
+      setFollowEpoch();
     }
     prevClipPlayActiveRef.current = clipPlayActive;
-  }, [clipPlayActive, setScrolling]);
+  }, [clipPlayActive, setFollowEpoch, setScrolling]);
 
   useEffect(() => {
     if (scrolling) return;
@@ -251,10 +292,13 @@ const previousTimeRef = useRef(currentTime);
         if (Math.abs(target - hsAnchorRef.current) > 0.05) commitAnchor(target);
         return;
       }
-      const target = clampWindowAnchor(
-        t - HS_FOLLOW_FRAC * hsWinLenRef.current,
-        hsMaxStartRef.current,
-      );
+      const ep = followEpochRef.current;
+      const target = ep.align
+        ? clampWindowAnchor(
+            t - HS_FOLLOW_FRAC * hsWinLenRef.current,
+            hsMaxStartRef.current,
+          )
+        : clampWindowAnchor(ep.anchor + (t - ep.time), hsMaxStartRef.current);
       if (Math.abs(target - hsAnchorRef.current) > 0.05) commitAnchor(target);
     });
     return () => cancelAnimationFrame(id);
@@ -341,6 +385,7 @@ const previousTimeRef = useRef(currentTime);
           hsMaxStartRef.current,
         );
         commitAnchorNow(target);
+        setFollowEpoch();
         bumpScrolling();
       };
 
@@ -361,7 +406,7 @@ const previousTimeRef = useRef(currentTime);
       window.addEventListener("pointercancel", onEnd);
       bumpScrolling();
     },
-    [bumpScrolling, commitAnchorNow],
+    [bumpScrolling, commitAnchorNow, setFollowEpoch],
   );
 
   useEffect(() => {
@@ -384,11 +429,12 @@ const previousTimeRef = useRef(currentTime);
         ),
       );
       commitAnchorNow(clampWindowAnchor(hsAnchorRef.current + dSec, hsMaxStartRef.current));
+      setFollowEpoch();
       bumpScrolling();
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, [bumpScrolling, commitAnchorNow]);
+  }, [bumpScrolling, commitAnchorNow, setFollowEpoch]);
 
   useEffect(() => {
     let raf = 0;
@@ -420,8 +466,12 @@ const previousTimeRef = useRef(currentTime);
       const target = hsSmoothRef.current + f * hsWinLenRef.current;
       onSeek(target);
       onActiveClipChange(-1);
+      // From here the follow preserves the playhead's on-screen position until
+      // the window is moved again, so playback that starts (even later) never
+      // re-anchors the window to the 60% slot.
+      setFollowEpoch(target);
       // The click targeted a spot inside the visible window: keep the window
-      // put so the cursor stays where the user pointed.
+      // put while the seek lands.
       if (
         target >= hsAnchorRef.current &&
         target <= hsAnchorRef.current + hsWinLenRef.current
@@ -429,7 +479,7 @@ const previousTimeRef = useRef(currentTime);
         cursorClickUntilRef.current = performance.now() + CURSOR_CLICK_HOLD_MS;
       }
     },
-    [onActiveClipChange, onSeek],
+    [onActiveClipChange, onSeek, setFollowEpoch],
   );
 
   const onRootClickCapture = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
