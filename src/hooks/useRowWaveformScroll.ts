@@ -5,6 +5,11 @@ import { panTarget } from "../utils/pan";
 
 const HS_FOLLOW_FRAC = 0.6;
 const HS_PAN_DECIDE_PX = 8;
+// After a background click that seeks to a spot already inside the window,
+// the row must not re-center the playhead: the user is marking a position.
+// Any follow activity is held for this long so neither the >=1s currentTime
+// effect nor the rAF follow can yank the window on that click.
+const CURSOR_CLICK_HOLD_MS = 400;
 const VB_W = 1000;
 const VB_H = 200;
 const PAD = 4;
@@ -111,26 +116,6 @@ export function useRowWaveformScroll({
     scrollingRef.current = scrolling;
   }, [scrolling]);
 
-  const [trackHovered, setTrackHovered] = useState(false);
-  const trackHoveredRef = useRef(false);
-  useEffect(() => {
-    const onMove = (e: MouseEvent) => {
-      const rect = trackRef.current?.getBoundingClientRect();
-      const over =
-        !!rect &&
-        e.clientX >= rect.left &&
-        e.clientX <= rect.right &&
-        e.clientY >= rect.top &&
-        e.clientY <= rect.bottom;
-      if (over !== trackHoveredRef.current) {
-        trackHoveredRef.current = over;
-        setTrackHovered(over);
-      }
-    };
-    window.addEventListener("mousemove", onMove);
-    return () => window.removeEventListener("mousemove", onMove);
-  }, []);
-
   const clipPlayActiveRef = useRef(clipPlayActive);
   useEffect(() => {
     clipPlayActiveRef.current = clipPlayActive;
@@ -144,7 +129,7 @@ export function useRowWaveformScroll({
     const win = hsWinLenRef.current || 1;
     const t = getCurrentTime ? getCurrentTime() : 0;
     let s = hsAnchorRef.current;
-    if (trackHoveredRef.current && playingRef.current && !scrollingRef.current && !draggingRef.current) {
+    if (playingRef.current && !scrollingRef.current && !draggingRef.current) {
       if (clipPlayActiveRef.current) {
         const followEnd = clipPlayFollowEndRef.current;
         if (followEnd && hsAnchorRef.current + win < followEnd) {
@@ -158,6 +143,8 @@ export function useRowWaveformScroll({
           } 
         }
       } else if (clipPlaySkipRef.current) {
+        s = hsAnchorRef.current;
+      } else if (performance.now() < cursorClickUntilRef.current) {
         s = hsAnchorRef.current;
       } else {
         s = Math.max(0, Math.min(t - HS_FOLLOW_FRAC * win, hsMaxStartRef.current));
@@ -187,19 +174,25 @@ export function useRowWaveformScroll({
     drawFrame();
   }, [hsAnchor, drawFrame]);
 
-  const clipPlaySkipRef = useRef(false);
-  const previousTimeRef = useRef(currentTime);
+const clipPlaySkipRef = useRef(false);
+// Timestamp until which follow commits/glides are held after an in-view
+// background click that set the cursor.
+const cursorClickUntilRef = useRef(0);
+const previousTimeRef = useRef(currentTime);
 
   useEffect(() => {
     const previousTime = previousTimeRef.current;
     previousTimeRef.current = currentTime;
     if (draggingRef.current) return;
     if (Math.abs(currentTime - previousTime) < 1) return;
-    if (clipPlayActiveRef.current) {
-      const a = hsAnchorRef.current;
-      const w = hsWinLenRef.current;
-      if (currentTime < a || currentTime > a + w) return;
-    }
+    // While a clip range owns playback the view must not be repositioned:
+    // the initial seek into the clip and every loop wrap would otherwise
+    // re-center the window, yanking it off wherever the user is looking.
+    // The rAF follow handles the (only) sanctioned in-view animation.
+    if (clipPlayActiveRef.current) return;
+    // A click that placed the cursor inside the current window must not
+    // re-center the window on the playhead.
+    if (performance.now() < cursorClickUntilRef.current) return;
     commitAnchorNow(
       clampWindowAnchor(currentTime - HS_FOLLOW_FRAC * hsWinLenRef.current, hsMaxStartRef.current),
     );
@@ -221,14 +214,18 @@ export function useRowWaveformScroll({
 
   useEffect(() => {
     if (prevClipPlayActiveRef.current && !clipPlayActive) {
-      clipPlaySkipRef.current = true;
+      // After a clip range ends, only hold the view still when the user moved
+      // it (panned/wheeled) while the clip was playing — that keeps a
+      // manually-browsed region put. If the view never left the clip, normal
+      // follow must resume immediately, or playback would appear frozen.
+      clipPlaySkipRef.current =
+        Math.abs(hsAnchorRef.current - clipPlayAnchorStartRef.current) > 0.05;
       setScrolling(false);
     }
     prevClipPlayActiveRef.current = clipPlayActive;
   }, [clipPlayActive, setScrolling]);
 
   useEffect(() => {
-    if (!trackHovered) return;
     if (scrolling) return;
     if (draggingRef.current) return;
     if (!playing) return;
@@ -239,6 +236,7 @@ export function useRowWaveformScroll({
     }
     const id = requestAnimationFrame(() => {
       if (draggingRef.current) return;
+      if (performance.now() < cursorClickUntilRef.current) return;
       const t = getCurrentTime();
       if (clipPlayActive) {
         const followEnd = clipPlayFollowEndRef.current;
@@ -260,7 +258,7 @@ export function useRowWaveformScroll({
       if (Math.abs(target - hsAnchorRef.current) > 0.05) commitAnchor(target);
     });
     return () => cancelAnimationFrame(id);
-  }, [currentTime, scrolling, playing, clipPlayActive, commitAnchor, getCurrentTime, trackHovered]);
+  }, [currentTime, scrolling, playing, clipPlayActive, commitAnchor, getCurrentTime]);
 
   const playClip = useCallback(
     (start: number, end: number, reps: number) => {
@@ -270,7 +268,12 @@ export function useRowWaveformScroll({
       const a = hsAnchorRef.current;
       const w = hsWinLenRef.current;
       clipPlayAnchorStartRef.current = a;
-      if (start < a) {
+      // Only reposition when nothing of the clip is visible at all. Clicking a
+      // clip (even a mid-slice of a long one) must play it where the user is
+      // looking, never snap the window back to the clip's start.
+      if (end < a) {
+        commitAnchor(clampWindowAnchor(start, hsMaxStartRef.current));
+      } else if (start > a + w) {
         commitAnchor(clampWindowAnchor(start, hsMaxStartRef.current));
       } else if (end > a + w) {
         clipPlayFollowEndRef.current = end;
@@ -411,10 +414,20 @@ export function useRowWaveformScroll({
         hsSuppressClickRef.current = false;
         return;
       }
+      if (clipPlayActiveRef.current) return;
       const rect = e.currentTarget.getBoundingClientRect();
       const f = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-      onSeek(hsSmoothRef.current + f * hsWinLenRef.current);
+      const target = hsSmoothRef.current + f * hsWinLenRef.current;
+      onSeek(target);
       onActiveClipChange(-1);
+      // The click targeted a spot inside the visible window: keep the window
+      // put so the cursor stays where the user pointed.
+      if (
+        target >= hsAnchorRef.current &&
+        target <= hsAnchorRef.current + hsWinLenRef.current
+      ) {
+        cursorClickUntilRef.current = performance.now() + CURSOR_CLICK_HOLD_MS;
+      }
     },
     [onActiveClipChange, onSeek],
   );
@@ -439,7 +452,6 @@ export function useRowWaveformScroll({
     getPlayedPct,
     getSmoothPlayedPct,
     playClip,
-    trackHovered,
   };
 }
 

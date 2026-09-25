@@ -371,6 +371,7 @@ export const StackedWaveform = memo(function StackedWaveform({
                   key={gi}
                   className="stacked-waveform__row"
                   onClick={(e) => {
+                    if (clipPlayActive) return;
                     const rect = e.currentTarget.getBoundingClientRect();
                     const f = Math.max(
                       0,

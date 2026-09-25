@@ -34,6 +34,7 @@ function setup(initialTime = 0) {
     HTMLElement.prototype as unknown as { scrollTo: typeof scrollTo }
   ).scrollTo = scrollTo;
 
+  const onSeek = vi.fn();
   const props: React.ComponentProps<typeof StackedWaveform> = {
     waveform,
     displayClips: clips,
@@ -41,7 +42,7 @@ function setup(initialTime = 0) {
     playing: false,
     activeClip: -1,
     repetitions: 3,
-    onSeek: vi.fn(),
+    onSeek,
     onActiveClipChange: vi.fn(),
     onPlayRange: vi.fn(),
     onStopPlayback: vi.fn(),
@@ -59,7 +60,7 @@ function setup(initialTime = 0) {
     Object.assign(props, partial);
     view.rerender(<StackedWaveform {...props} />);
   };
-  return { scrollTo, rerender, scroller };
+  return { scrollTo, rerender, scroller, onSeek };
 }
 
 beforeEach(() => {
@@ -221,5 +222,19 @@ describe("stacked waveform paged auto-advance", () => {
     });
 
     expect(scrollTo).not.toHaveBeenCalled();
+  });
+
+  it("does not seek when clicking a row background while a clip is playing", () => {
+    const { scroller, rerender, onSeek } = setup(0);
+
+    // Start clip 0's repeating playback by clicking its rect.
+    const firstClip = scroller.querySelector(".waveform-clip")!;
+    fireEvent.click(firstClip);
+    rerender({ playing: true, activeClip: 0, currentTime: 0 });
+
+    // Click the row background (silence) — must not seek while the clip plays.
+    fireEvent.click(scroller.querySelector(".stacked-waveform__row")!);
+
+    expect(onSeek).not.toHaveBeenCalled();
   });
 });
