@@ -97,10 +97,13 @@ describe("splitBySilence", () => {
     const loose = splitWith(0.05);
     expect(loose.clips).toHaveLength(2);
     expect(loose.minGap).toBe(0);
-    // With a higher threshold the short runs merge into one, and the shortest
-    // gap that keeps every clip long enough is the 0.04s silence.
+    // With a higher threshold the clips are kept raw while the shortest gap
+    // that makes every clip long enough (if merged) is reported as minGap.
     const tight = splitWith(0.2);
-    expect(bounds(tight.clips)).toEqual([[0, 0.2]]);
+    expect(bounds(tight.clips)).toEqual([
+      [0, 0.08],
+      [0.12, 0.2],
+    ]);
     expect(tight.minGap).toBeCloseTo(0.04, 5);
   });
 });
@@ -161,14 +164,12 @@ describe("findMinMergeGap", () => {
     const clips = [mk(0, 1), mk(1.15, 1.2), mk(1.22, 1.23), mk(1.63, 2)];
     const result = findMinMergeGap(clips, getClipGaps(clips), 0.3);
     expect(result.minGap).toBeCloseTo(0.15, 5);
+    expect(result.clips).toBe(clips);
     expect(bounds(result.clips)).toEqual([
-      [0, 1.23],
+      [0, 1],
+      [1.15, 1.2],
+      [1.22, 1.23],
       [1.63, 2],
-    ]);
-    expect(result.clips[0].children).toEqual([
-      clips[0],
-      clips[1],
-      clips[2],
     ]);
   });
 
@@ -178,10 +179,7 @@ describe("findMinMergeGap", () => {
     const clips = [mk(0, 1), mk(1.02, 1.08), mk(1.12, 2)];
     const result = findMinMergeGap(clips, getClipGaps(clips), 0.1);
     expect(result.minGap).toBeCloseTo(0.02, 5);
-    expect(bounds(result.clips)).toEqual([
-      [0, 1.08],
-      [1.12, 2],
-    ]);
+    expect(result.clips).toBe(clips);
   });
 
   it("keeps the raw clips when no single gap reaches the minimum", () => {

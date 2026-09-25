@@ -11,15 +11,15 @@
  *   reports changes via `onChange(gap)`.
  * - The raw continuous thumb position is kept as *internal* state, so dragging
  *   is smooth: the thumb follows the pointer while the effective merge gap snaps
- *   to the nearest detected gap boundary (from `gapValues`).
+ *   to the nearest detected gap boundary (read from the store).
  */
 import { useEffect, useRef, useState } from "react";
+import { useAppSelector } from "../store/hooks";
+import { selectGaps } from "../store/selectors";
 
 interface MergeSliderProps {
   /** Snapped merge gap (seconds) used for merging clips. */
   value: number;
-  /** Detected silent-gap lengths the slider snaps to, ascending. */
-  gapValues: number[];
   /** Number of clips after merging, shown in the bubble. */
   clipCount: number;
   /** Reports the snapped merge gap whenever it changes. */
@@ -28,13 +28,29 @@ interface MergeSliderProps {
   disabled?: boolean;
 }
 
+function bubbleLeftPosition(
+  raw: number,
+  gapValues: number[],
+  width: number,
+  thumbW: number,
+) {
+  const gapMin = gapValues.length > 0 ? gapValues[0] : 0;
+  const gapMax = gapValues.length > 0 ? gapValues[gapValues.length - 1] : 0;
+  const pct =
+    gapMax > gapMin
+      ? Math.min(1, Math.max(0, (raw - gapMin) / (gapMax - gapMin)))
+      : 0;
+  return width - (thumbW / 2 + (width - thumbW) * pct);
+}
+
 export function MergeSlider({
   value,
-  gapValues,
   clipCount,
   onChange,
   disabled = false,
 }: MergeSliderProps) {
+  // Detected silent-gap lengths the slider snaps to, ascending.
+  const gapValues = useAppSelector(selectGaps);
   // Raw thumb position (seconds). Internal so the thumb tracks the pointer
   // continuously while dragging; only the reported `value` snaps.
   const [sliderValue, setSliderValue] = useState(value);
@@ -49,17 +65,12 @@ export function MergeSlider({
     thumbW: 10,
   });
 
-  // Snap the current raw slider position to the nearest detected gap boundary.
-  const gapMin = gapValues.length > 0 ? gapValues[0] : 0;
-  const gapMax = gapValues.length > 0 ? gapValues[gapValues.length - 1] : 0;
-  const mergePct =
-    gapMax > gapMin
-      ? Math.min(1, Math.max(0, (sliderValue - gapMin) / (gapMax - gapMin)))
-      : 0;
-  const bubbleLeft =
-    sliderMetrics.width -
-    (sliderMetrics.thumbW / 2 +
-      (sliderMetrics.width - sliderMetrics.thumbW) * mergePct);
+  const bubbleLeft = bubbleLeftPosition(
+    sliderValue,
+    gapValues,
+    sliderMetrics.width,
+    sliderMetrics.thumbW,
+  );
 
   useEffect(() => {
     const el = sliderWrapRef.current;

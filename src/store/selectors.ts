@@ -33,6 +33,10 @@ export const selectCurrentTrack = (s: RootState) => {
 
 export const selectCanPlay = (s: RootState) => s.player.tracks.length > 0;
 
+// ---- analysis ----
+/** Detected silent-gap lengths the merge slider snaps to, ascending. */
+export const selectGaps = (s: RootState) => s.analysis.gaps;
+
 export interface CurrentAudioInput {
   track: ReturnType<typeof selectCurrentTrack> | null;
   waveform: RootState["analysis"]["waveform"];

@@ -59,7 +59,7 @@ export function ProgressBar({
   const repetitions = useAppSelector(selectRepetitions);
   const showAdvancedControls = useAppSelector(selectShowAdvancedControls);
 
-  const { waveform, waveformStatus, clips, currentTime, activeClip, gaps, minGap } = audio;
+  const { waveform, waveformStatus, clips, currentTime, activeClip, minGap } = audio;
   const hasWaveform = waveform !== null && waveform.data.length > 0;
 
   // Merge gap is derived from the detected silence gaps for the current waveform,
@@ -177,11 +177,8 @@ export function ProgressBar({
         >
           <MergeSlider
             value={mergeGap}
-            gapValues={gaps}
             clipCount={displayClips.length}
-            onChange={(value) => {
-              setMergeGap(value);
-            }}
+            onChange={setMergeGap}
             disabled={playing}
           />
           <RepsStepper
