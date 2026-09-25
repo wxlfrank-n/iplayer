@@ -38,6 +38,9 @@ export function MergeSlider({
   // Raw thumb position (seconds). Internal so the thumb tracks the pointer
   // continuously while dragging; only the reported `value` snaps.
   const [sliderValue, setSliderValue] = useState(value);
+  useEffect(() => {
+    setSliderValue(value);
+  }, [value]);
   // Slider metrics: track the slider element's width and thumb size so the
   // bubble label stays anchored to the thumb as the layout resizes.
   const sliderWrapRef = useRef<HTMLDivElement>(null);
@@ -86,7 +89,7 @@ export function MergeSlider({
     const i = gapValues.indexOf(value);
     const next =
       gapValues[
-        i >= 0 && i < gapValues.length - 1 ? i + 1 : gapValues.length - 1
+      i >= 0 && i < gapValues.length - 1 ? i + 1 : gapValues.length - 1
       ];
     if (next !== undefined) {
       setSliderValue(next);

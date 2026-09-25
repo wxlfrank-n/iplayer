@@ -1,21 +1,4 @@
 /**
- * Formats a duration in seconds to "M:SS" format.
- * Used for display in progress bars and duration labels.
- *
- * @param seconds - Duration in seconds
- * @returns Formatted string like "1:23" or "0:45"
- * @example
- *   formatTime(83) => "1:23"
- *   formatTime(5) => "0:05"
- */
-export function formatTime(seconds: number): string {
-  if (!isFinite(seconds) || seconds < 0) return "0:00";
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, "0")}`;
-}
-
-/**
  * Formats a duration with fractional second precision.
  * Used for detailed time displays in clip markers and precise seeking.
  *

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Dispatch, MutableRefObject, PointerEvent as ReactPointerEvent, SetStateAction } from "react";
 import { clampWindowAnchor, getWindowSecs } from "../utils/rowWaveform";
+import { panTarget } from "../utils/pan";
 
 const HS_FOLLOW_FRAC = 0.6;
 const HS_PAN_DECIDE_PX = 8;
@@ -20,7 +21,6 @@ export interface UseRowWaveformScrollArgs {
   ) => void;
   onClipPlayActiveChange?: (active: boolean) => void;
   repetitions: number;
-  minSilenceLength: number;
   onStopPlayback?: () => void;
   activeClip: number;
   onActiveClipChange: (idx: number) => void;
@@ -285,6 +285,7 @@ export function useRowWaveformScroll({
       if (e.button !== 0 && e.pointerType === "mouse") return;
       const downTarget = e.target as Element;
       if (!hsRef.current?.contains(downTarget)) return;
+      if (downTarget.closest(".waveform-clip, .clip-label, .stacked-clip-label")) return;
       if (hsDragRef.current?.pointerId === e.pointerId) return;
       hsDragRef.current = null;
       hsSuppressClickRef.current = false;
@@ -420,18 +421,6 @@ export function useRowWaveformScroll({
     playClip,
     trackHovered,
   };
-}
-
-function panTarget(
-  startAnchor: number,
-  dx: number,
-  winLen: number,
-  width: number,
-  maxStart: number,
-) {
-  const pxPerSec = width / winLen;
-  const dSec = -dx / pxPerSec;
-  return Math.max(0, Math.min(startAnchor + dSec, maxStart));
 }
 
 export { VB_H, VB_W, PAD };

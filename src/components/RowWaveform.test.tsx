@@ -53,7 +53,6 @@ function renderRow({ playing = false, currentTime = 0 } = {}) {
       onSeek={vi.fn()}
       onPlayRange={vi.fn()}
       repetitions={3}
-      minSilenceLength={0.1}
       activeClip={-1}
       onActiveClipChange={vi.fn()}
       getCurrentTime={() => props.currentTime}
@@ -79,7 +78,6 @@ function renderRow({ playing = false, currentTime = 0 } = {}) {
           onSeek={vi.fn()}
           onPlayRange={vi.fn()}
           repetitions={3}
-          minSilenceLength={0.1}
           activeClip={-1}
           onActiveClipChange={vi.fn()}
           getCurrentTime={() => props.currentTime}
@@ -105,7 +103,7 @@ beforeEach(() => {
 });
 
 describe("RowWaveform clip dragging", () => {
-  it("scrolls horizontally when dragging a clip", () => {
+  it("does not scroll horizontally when dragging a clip", () => {
     const { row, clip } = renderRow();
 
     fireEvent.pointerDown(clip, {
@@ -123,7 +121,7 @@ describe("RowWaveform clip dragging", () => {
       });
     });
 
-    expect(row.querySelector('[data-window-start="2"]')).not.toBeNull();
+    expect(row.querySelector('[data-window-start="0"]')).not.toBeNull();
   });
 
   it("does not scroll horizontally for a vertical clip swipe", () => {

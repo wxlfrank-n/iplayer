@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { mergeClipsByGap, type Clip } from "./clips";
-import {
-  canSplitClip,
-  getClipMergeResult,
-  getClipSplitResult,
-} from "./swipe";
+import { getClipMergeResult, getClipSplitResult } from "./swipe";
 
 const mk = (start: number, end: number): Clip => ({
   start,
@@ -13,25 +9,13 @@ const mk = (start: number, end: number): Clip => ({
   vEnd: end,
 });
 
-describe("canSplitClip", () => {
-  it("is false for clips without children", () => {
-    expect(canSplitClip(mk(0, 1), 0.1)).toBe(false);
+describe("getClipSplitResult", () => {
+  it("returns null for clips without children", () => {
+    const clips = [mk(0, 1)];
+    expect(getClipSplitResult(clips, clips, 0)).toBeNull();
   });
 
-  it("is false when every child gap is at or below the minimum silence", () => {
-    const clip: Clip = {
-      start: 0,
-      end: 3,
-      vStart: 0,
-      vEnd: 3,
-      children: [mk(0, 0.5), mk(0.8, 1.3), mk(1.6, 2.1), mk(2.4, 3)],
-    };
-    // largest gap = 0.3, minSilenceLength = 0.5 -> cannot open any gap
-    expect(canSplitClip(clip, 0.5)).toBe(false);
-    expect(getClipSplitResult([clip], [clip], 0, 0.5)).toBeNull();
-  });
-
-  it("is true when the largest child gap exceeds the minimum silence", () => {
+  it("splits any group with at least two children by its largest gap", () => {
     const clip: Clip = {
       start: 0,
       end: 3,
@@ -39,18 +23,17 @@ describe("canSplitClip", () => {
       vEnd: 3,
       children: [mk(0, 0.5), mk(0.8, 1.3), mk(2, 2.5)],
     };
-    // largest gap (0.7) > 0.1 -> the clip can be split there
-    expect(canSplitClip(clip, 0.1)).toBe(true);
-    expect(getClipSplitResult([clip], [clip], 0, 0.1)).not.toBeNull();
+    // largest child gap (0.7) sets the merge level just below itself
+    const result = getClipSplitResult([clip], [clip], 0);
+    expect(result?.mergeGap).toBeCloseTo(0.699999);
+    expect(result?.activeClip).toBe(0);
   });
-});
 
-describe("getClipSplitResult", () => {
   it("sets the merge gap just below the largest child gap", () => {
     const clips = [mk(0, 1), mk(1.2, 2), mk(2.5, 3), mk(5, 6)];
     const displayClips = mergeClipsByGap(clips, 0.6);
 
-    const result = getClipSplitResult(clips, displayClips, 0, 0.1);
+    const result = getClipSplitResult(clips, displayClips, 0);
 
     expect(result?.mergeGap).toBeCloseTo(0.499999);
     expect(result?.activeClip).toBe(0);
@@ -64,7 +47,7 @@ describe("getClipSplitResult", () => {
     const clips = [mk(0, 1), mk(2, 3)];
     const displayClips = mergeClipsByGap(clips, 0.1);
 
-    expect(getClipSplitResult(clips, displayClips, 0, 0.1)).toBeNull();
+    expect(getClipSplitResult(clips, displayClips, 0)).toBeNull();
   });
 });
 

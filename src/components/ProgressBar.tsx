@@ -7,7 +7,7 @@
  * owned by ProgressBar itself (state + helpers) so App stays a thin shell.
  */
 
-import { useMemo, useCallback, useRef, useState } from "react";
+import { useMemo, useCallback, useRef, useState, useEffect } from "react";
 import { shallowEqual } from "react-redux";
 import { RowWaveform } from "./RowWaveform";
 import { StackedWaveform } from "./StackedWaveform";
@@ -18,13 +18,12 @@ import {
   selectCurrentAudio,
   selectWaveformView,
   selectIsPlaying,
-  selectminSilenceLength,
   selectRepetitions,
   selectShowAdvancedControls,
 } from "../store/selectors";
 import { setActiveClip } from "../store/analysisSlice";
 import { updateConfig } from "../store/configSlice";
-import { mergeClipsByGap, clipGaps } from "../utils/clips";
+import { mergeClipsByGap } from "../utils/clips";
 import { getClipSplitResult, getClipMergeResult } from "../utils/swipe";
 
 interface ProgressBarProps {
@@ -57,31 +56,27 @@ export function ProgressBar({
   const audio = useAppSelector(selectCurrentAudio, shallowEqual);
   const waveformView = useAppSelector(selectWaveformView);
   const playing = useAppSelector(selectIsPlaying);
-  const minSilenceLength = useAppSelector(selectminSilenceLength);
   const repetitions = useAppSelector(selectRepetitions);
   const showAdvancedControls = useAppSelector(selectShowAdvancedControls);
 
-  const { waveform, waveformStatus, clips, currentTime, activeClip } = audio;
+  const { waveform, waveformStatus, clips, currentTime, activeClip, gaps, minGap } = audio;
   const hasWaveform = waveform !== null && waveform.data.length > 0;
 
-  // Merge gap is seeded from `minSilenceLength` (an independent, user-configured
-  // value in seconds) rather than derived from `silenceRatio`, so the slider's
-  // smallest step is decoupled from how loud "silence" is.
-  const [mergeGap, setMergeGap] = useState(minSilenceLength);
+  // Merge gap is derived from the detected silence gaps for the current waveform,
+  // so the slider stays aligned with the actual clip structure in view.
+  const [mergeGap, setMergeGap] = useState(minGap);
 
   const handleRepetitionsChange = useCallback(
     (value: number) => dispatch(updateConfig({ repetitions: value })),
     [dispatch],
   );
+  useEffect(() => {
+    setMergeGap(minGap);
+  }, [minGap]);
 
   const displayClips = useMemo(
     () => mergeClipsByGap(clips, mergeGap),
     [clips, mergeGap],
-  );
-
-  const gapValues = useMemo(
-    () => clipGaps(clips, minSilenceLength),
-    [clips, minSilenceLength],
   );
 
   // Scroll state shared with the horizontal RowWaveform follow behavior.
@@ -109,13 +104,12 @@ export function ProgressBar({
         clips,
         displayClips,
         idx,
-        minSilenceLength,
       );
       if (!result) return;
       setMergeGap(result.mergeGap);
       dispatch(setActiveClip(result.activeClip));
     },
-    [clips, dispatch, displayClips, minSilenceLength],
+    [clips, dispatch, displayClips],
   );
 
   return (
@@ -144,7 +138,6 @@ export function ProgressBar({
               onPlayRange={onPlayRange}
               onStopPlayback={onStopPlayback}
               repetitions={repetitions}
-              minSilenceLength={minSilenceLength}
               activeClip={activeClip}
               onActiveClipChange={handleActiveClipChange}
               onSwipeClip={playing ? undefined : handleClipSwipe}
@@ -163,7 +156,6 @@ export function ProgressBar({
               playing={playing}
               activeClip={activeClip}
               repetitions={repetitions}
-              minSilenceLength={minSilenceLength}
               onSwipeClip={playing ? undefined : handleClipSwipe}
               onSeek={onSeek}
               onPlayRange={onPlayRange}
@@ -185,7 +177,7 @@ export function ProgressBar({
         >
           <MergeSlider
             value={mergeGap}
-            gapValues={gapValues}
+            gapValues={gaps}
             clipCount={displayClips.length}
             onChange={(value) => {
               setMergeGap(value);
@@ -193,10 +185,10 @@ export function ProgressBar({
             disabled={playing}
           />
           <RepsStepper
-              value={repetitions}
-              onChange={handleRepetitionsChange}
-              disabled={playing}
-            />
+            value={repetitions}
+            onChange={handleRepetitionsChange}
+            disabled={playing}
+          />
         </div>
       )}
     </>

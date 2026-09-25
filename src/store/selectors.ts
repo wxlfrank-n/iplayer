@@ -17,19 +17,6 @@ export const selectRepetitions = (s: RootState) => s.config.repetitions ?? 3;
 /** Whether the clip toolbar (merge gap + repeats) is visible. */
 export const selectShowAdvancedControls = (s: RootState) =>
   s.config.showAdvancedControls ?? true;
-/**
- * Shortest acceptable clip in seconds, independent of `silenceRatio`. Seeds the
- * merge slider's smallest step; ProgressBar uses it to drive its own merge gap
- * (the slider behaviour, not the split cutoff which stays silenceRatio-driven).
- */
-export const selectminSilenceLength = (s: RootState) =>
-  s.config.minSilenceLength ?? 0.1;
-/**
- * Shortest clip to keep after silence splitting, in seconds. Clips shorter
- * than this are folded into a neighbor when the separating gap is small.
- */
-export const selectminClipLength = (s: RootState) =>
-  s.config.minClipLength ?? 0.3;
 
 // ---- player ----
 export const selectTracks = (s: RootState) => s.player.tracks;
@@ -51,6 +38,8 @@ export interface CurrentAudioInput {
   waveform: RootState["analysis"]["waveform"];
   waveformStatus: RootState["analysis"]["waveformStatus"];
   clips: RootState["analysis"]["clips"];
+  gaps: RootState["analysis"]["gaps"];
+  minGap: RootState["analysis"]["minGap"];
   currentTime: RootState["player"]["currentTime"];
   activeClip: RootState["analysis"]["activeClip"];
 }
@@ -60,6 +49,8 @@ export function toCurrentAudio({
   waveform,
   waveformStatus,
   clips,
+  gaps,
+  minGap,
   currentTime,
   activeClip,
 }: CurrentAudioInput): CurrentAudio {
@@ -69,6 +60,8 @@ export function toCurrentAudio({
     waveform: waveformStatus === "ready" ? waveform : null,
     waveformStatus,
     clips,
+    gaps,
+    minGap,
     currentTime,
     activeClip,
   };
@@ -81,6 +74,8 @@ export function selectCurrentAudio(s: RootState): CurrentAudio {
     waveform: s.analysis.waveform,
     waveformStatus: s.analysis.waveformStatus,
     clips: s.analysis.clips,
+    gaps: s.analysis.gaps,
+    minGap: s.analysis.minGap,
     currentTime: s.player.currentTime,
     activeClip: s.analysis.activeClip,
   });

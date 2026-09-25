@@ -29,7 +29,7 @@ import { useAudioPlayer } from "./hooks/useAudioPlayer";
 import { useConfig } from "./hooks/useConfig";
 import { useWaveform } from "./hooks/useWaveform";
 import { useAddFiles } from "./hooks/useAddFiles";
-import { splitBySilence } from "./utils/clips";
+import { splitBySilence, type ClipData } from "./utils/clips";
 import { useAppDispatch, useAppSelector } from "./store/hooks";
 import { selectCurrentTrack } from "./store/selectors";
 import { setClips, setActiveClip } from "./store/analysisSlice";
@@ -107,7 +107,7 @@ export default function App() {
   // Clips detected from the current audio's silence gaps, recomputed only
   // when the waveform (i.e. the loaded track) changes, then published to the
   // analysis slice so every component can read them.
-  const clips = useMemo(
+  const clipData:ClipData = useMemo(
     () =>
       splitBySilence(
         waveform.data?.data ?? null,
@@ -115,15 +115,14 @@ export default function App() {
         {
           blockMs: config.blockMs,
           silenceRatio: config.silenceRatio,
-          minSilenceLength: config.minSilenceLength,
           minClipLength: config.minClipLength,
         },
       ),
-    [waveform, config.blockMs, config.silenceRatio, config.minSilenceLength, config.minClipLength],
+    [waveform.status, config.blockMs, config.silenceRatio, config.minClipLength],
   );
   useEffect(() => {
-    dispatch(setClips(clips));
-  }, [clips, dispatch]);
+    dispatch(setClips(clipData));
+  }, [clipData, dispatch]);
 
   // Reset the active clip whenever the loaded track changes.
   useEffect(() => {

@@ -8,23 +8,6 @@ const groupContaining = (groups: Clip[], target: Clip) => {
   });
 };
 
-/**
- * Whether splitting `clip` (a merged parent) can actually separate its children
- * again. Splitting opens the largest internal gap, but the re-merge threshold
- * is clamped to `minSilenceLength`: if every child gap is at (or below) that
- * minimum, re-merging keeps the whole group, so there is nothing to split.
- */
-export function canSplitClip(clip: Clip, minSilenceLength: number): boolean {
-  const children = clip.children;
-  if (!children || children.length < 2) return false;
-  let largestGap = 0;
-  for (let i = 1; i < children.length; i++) {
-    const gap = children[i].start - children[i - 1].end;
-    if (gap > largestGap) largestGap = gap;
-  }
-  return largestGap - 0.000001 >= minSilenceLength;
-}
-
 export interface ClipSplitResult {
   mergeGap: number;
   activeClip: number;
@@ -37,20 +20,21 @@ export interface ClipSplitResult {
 export function getClipSplitResult(
   clips: Clip[],
   displayClips: Clip[],
-  idx: number,
-  minSilenceLength: number,
+  idx: number
 ): ClipSplitResult | null {
   const clip = displayClips[idx];
   if (!clip) return null;
-  if (!canSplitClip(clip, minSilenceLength)) return null;
 
-  const children = clip.children as Clip[];
+  // Only a group holding at least two original clips can be unpacked.
+  const children = clip.children;
+  if (!children || children.length < 2) return null;
+
   const largestChildGap = Math.max(
     ...children.slice(1).map((child, childIdx) =>
       child.start - children[childIdx].end,
     ),
   );
-  const mergeGap = Math.max(minSilenceLength, largestChildGap - 0.000001);
+  const mergeGap = largestChildGap - 0.000001;
   const nextClips = mergeClipsByGap(clips, mergeGap);
   const activeClip = groupContaining(nextClips, children[0]);
   return activeClip >= 0 ? { mergeGap, activeClip } : null;

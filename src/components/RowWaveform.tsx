@@ -19,7 +19,6 @@ import { WaveformBars } from "./Waveform";
 import { type WaveformData } from "../hooks/useWaveform";
 import { useRowWaveformScroll, VB_W, VB_H } from "../hooks/useRowWaveformScroll";
 import type { Clip as ClipData } from "../utils/clips";
-import { canSplitClip } from "../utils/swipe";
 
 const PAD = 4;
 
@@ -36,7 +35,6 @@ export interface RowWaveformProps {
   ) => void;
   onClipPlayActiveChange?: (active: boolean) => void;
   repetitions: number;
-  minSilenceLength: number;
   onStopPlayback?: () => void;
   activeClip: number;
   onActiveClipChange: (idx: number) => void;
@@ -46,7 +44,7 @@ export interface RowWaveformProps {
   playing: boolean;
   scrolling: boolean;
   setScrolling: React.Dispatch<React.SetStateAction<boolean>>;
-  scrollTimeoutRef: React.MutableRefObject<number | undefined>;
+  scrollTimeoutRef: React.RefObject<number | undefined>;
 }
 
 export const RowWaveform = memo(function RowWaveform({
@@ -57,7 +55,6 @@ export const RowWaveform = memo(function RowWaveform({
   onPlayRange,
   onClipPlayActiveChange,
   repetitions,
-  minSilenceLength,
   onStopPlayback,
   activeClip,
   onActiveClipChange,
@@ -88,7 +85,6 @@ export const RowWaveform = memo(function RowWaveform({
     onPlayRange,
     onClipPlayActiveChange,
     repetitions,
-    minSilenceLength,
     onStopPlayback,
     activeClip,
     onActiveClipChange,
@@ -166,7 +162,7 @@ export const RowWaveform = memo(function RowWaveform({
                 duration={s.vEnd - s.vStart}
                 left={center}
                 active={idx === activeClip}
-                canSplit={!playing && canSplitClip(s, minSilenceLength)}
+                canSplit={!playing && s.children?.length != null && s.children?.length > 1}
                 canMerge={!playing && (idx > 0 || idx < displayClips.length - 1)}
                 onSplit={onSwipeClip ? () => onSwipeClip(idx, "up") : undefined}
                 onMerge={onSwipeClip ? () => onSwipeClip(idx, "down") : undefined}

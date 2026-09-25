@@ -225,7 +225,7 @@ function PlaybackTab() {
 
 function ClipDetectionTab() {
   const { config, updateConfig } = useConfig();
-  const { blockMs, silenceRatio, minSilenceLength, minClipLength } = config;
+  const { blockMs, silenceRatio, minClipLength } = config;
   return (
     <>
       <SliderSetting
@@ -248,17 +248,6 @@ function ClipDetectionTab() {
         step={1}
         unit="ms"
         onChange={(v) => updateConfig({ blockMs: v })}
-      />
-      <SliderSetting
-        label="Minimum gap between clips"
-        hint="Shortest silence duration that splits two clips apart. Lower = more granular splits."
-        presets={[0.1, 0.2]}
-        value={minSilenceLength}
-        min={CONFIG_RANGES.minSilenceLength.min}
-        max={CONFIG_RANGES.minSilenceLength.max}
-        step={0.01}
-        unit="s"
-        onChange={(v) => updateConfig({ minSilenceLength: v })}
       />
       <SliderSetting
         label="Minimum clip length"

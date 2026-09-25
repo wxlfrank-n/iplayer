@@ -66,6 +66,8 @@ export interface CurrentAudio {
   waveform: WaveformData | null;
   waveformStatus: WaveformStatus;
   clips: Clip[];
+  gaps: number[];
+  minGap: number;
   currentTime: number;
   activeClip: number;
 }
