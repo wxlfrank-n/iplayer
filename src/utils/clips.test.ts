@@ -70,17 +70,17 @@ describe("splitBySilence", () => {
     ]);
     // First clip expands into the following silence.
     expect(clips[0].vStart).toBe(0);
-    expect(clips[0].vEnd).toBeCloseTo(0.704, 5);
+    expect(clips[0].vEnd).toBeCloseTo(0.8, 5);
     // Second clip expands into the preceding silence.
-    expect(clips[1].vStart).toBeCloseTo(1.152, 5);
+    expect(clips[1].vStart).toBeCloseTo(1.12, 5);
     expect(clips[1].vEnd).toBeCloseTo(2.56, 5);
   });
 
   it("trims leading and trailing silence and expands into it by 25% of each gap", () => {
     const [clip] = splitBySilence(buildData([0, 1, 0]), 100, opts).clips;
     expect(bounds([clip])).toEqual([[0.64, 1.28]]);
-    expect(clip.vStart).toBeCloseTo(0.576, 5);
-    expect(clip.vEnd).toBeCloseTo(1.344, 5);
+    expect(clip.vStart).toBeCloseTo(0.48, 5);
+    expect(clip.vEnd).toBeCloseTo(1.44, 5);
   });
 
   it("honors the configured minClipLength when merging short runs", () => {
@@ -93,29 +93,30 @@ describe("splitBySilence", () => {
         minClipLength,
       });
     // With a low threshold both runs are long enough to survive, so nothing
-    // needs merging and the gap that separates them covers the default view.
+    // merges or needs a merge gap and minGap stays 0.
     const loose = splitWith(0.05);
     expect(loose.clips).toHaveLength(2);
-    expect(loose.minGap).toBe(0);
-    // With a higher threshold the clips are kept raw while the shortest gap
-    // that makes every clip long enough (if merged) is reported as minGap.
-    const tight = splitWith(0.2);
-    expect(bounds(tight.clips)).toEqual([
+    expect(bounds(loose.clips)).toEqual([
       [0, 0.08],
       [0.12, 0.2],
     ]);
-    expect(tight.minGap).toBeCloseTo(0.04, 5);
+    expect(loose.minGap).toBe(0);
+    // With a higher threshold the short runs are merged into a single clip,
+    // leaving no gaps to report.
+    const tight = splitWith(0.2);
+    expect(bounds(tight.clips)).toEqual([[0, 0.2]]);
+    expect(tight.minGap).toBe(0);
   });
 });
 
 describe("expandClip", () => {
-  it("expands clip bounds into neighboring silence without exceeding 10% of the clip length", () => {
+  it("expands clip bounds into neighboring silence by 25% of each gap", () => {
     const clip = { start: 0.6, end: 1.0, vStart: 0.6, vEnd: 1.0 };
 
     expandClip(clip, 0.2, 1.8, 0.25, 2.0);
 
-    expect(clip.vStart).toBeCloseTo(0.56, 5);
-    expect(clip.vEnd).toBeCloseTo(1.04, 5);
+    expect(clip.vStart).toBeCloseTo(0.5, 5);
+    expect(clip.vEnd).toBeCloseTo(1.2, 5);
   });
 
   it("leaves a clip unchanged when there is no surrounding silence to absorb", () => {
@@ -127,13 +128,13 @@ describe("expandClip", () => {
     expect(clip.vEnd).toBe(1.0);
   });
 
-  it("caps expansion at 10% of the clip length even with very large surrounding gaps", () => {
+  it("expands by 25% of each gap even with very large surrounding silence", () => {
     const clip = { start: 1.0, end: 2.0, vStart: 1.0, vEnd: 2.0 };
 
     expandClip(clip, 0.0, 100.0, 0.25, 100.0);
 
-    expect(clip.vStart).toBeCloseTo(0.9, 5);
-    expect(clip.vEnd).toBeCloseTo(2.1, 5);
+    expect(clip.vStart).toBeCloseTo(0.75, 5);
+    expect(clip.vEnd).toBeCloseTo(26.5, 5);
   });
 });
 
