@@ -120,7 +120,7 @@ export function splitBySilence(
 
 function expandClips(clips: Clip[], audioDuration: number, expandRatio: number = 0.25) {
   // Expand each clip's start and end by a fraction of the surrounding silence,
-  // up to 25% of the gap on each side, but not beyond 10% of the clip length.
+  // up to 25% of the gap on each side, but never past the clip boundaries.
   // This makes clips more natural and less abrupt.
   for (let i = 0; i < clips.length; i++) {
     const clip = clips[i];

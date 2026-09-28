@@ -40,7 +40,6 @@ export const WaveformCanvas = memo(function WaveformCanvas({
     windowStartSec: bufferStartSec,
     windowLen: bufferLen,
     innerH,
-    vbW,
     vbH,
   } = window;
 
@@ -183,7 +182,6 @@ export const WaveformCanvas = memo(function WaveformCanvas({
     bufferStartSec,
     bufferLen,
     innerH,
-    vbW,
     vbH,
     contentEndSec,
     strokeWidth,
