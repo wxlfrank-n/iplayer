@@ -79,9 +79,8 @@ function renderRow({ initialTime = 10, playing = false, clips: useClips = clips 
     );
     const track = row.querySelector(".row-waveform__track") as HTMLElement;
     const transform = track?.style.transform ?? "";
-    const px = transform
-      ? Number(transform.replace("translateX(", "").replace("px)", ""))
-      : 0;
+    const m = transform.match(/translate3d\((-?[0-9.]+)px/);
+    const px = m ? Number(m[1]) : 0;
     const win = getWindowSecs(window.innerWidth);
     const pxPerSec = (inner.clientWidth || 1) / win;
     return buffer - px / pxPerSec;

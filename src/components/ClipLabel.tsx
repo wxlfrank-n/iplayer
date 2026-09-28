@@ -1,10 +1,14 @@
 /**
- * Clip label rendered inside the clip's `<div>`, hanging just below the clip
- * band: an index badge plus its duration. Shared by the stacked and single-row
- * waveform views. On the active clip the badge shows contextual Split/Merge
- * icon buttons that sit in the direction of the equivalent swipe gesture
- * (swipe up = split/unpack, swipe down = merge/pack). The buttons are clickable
- * so the actions stay discoverable without the gesture.
+ * Clip label rendered inside the clip's <div>, hanging just below the clip
+ * band: an index badge plus its duration.
+ *
+ * On the active clip, contextual action buttons are shown:
+ *
+ *   ✂  Split
+ *   🔗 Merge
+ *
+ * The buttons also communicate the equivalent swipe gestures:
+ * swipe up = split, swipe down = merge.
  */
 
 import { memo } from "react";
@@ -19,34 +23,6 @@ interface ClipLabelProps {
   onMerge?: () => void;
 }
 
-const SplitIcon = () => (
-  <svg
-    viewBox="0 0 12 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M2 11 L6 5 L10 11" />
-  </svg>
-);
-
-const MergeIcon = () => (
-  <svg
-    viewBox="0 0 12 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M2 5 L6 11 L10 5" />
-  </svg>
-);
-
 export const ClipLabel = memo(function ClipLabel({
   index,
   duration,
@@ -58,36 +34,43 @@ export const ClipLabel = memo(function ClipLabel({
 }: ClipLabelProps) {
   return (
     <span
-      className={`stacked-clip-label ${active ? "stacked-clip-label--active" : ""}`}
+      className={`stacked-clip-label ${
+        active ? "stacked-clip-label--active" : ""
+      }`}
     >
       {index + 1}
-      <span className="stacked-clip-dur">{duration.toFixed(1)}s</span>
+
+      <span className="stacked-clip-dur">
+        {duration.toFixed(1)}s
+      </span>
+
       {active && canSplit && onSplit && (
         <button
           type="button"
           className="stacked-clip-action stacked-clip-action--split"
-          title="Split into separate clips"
-          aria-label="Split into separate clips"
+          title="Split clip"
+          aria-label="Split clip"
           onClick={(e) => {
             e.stopPropagation();
             onSplit();
           }}
         >
-          <SplitIcon />
+          <span aria-hidden="true">✂</span>
         </button>
       )}
+
       {active && canMerge && onMerge && (
         <button
           type="button"
           className="stacked-clip-action stacked-clip-action--merge"
-          title="Merge with the adjacent clip"
-          aria-label="Merge with the adjacent clip"
+          title="Merge with adjacent clip"
+          aria-label="Merge with adjacent clip"
           onClick={(e) => {
             e.stopPropagation();
             onMerge();
           }}
         >
-          <MergeIcon />
+          <span aria-hidden="true">🔗</span>
         </button>
       )}
     </span>

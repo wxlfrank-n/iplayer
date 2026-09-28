@@ -1,0 +1,866 @@
+/*
+ * =========================================================
+ * WAVEFORM VIEW PAGE FLIP
+ * =========================================================
+ *
+ * The top-right corner behaves like the corner of a page.
+ *
+ * IMPORTANT:
+ *
+ * There is NO visible folding line.
+ *
+ * The fold line is only an imaginary geometric axis:
+ *
+ *     unturned page
+ *          \
+ *           \
+ *            \   <- imaginary symmetry axis
+ *             \
+ *              \
+ *          turned page
+ *
+ * The turned part is visually reflected to the other side
+ * of that axis.
+ * =========================================================
+ */
+
+
+.waveform-view-flip {
+  --fold-size: 52px;
+  --turn-duration: 520ms;
+
+  position: absolute;
+
+  top: 0;
+  right: 0;
+
+  z-index: 30;
+
+  width: var(--fold-size);
+  height: var(--fold-size);
+
+  padding: 0;
+  margin: 0;
+
+  border: 0;
+  outline: 0;
+
+  background: transparent;
+
+  cursor: pointer;
+
+  /*
+   * The reflected page can extend outside the original
+   * corner.
+   */
+  overflow: visible;
+
+  -webkit-tap-highlight-color: transparent;
+}
+
+
+/* =========================================================
+ * PERMANENT CORNER
+ * ========================================================= */
+
+.waveform-view-flip__corner {
+  position: absolute;
+
+  inset: 0;
+
+  z-index: 1;
+
+  /*
+   * Top-right triangle.
+   *
+   *     ┌──────────┐
+   *      ╲█████████│
+   *       ╲████████│
+   *        ╲███████│
+   *         ╲██████│
+   *          ╲█████│
+   *
+   * Its diagonal runs:
+   *
+   * top-left -> bottom-right
+   */
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% 100%
+  );
+
+  background:
+    linear-gradient(
+      225deg,
+      var(--accent) 0%,
+      var(--accent) 43%,
+      var(--accent-dim) 52%,
+      var(--accent) 61%,
+      var(--accent) 100%
+    );
+
+  filter:
+    drop-shadow(
+      -2px 3px 3px
+      rgba(0, 0, 0, 0.20)
+    );
+
+  pointer-events: none;
+
+  transition:
+    transform 180ms ease,
+    filter 180ms ease;
+
+  will-change:
+    transform,
+    opacity,
+    filter;
+}
+
+
+/*
+ * Very subtle edge definition.
+ *
+ * This belongs to the static corner.
+ * It is NOT the moving fold line.
+ */
+.waveform-view-flip__corner::after {
+  content: "";
+
+  position: absolute;
+
+  top: 0;
+  left: 0;
+
+  width: 141.421%;
+  height: 1px;
+
+  transform-origin: left center;
+  transform: rotate(45deg);
+
+  background:
+    rgba(255, 255, 255, 0.24);
+
+  box-shadow:
+    0 1px 0
+    rgba(0, 0, 0, 0.10);
+
+  pointer-events: none;
+}
+
+
+/* =========================================================
+ * ICON
+ * ========================================================= */
+
+.waveform-view-flip__icon {
+  position: absolute;
+
+  top: 7px;
+  right: 6px;
+
+  z-index: 3;
+
+  width: 22px;
+  height: 22px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: var(--bg-primary);
+
+  filter:
+    drop-shadow(
+      0 1px 1px
+      rgba(0, 0, 0, 0.24)
+    );
+
+  pointer-events: none;
+
+  transition:
+    transform 180ms ease,
+    opacity 120ms ease;
+
+  will-change:
+    transform,
+    opacity;
+}
+
+
+.waveform-view-flip__icon svg {
+  display: block;
+
+  width: 100%;
+  height: 100%;
+
+  fill: none;
+
+  stroke: currentColor;
+  stroke-width: 2.1;
+
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+
+/* =========================================================
+ * HOVER
+ * ========================================================= */
+
+.waveform-view-flip:not(
+  .waveform-view-flip--flipping
+):hover
+.waveform-view-flip__corner {
+  transform:
+    translate(-1px, 1px)
+    scale(1.04);
+
+  filter:
+    drop-shadow(
+      -4px 5px 5px
+      rgba(0, 0, 0, 0.27)
+    )
+    brightness(1.07);
+}
+
+
+.waveform-view-flip:not(
+  .waveform-view-flip--flipping
+):hover
+.waveform-view-flip__icon {
+  transform:
+    translate(-2px, 2px)
+    scale(1.08);
+}
+
+
+/* =========================================================
+ * PAGE-TURN LAYER
+ * ========================================================= */
+
+.waveform-view-flip__page {
+  position: absolute;
+
+  inset: 0;
+
+  z-index: 5;
+
+  width: var(--fold-size);
+  height: var(--fold-size);
+
+  overflow: visible;
+
+  pointer-events: none;
+}
+
+
+/* =========================================================
+ * FOLDED / REFLECTED PAGE
+ *
+ * This represents the part that has crossed the imaginary
+ * fold axis.
+ *
+ * We never draw that axis.
+ * ========================================================= */
+
+.waveform-view-flip__folded {
+  position: absolute;
+
+  inset: 0;
+
+  width: var(--fold-size);
+  height: var(--fold-size);
+
+  z-index: 5;
+
+  /*
+   * Initially zero folded area.
+   */
+  clip-path: polygon(
+    100% 0,
+    100% 0,
+    100% 0
+  );
+
+  /*
+   * Back of the page.
+   */
+  background:
+    linear-gradient(
+      135deg,
+      var(--bg-secondary) 0%,
+      var(--bg-secondary) 46%,
+      var(--bg-tertiary) 76%,
+      var(--border) 100%
+    );
+
+  opacity: 0;
+
+  pointer-events: none;
+
+  will-change:
+    clip-path,
+    transform,
+    opacity,
+    filter;
+}
+
+
+/*
+ * Gentle paper lighting.
+ *
+ * Again: this is NOT a fold line.
+ */
+.waveform-view-flip__folded::before {
+  content: "";
+
+  position: absolute;
+
+  inset: 0;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.18),
+      rgba(255, 255, 255, 0.06) 42%,
+      transparent 70%
+    );
+
+  pointer-events: none;
+}
+
+
+/* =========================================================
+ * START PAGE TURN
+ * ========================================================= */
+
+.waveform-view-flip--flipping
+.waveform-view-flip__folded {
+  animation:
+    waveform-diagonal-page-turn
+    var(--turn-duration)
+    cubic-bezier(0.32, 0, 0.18, 1)
+    forwards;
+}
+
+
+/* =========================================================
+ * SYMMETRIC PAGE TURN
+ *
+ * The imaginary fold travels from:
+ *
+ *              TOP-RIGHT
+ *                  ●
+ *                 /
+ *                /
+ *               ↙
+ *              /
+ *             ●
+ *        BOTTOM-LEFT
+ *
+ *
+ * At every stage the two intersections of the imaginary
+ * fold are kept at equal distances from the corner.
+ *
+ * For example:
+ *
+ * d = 25%
+ *
+ *               75%
+ *       ─────────●
+ *                 ╲
+ *                  ╲
+ *                   ╲
+ *                    ●
+ *                    │
+ *                   25%
+ *
+ *
+ * The turned part appears on the opposite side of this
+ * imaginary line.
+ *
+ * There is deliberately no independent spinning triangle.
+ * ========================================================= */
+
+@keyframes waveform-diagonal-page-turn {
+
+  /*
+   * -------------------------------------------------------
+   * 0%
+   *
+   * No fold.
+   * -------------------------------------------------------
+   */
+  0% {
+    opacity: 0;
+
+    clip-path: polygon(
+      100% 0,
+      100% 0,
+      100% 0
+    );
+
+    transform:
+      translate(0, 0);
+
+    filter: none;
+  }
+
+
+  /*
+   * -------------------------------------------------------
+   * 10%
+   *
+   * Very small reflected corner.
+   * -------------------------------------------------------
+   */
+  10% {
+    opacity: 1;
+
+    clip-path: polygon(
+      90% 0,
+      100% 10%,
+      90% 10%
+    );
+
+    transform:
+      translate(-5%, 5%);
+
+    filter:
+      drop-shadow(
+        -1px 1px 2px
+        rgba(0, 0, 0, 0.10)
+      );
+  }
+
+
+  /*
+   * -------------------------------------------------------
+   * 20%
+   * -------------------------------------------------------
+   */
+  20% {
+    opacity: 1;
+
+    clip-path: polygon(
+      80% 0,
+      100% 20%,
+      80% 20%
+    );
+
+    transform:
+      translate(-10%, 10%);
+
+    filter:
+      drop-shadow(
+        -2px 2px 3px
+        rgba(0, 0, 0, 0.14)
+      );
+  }
+
+
+  /*
+   * -------------------------------------------------------
+   * 30%
+   * -------------------------------------------------------
+   */
+  30% {
+    opacity: 1;
+
+    clip-path: polygon(
+      70% 0,
+      100% 30%,
+      70% 30%
+    );
+
+    transform:
+      translate(-15%, 15%);
+
+    filter:
+      drop-shadow(
+        -3px 3px 4px
+        rgba(0, 0, 0, 0.17)
+      );
+  }
+
+
+  /*
+   * -------------------------------------------------------
+   * 40%
+   * -------------------------------------------------------
+   */
+  40% {
+    opacity: 1;
+
+    clip-path: polygon(
+      60% 0,
+      100% 40%,
+      60% 40%
+    );
+
+    transform:
+      translate(-20%, 20%);
+
+    filter:
+      drop-shadow(
+        -4px 4px 5px
+        rgba(0, 0, 0, 0.20)
+      );
+  }
+
+
+  /*
+   * -------------------------------------------------------
+   * 50%
+   *
+   * Imaginary fold reaches the middle.
+   *
+   * This is where the underlying waveform view changes.
+   * -------------------------------------------------------
+   */
+  50% {
+    opacity: 1;
+
+    clip-path: polygon(
+      50% 0,
+      100% 50%,
+      50% 50%
+    );
+
+    transform:
+      translate(-25%, 25%);
+
+    filter:
+      drop-shadow(
+        -6px 6px 6px
+        rgba(0, 0, 0, 0.22)
+      );
+  }
+
+
+  /*
+   * -------------------------------------------------------
+   * 60%
+   *
+   * Fold has passed the center.
+   *
+   * The imaginary fold now intersects the left and bottom
+   * boundaries as well.
+   * -------------------------------------------------------
+   */
+  60% {
+    opacity: 1;
+
+    clip-path: polygon(
+      40% 0,
+      100% 60%,
+      100% 100%,
+      60% 100%,
+      0 40%,
+      0 0
+    );
+
+    transform:
+      translate(-30%, 30%);
+
+    filter:
+      drop-shadow(
+        -6px 6px 6px
+        rgba(0, 0, 0, 0.21)
+      );
+  }
+
+
+  /*
+   * -------------------------------------------------------
+   * 70%
+   * -------------------------------------------------------
+   */
+  70% {
+    opacity: 1;
+
+    clip-path: polygon(
+      30% 0,
+      100% 70%,
+      100% 100%,
+      70% 100%,
+      0 30%,
+      0 0
+    );
+
+    transform:
+      translate(-35%, 35%);
+
+    filter:
+      drop-shadow(
+        -5px 5px 5px
+        rgba(0, 0, 0, 0.18)
+      );
+  }
+
+
+  /*
+   * -------------------------------------------------------
+   * 80%
+   * -------------------------------------------------------
+   */
+  80% {
+    opacity: 0.90;
+
+    clip-path: polygon(
+      20% 0,
+      100% 80%,
+      100% 100%,
+      80% 100%,
+      0 20%,
+      0 0
+    );
+
+    transform:
+      translate(-40%, 40%);
+
+    filter:
+      drop-shadow(
+        -4px 4px 4px
+        rgba(0, 0, 0, 0.14)
+      );
+  }
+
+
+  /*
+   * -------------------------------------------------------
+   * 90%
+   * -------------------------------------------------------
+   */
+  90% {
+    opacity: 0.55;
+
+    clip-path: polygon(
+      10% 0,
+      100% 90%,
+      100% 100%,
+      90% 100%,
+      0 10%,
+      0 0
+    );
+
+    transform:
+      translate(-45%, 45%);
+
+    filter:
+      drop-shadow(
+        -2px 2px 3px
+        rgba(0, 0, 0, 0.10)
+      );
+  }
+
+
+  /*
+   * -------------------------------------------------------
+   * 100%
+   *
+   * Page has completed the turn.
+   * -------------------------------------------------------
+   */
+  100% {
+    opacity: 0;
+
+    clip-path: polygon(
+      0 0,
+      100% 100%,
+      100% 100%,
+      100% 100%,
+      0 0,
+      0 0
+    );
+
+    transform:
+      translate(-50%, 50%);
+
+    filter: none;
+  }
+}
+
+
+/* =========================================================
+ * ORIGINAL CORNER DURING TURN
+ *
+ * It never moves.
+ *
+ * The page-turn illusion comes from the reflected piece
+ * crossing the imaginary fold axis.
+ * ========================================================= */
+
+.waveform-view-flip--flipping
+.waveform-view-flip__corner {
+  animation:
+    waveform-original-corner
+    var(--turn-duration)
+    ease
+    forwards;
+}
+
+
+@keyframes waveform-original-corner {
+  0%,
+  10% {
+    opacity: 1;
+  }
+
+  20% {
+    opacity: 0.95;
+  }
+
+  30% {
+    opacity: 0.86;
+  }
+
+  40% {
+    opacity: 0.72;
+  }
+
+  50% {
+    opacity: 0.52;
+  }
+
+  60% {
+    opacity: 0.34;
+  }
+
+  70% {
+    opacity: 0.20;
+  }
+
+  80% {
+    opacity: 0.10;
+  }
+
+  90% {
+    opacity: 0;
+  }
+
+  /*
+   * The permanent corner for the new state appears.
+   */
+  100% {
+    opacity: 1;
+  }
+}
+
+
+/* =========================================================
+ * ICON DURING TURN
+ * ========================================================= */
+
+.waveform-view-flip--flipping
+.waveform-view-flip__icon {
+  animation:
+    waveform-page-turn-icon
+    var(--turn-duration)
+    ease
+    forwards;
+}
+
+
+@keyframes waveform-page-turn-icon {
+  0%,
+  14% {
+    opacity: 1;
+
+    transform:
+      translate(0, 0)
+      scale(1);
+  }
+
+  30% {
+    opacity: 0;
+
+    transform:
+      translate(-2px, 2px)
+      scale(0.92);
+  }
+
+  75% {
+    opacity: 0;
+
+    transform:
+      scale(0.92);
+  }
+
+  90% {
+    opacity: 1;
+
+    transform:
+      scale(1.08);
+  }
+
+  100% {
+    opacity: 1;
+
+    transform:
+      scale(1);
+  }
+}
+
+
+/* =========================================================
+ * FOCUS
+ * ========================================================= */
+
+.waveform-view-flip:focus-visible {
+  outline:
+    2px solid
+    var(--accent);
+
+  outline-offset: 3px;
+}
+
+
+/* =========================================================
+ * DISABLED
+ * ========================================================= */
+
+.waveform-view-flip:disabled {
+  cursor: default;
+
+  opacity: 0.45;
+}
+
+
+/* =========================================================
+ * MOBILE
+ * ========================================================= */
+
+@media (max-width: 640px) {
+  .waveform-view-flip {
+    --fold-size: 46px;
+  }
+
+  .waveform-view-flip__icon {
+    top: 6px;
+    right: 5px;
+
+    width: 20px;
+    height: 20px;
+  }
+}
+
+
+/* =========================================================
+ * REDUCED MOTION
+ * ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .waveform-view-flip--flipping
+  .waveform-view-flip__folded,
+
+  .waveform-view-flip--flipping
+  .waveform-view-flip__corner,
+
+  .waveform-view-flip--flipping
+  .waveform-view-flip__icon {
+    animation: none;
+  }
+}

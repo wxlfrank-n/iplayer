@@ -1952,3 +1952,9 @@ body {
   text-align: center;
   margin-top: var(--space-2);
 }
+.waveform-view-flip {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 30;
+}
