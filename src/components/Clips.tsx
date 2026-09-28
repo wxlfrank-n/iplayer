@@ -1,31 +1,77 @@
 /**
- * Renders detected audio clips (silence-split segments) on the waveform as an
- * overlay layer exactly matching the canvas bars' window. Each visible clip is
- * a highlighted rectangle the user can click to select or play, rendered by
- * the standalone `Clip` component.
+ * Renders detected audio clips inside a waveform window.
+ *
+ * Responsibilities:
+ * - Filters clips outside the current waveform window.
+ * - Maps local clip indices to global clip indices.
+ * - Renders the individual Clip components.
+ * - Supplies labels and interaction callbacks.
+ *
+ * Gesture handling itself belongs to Clip:
+ * - tap              -> activate/play
+ * - vertical swipe   -> split/merge
+ *
+ * Horizontal dragging is deliberately NOT handled here.
+ * It bubbles to the waveform container so RowWaveform or
+ * StackedWaveform can perform scrolling/paging.
  */
 
 import { memo, type ReactNode } from "react";
+
 import type { Clip as ClipData } from "../utils/clips";
 import type { WaveWindow } from "../types";
+
 import { Clip } from "./Clip";
 
 interface ClipsProps {
   clips: ClipData[];
+
   window: WaveWindow;
-  onPlayRange: (start: number, end: number, repetitions: number) => void;
+
+  onPlayRange: (
+    start: number,
+    end: number,
+    repetitions: number,
+  ) => void;
+
   repetitions: number;
+
   playing: boolean;
+
   onStopPlayback?: () => void;
+
   activeClip: number;
+
   onActivate: (idx: number) => void;
-  onSwipe?: (idx: number, direction: "up" | "down") => void;
-  /** Maps a clip's position in `clips` to the global clip index it reports
-   *  (default: the array position). Lets a row render only its own clips while
-   *  still reporting real indices for activation/swiping. */
-  getIdx?: (c: ClipData, indexInArray: number) => number;
-  /** Renders the per-clip label element nested inside each clip `<div>`. */
-  renderLabel?: (id: number, c: ClipData, indexInArray: number) => ReactNode;
+
+  onSwipe?: (
+    idx: number,
+    direction: "up" | "down",
+  ) => void;
+
+  /**
+   * Maps a clip's local position in `clips` to its global
+   * clip index.
+   *
+   * This allows StackedWaveform to render only the clips
+   * belonging to one row while activation/swipe callbacks
+   * still receive the global clip index.
+   *
+   * Default: local array index.
+   */
+  getIdx?: (
+    clip: ClipData,
+    indexInArray: number,
+  ) => number;
+
+  /**
+   * Optional content rendered inside each Clip.
+   */
+  renderLabel?: (
+    id: number,
+    clip: ClipData,
+    indexInArray: number,
+  ) => ReactNode;
 }
 
 export const Clips = memo(function Clips({
@@ -41,23 +87,44 @@ export const Clips = memo(function Clips({
   getIdx,
   renderLabel,
 }: ClipsProps) {
-  const { windowStartSec, windowLen } = window;
+  const {
+    windowStartSec,
+    windowLen,
+  } = window;
+
+  const windowEndSec =
+    windowStartSec + windowLen;
 
   return (
     <>
-      {clips.map((c, idx) => {
-        if (c.vEnd <= windowStartSec || c.vStart >= windowStartSec + windowLen) {
+      {clips.map((clip, indexInArray) => {
+        /*
+         * Skip clips completely outside the rendered
+         * waveform window.
+         */
+        if (
+          clip.vEnd <= windowStartSec ||
+          clip.vStart >= windowEndSec
+        ) {
           return null;
         }
-        const id = getIdx ? getIdx(c, idx) : idx;
+
+        const id = getIdx
+          ? getIdx(clip, indexInArray)
+          : indexInArray;
+
         return (
           <Clip
             key={id}
-            clip={c}
+            clip={clip}
             window={window}
             id={id}
             active={id === activeClip}
-            label={renderLabel?.(id, c, idx)}
+            label={renderLabel?.(
+              id,
+              clip,
+              indexInArray,
+            )}
             onPlayRange={onPlayRange}
             repetitions={repetitions}
             playing={playing}
