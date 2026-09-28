@@ -911,8 +911,8 @@ body {
 
 .stacked-waveform__pageno {
   position: absolute;
-  top: -3px;
-  right: 6px;
+  top: 6px;
+  right: 18px;
   z-index: 3;
   display: flex;
   align-items: center;
