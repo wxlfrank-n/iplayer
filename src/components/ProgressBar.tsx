@@ -38,8 +38,6 @@ interface ProgressBarProps {
     onComplete?: () => void,
   ) => void;
   onStopPlayback: () => void;
-  onClipPlayActiveChange?: (active: boolean) => void;
-  onWaveformScrollChange?: (scrolling: boolean) => void;
   getAnalyser?: () => AnalyserNode | null;
   /** Returns the current playback time in seconds. */
   getCurrentTime: () => number;

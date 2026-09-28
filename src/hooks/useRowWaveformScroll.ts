@@ -5,18 +5,18 @@ import { panTarget } from "../utils/pan";
 
 const HS_FOLLOW_FRAC = 0.6;
 const HS_PAN_DECIDE_PX = 8;
-// After a background click that seeks to a spot already inside the window,
-// the row must not re-center the playhead: the user is marking a position.
-// Any follow activity is held for this long so neither the >=1s currentTime
-// effect nor the rAF follow can yank the window on that click.
 const CURSOR_CLICK_HOLD_MS = 400;
-const VB_W = 1000;
-const VB_H = 200;
+const VB_W = 500;
+const VB_H = 100;
 const PAD = 4;
-export const BARS_QUANT_SEC = 0.1;
-export const BARS_TAIL_SEC = 0.2;
-export const quantizeBarsAnchor = (a: number) =>
-  Math.floor(a / BARS_QUANT_SEC) * BARS_QUANT_SEC;
+
+export const BARS_TAIL_SEC = 0;
+
+// Waveform virtualization. The visible viewport is one window; the rendered
+// waveform buffer is three windows. It is rebuilt only when the viewport gets
+// within 0.4 window of either buffer edge.
+export const WAVE_BUFFER_WINDOWS = 3;
+export const WAVE_BUFFER_MARGIN_WINDOWS = 0.4;
 
 export interface UseRowWaveformScrollArgs {
   waveformDuration: number;
@@ -28,7 +28,6 @@ export interface UseRowWaveformScrollArgs {
     repetitions: number,
     onComplete?: () => void,
   ) => void;
-  onClipPlayActiveChange?: (active: boolean) => void;
   repetitions: number;
   onStopPlayback?: () => void;
   activeClip: number;
@@ -40,6 +39,87 @@ export interface UseRowWaveformScrollArgs {
   setScrolling: Dispatch<SetStateAction<boolean>>;
   scrollTimeoutRef: RefObject<number | undefined>;
   cursorElementRef?: RefObject<HTMLDivElement | null>;
+  playedElementRef?: RefObject<HTMLDivElement | null>;
+}
+
+type FollowEpoch = {
+  anchor: number;
+  time: number;
+  align: boolean;
+};
+
+type FollowMode =
+  | { type: "follow"; epoch: FollowEpoch }
+  | { type: "manual" }
+  | { type: "cursor"; epoch: FollowEpoch; holdUntil: number }
+  | {
+    type: "clip";
+    start: number;
+    end: number;
+    playbackStart: number;
+    anchorStart: number;
+    followEnd: number | null;
+    userMoved: boolean;
+  };
+
+function makeFollowEpoch(anchor: number, windowLength: number, time: number): FollowEpoch {
+  return {
+    anchor,
+    time,
+    align: !(time > anchor && time <= anchor + windowLength),
+  };
+}
+
+function resolveFollow(
+  epoch: FollowEpoch,
+  time: number,
+  windowLength: number,
+  maxStart: number,
+): number {
+  const target = epoch.align
+    ? time - HS_FOLLOW_FRAC * windowLength
+    : epoch.anchor + (time - epoch.time);
+  return clampWindowAnchor(target, maxStart);
+}
+
+/**
+ * Pure viewport policy. Events change FollowMode; this function is the only
+ * place that decides where the visible window should be during animation.
+ */
+function resolveAnchor(
+  mode: FollowMode,
+  anchor: number,
+  time: number,
+  windowLength: number,
+  maxStart: number,
+  now: number,
+): number {
+  switch (mode.type) {
+    case "manual":
+      return anchor;
+
+    case "cursor":
+      return now < mode.holdUntil
+        ? anchor
+        : resolveFollow(mode.epoch, time, windowLength, maxStart);
+
+    case "clip": {
+      if (mode.userMoved || mode.followEnd == null) return anchor;
+      if (anchor + windowLength >= mode.followEnd) return anchor;
+      if (time < anchor || time > anchor + windowLength) return anchor;
+
+      return clampWindowAnchor(
+        Math.min(
+          mode.anchorStart + (time - mode.playbackStart),
+          Math.max(0, mode.followEnd - windowLength),
+        ),
+        maxStart,
+      );
+    }
+
+    case "follow":
+      return resolveFollow(mode.epoch, time, windowLength, maxStart);
+  }
 }
 
 export function useRowWaveformScroll({
@@ -47,7 +127,6 @@ export function useRowWaveformScroll({
   currentTime,
   onSeek,
   onPlayRange,
-  onClipPlayActiveChange,
   onActiveClipChange,
   getCurrentTime,
   playing,
@@ -55,505 +134,524 @@ export function useRowWaveformScroll({
   setScrolling,
   scrollTimeoutRef,
   cursorElementRef,
+  playedElementRef,
 }: UseRowWaveformScrollArgs) {
   const innerH = VB_H - PAD * 2;
   const hsRef = useRef<HTMLDivElement>(null);
-
-  const [winWidth, setWinWidth] = useState(window.innerWidth);
-  const hsWinLenRef = useRef(Math.min(getWindowSecs(winWidth), waveformDuration));
-  const hsMaxStartRef = useRef(Math.max(0, waveformDuration - hsWinLenRef.current));
-  const hsAnchorRef = useRef(0);
-  const barAnchorRef = useRef(0);
-  const hsSmoothRef = useRef(0);
-  const cursorLeftPctRef = useRef(0);
   const trackRef = useRef<HTMLDivElement>(null);
-  const draggingRef = useRef(false);
 
-  const [hsAnchor, setHsAnchor] = useState(0);
-  const applyWidth = useCallback((width: number) => {
-    setWinWidth(width);
-    hsWinLenRef.current = Math.min(getWindowSecs(width), waveformDuration);
-    const maxStart = Math.max(0, waveformDuration - hsWinLenRef.current);
-    hsMaxStartRef.current = maxStart;
-    setHsAnchor((a) => clampWindowAnchor(a, maxStart));
+  // ---------------------------------------------------------------------------
+  // Viewport model
+  // ---------------------------------------------------------------------------
+  const initialWidth = typeof window === "undefined" ? VB_W : window.innerWidth;
+  const hsWinLenRef = useRef(Math.min(getWindowSecs(initialWidth), waveformDuration));
+  const hsMaxStartRef = useRef(Math.max(0, waveformDuration - hsWinLenRef.current));
+
+  // Two independent coordinate systems:
+  // - viewportAnchorRef: what the user is looking at; changes every frame/pan.
+  // - bufferAnchorRef: where the rendered waveform data starts; changes rarely.
+  const viewportAnchorRef = useRef(0);
+  const bufferAnchorRef = useRef(0);
+  const pendingBufferAnchorRef = useRef<number | null>(null);
+  const bufferLengthRef = useRef(
+    Math.min(waveformDuration, hsWinLenRef.current * WAVE_BUFFER_WINDOWS),
+  );
+  const cursorLeftPctRef = useRef(0);
+
+  // React only sees buffer changes. Components that generate bars should use
+  // hsAnchor as the buffer start and bufferLengthRef as the rendered duration.
+  const [renderedBufferAnchor, setRenderedBufferAnchor] = useState(0);
+
+  const playingRef = useRef(playing);
+  const draggingRef = useRef(false);
+  const scrollingRef = useRef(scrolling);
+  const previousTimeRef = useRef(currentTime);
+  const suppressClickRef = useRef(false);
+
+  const modeRef = useRef<FollowMode>(
+    { type: "follow", epoch: makeFollowEpoch(0, hsWinLenRef.current, getCurrentTime()) },
+  );
+
+  useEffect(() => {
+    playingRef.current = playing;
+  }, [playing]);
+
+  useEffect(() => {
+    scrollingRef.current = scrolling;
+  }, [scrolling]);
+
+  const setModeFollow = useCallback((time = getCurrentTime()) => {
+    modeRef.current = {
+      type: "follow",
+      epoch: makeFollowEpoch(viewportAnchorRef.current, hsWinLenRef.current, time),
+    };
+  }, [getCurrentTime]);
+
+  const calculateBufferStart = useCallback((viewportStart: number) => {
+    const win = hsWinLenRef.current;
+    const bufferLength = Math.min(waveformDuration, win * WAVE_BUFFER_WINDOWS);
+    bufferLengthRef.current = bufferLength;
+
+    // Keep one full viewport before the visible window when possible.
+    const desired = viewportStart - win;
+    const maxBufferStart = Math.max(0, waveformDuration - bufferLength);
+    return Math.max(0, Math.min(desired, maxBufferStart));
   }, [waveformDuration]);
+
+  const ensureWaveBuffer = useCallback((viewportStart: number, force = false) => {
+    const win = hsWinLenRef.current;
+    const viewportEnd = viewportStart + win;
+
+    // A pending buffer is useful for deciding whether another request is needed,
+    // but it must NOT become the coordinate origin until React commits it.
+    const effectiveBufferStart =
+      pendingBufferAnchorRef.current ?? bufferAnchorRef.current;
+    const bufferEnd = effectiveBufferStart + bufferLengthRef.current;
+    const margin = win * WAVE_BUFFER_MARGIN_WINDOWS;
+
+    const nearLeftEdge =
+      effectiveBufferStart > 0 &&
+      viewportStart < effectiveBufferStart + margin;
+
+    const nearRightEdge =
+      bufferEnd < waveformDuration &&
+      viewportEnd > bufferEnd - margin;
+
+    if (!force && !nearLeftEdge && !nearRightEdge) return;
+
+    const nextBufferStart = calculateBufferStart(viewportStart);
+
+    if (Math.abs(nextBufferStart - effectiveBufferStart) < 1e-6) return;
+
+    pendingBufferAnchorRef.current = nextBufferStart;
+
+    setRenderedBufferAnchor((current) =>
+      Math.abs(current - nextBufferStart) < 1e-6
+        ? current
+        : nextBufferStart,
+    );
+  }, [calculateBufferStart, waveformDuration]);
+
+  /**
+   * Moving the viewport is cheap: update one ref and translate the existing
+   * waveform buffer. React is touched only when ensureWaveBuffer decides that
+   * the pre-rendered buffer is too close to an edge.
+   */
+  const setLiveAnchor = useCallback((target: number, forceRedraw = false) => {
+    const next = clampWindowAnchor(target, hsMaxStartRef.current);
+    viewportAnchorRef.current = next;
+    ensureWaveBuffer(next, forceRedraw);
+  }, [ensureWaveBuffer]);
+
+  const applyWidth = useCallback((width: number) => {
+    hsWinLenRef.current = Math.min(getWindowSecs(width), waveformDuration);
+    hsMaxStartRef.current = Math.max(0, waveformDuration - hsWinLenRef.current);
+    bufferLengthRef.current = Math.min(
+      waveformDuration,
+      hsWinLenRef.current * WAVE_BUFFER_WINDOWS,
+    );
+    setLiveAnchor(viewportAnchorRef.current, true);
+  }, [setLiveAnchor, waveformDuration]);
 
   useEffect(() => {
     const el = hsRef.current;
-    const onResize = () => {
-      applyWidth(window.innerWidth);
-    };
+    const onResize = () => applyWidth(el?.clientWidth || window.innerWidth);
+
     window.addEventListener("resize", onResize);
     if (!el || typeof ResizeObserver === "undefined") {
-      applyWidth(el?.clientWidth || window.innerWidth);
+      onResize();
       return () => window.removeEventListener("resize", onResize);
     }
+
     const ro = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        applyWidth(entry.contentRect.width);
-      }
+      for (const entry of entries) applyWidth(entry.contentRect.width);
     });
     ro.observe(el);
+
     return () => {
       ro.disconnect();
       window.removeEventListener("resize", onResize);
     };
   }, [applyWidth]);
 
-  const [clipPlayActive, setClipPlayActiveLocal] = useState(false);
-  const prevClipPlayActiveRef = useRef(false);
-  const clipPlayFollowEndRef = useRef(0);
-  const clipPlayStartRef = useRef(0);
-  const clipPlayAnchorStartRef = useRef(0);
 
-  useEffect(() => {
-    onClipPlayActiveChange?.(clipPlayActive);
-  }, [clipPlayActive, onClipPlayActiveChange]);
-
-  const playingRef = useRef(playing);
-  useEffect(() => {
-    playingRef.current = playing;
-  }, [playing]);
-
-  // Previous playing value so clip-play state is only torn down on a real
-  // play -> stop transition (not when a clip is armed while still paused).
-  const prevPlayingRef = useRef(playing);
-
-  const scrollingRef = useRef(scrolling);
-  useEffect(() => {
-    scrollingRef.current = scrolling;
-  }, [scrolling]);
-
-  const clipPlayActiveRef = useRef(clipPlayActive);
-  useEffect(() => {
-    clipPlayActiveRef.current = clipPlayActive;
-  }, [clipPlayActive]);
-
-  const followEpochRef = useRef<{ anchor: number; time: number; align: boolean }>(
-    (() => {
-      const a = hsAnchorRef.current;
-      const w = hsWinLenRef.current;
-      const t = typeof getCurrentTime === "function" ? getCurrentTime() : 0;
-      return { anchor: a, time: t, align: !(t > a && t <= a + w) };
-    })(),
-  );
-  // Decides how the window tracks the playhead during normal playback.
-  // `align` keeps the playhead in the 60% slot (used when it starts at or left
-  // of the window); `preserve` glides the window so the playhead stays exactly
-  // where the user placed it — starting playback after a cursor click must
-  // never re-anchor the window to the 60% line.
-  const setFollowEpoch = useCallback(
-    (timeOverride?: number) => {
-      const a = hsAnchorRef.current;
-      const w = hsWinLenRef.current;
-      const t =
-        typeof timeOverride === "number"
-          ? timeOverride
-          : typeof getCurrentTime === "function"
-            ? getCurrentTime()
-            : 0;
-      followEpochRef.current = {
-        anchor: a,
-        time: t,
-        align: !(t > a && t <= a + w),
-      };
-    },
-    [getCurrentTime],
-  );
-
-  const drawFrame = useCallback(() => {
+  // ---------------------------------------------------------------------------
+  // Renderer: no playback/follow policy lives here.
+  // ---------------------------------------------------------------------------
+  const renderFrame = useCallback((time: number, anchor: number) => {
     const track = trackRef.current;
     if (!track) return;
-    const innerEl = track.parentElement;
-    if (!innerEl) return;
+
+    const viewport = track.parentElement;
+    if (!viewport) return;
+
     const win = hsWinLenRef.current || 1;
-    const t = getCurrentTime ? getCurrentTime() : 0;
-    let s = hsAnchorRef.current;
-    if (playingRef.current && !scrollingRef.current && !draggingRef.current) {
-      if (clipPlayActiveRef.current) {
-        const followEnd = clipPlayFollowEndRef.current;
-        if (followEnd && hsAnchorRef.current + win < followEnd) {
-          const inView = t >= hsAnchorRef.current && t <= hsAnchorRef.current + win;
-          if (inView) {
-            const target = Math.min(
-              clipPlayAnchorStartRef.current + (t - clipPlayStartRef.current),
-              Math.max(0, followEnd - win),
-            );
-            s = Math.max(hsAnchorRef.current, target);
-          } 
-        }
-      } else if (clipPlaySkipRef.current) {
-        s = hsAnchorRef.current;
-      } else if (performance.now() < cursorClickUntilRef.current) {
-        s = hsAnchorRef.current;
-      } else {
-        const ep = followEpochRef.current;
-        s = ep.align
-          ? Math.max(0, Math.min(t - HS_FOLLOW_FRAC * win, hsMaxStartRef.current))
-          : Math.max(0, Math.min(ep.anchor + (t - ep.time), hsMaxStartRef.current));
-      }
+    const viewportWidthPx = viewport.clientWidth || 1;
+    const pxPerSec = viewportWidthPx / win;
+
+    // This ref always describes the buffer currently committed to the DOM.
+    const bufferStart = bufferAnchorRef.current;
+    const bufferLen = bufferLengthRef.current || win;
+
+    // The track is the complete render buffer. Scrolling only translates it.
+    track.style.width = `${(bufferLen / win) * 100}%`;
+    track.style.transform =
+      `translate3d(${(-(anchor - bufferStart) * pxPerSec).toFixed(2)}px, 0, 0)`;
+
+    // IMPORTANT: Clip.tsx uses:
+    //   (clipTime - bufferStart) / bufferLen * 100
+    // Cursor and played waveform deliberately use the identical coordinate map.
+    const playheadFraction =
+      bufferLen > 0 ? (time - bufferStart) / bufferLen : 0;
+    const playheadPct = playheadFraction * 100;
+
+    cursorLeftPctRef.current = playheadFraction;
+
+    const played = playedElementRef?.current;
+    if (played) {
+      const clampedPct = Math.max(0, Math.min(100, playheadPct));
+      played.style.clipPath =
+        `inset(0 ${(100 - clampedPct).toFixed(5)}% 0 0)`;
     }
-    hsSmoothRef.current = s;
-    const pxPerSec = (innerEl.clientWidth || 1) / win;
-    track.style.transform = `translateX(${(-(s - barAnchorRef.current) * pxPerSec).toFixed(2)}px)`;
-    const wpx = innerEl.clientWidth || 1;
-    const barStart = barAnchorRef.current;
-    let cp;
-    if (t <= s) cp = (s - barStart) / win;
-    // Right pin: keep the 2px line clear of the viewport edge (6px inset), so
-    // the playhead pinned at the end is plainly visible instead of hugging
-    // (and visually disappearing against) the window boundary.
-    else if (t >= s + win) cp = 1 + (s - barStart) / win - 8 / wpx;
-    else cp = (t - barStart) / win;
-    cursorLeftPctRef.current = cp;
-    const curEl = cursorElementRef ? cursorElementRef.current : null;
-    if (curEl) {
-      const px = cp * wpx;
-      curEl.style.transform = `translateX(${px.toFixed(2)}px)`;
-      const lbl = curEl.firstElementChild as HTMLElement | null;
-      if (lbl) {
-        const viewFrac = (t - s) / win;
-        if (viewFrac < 0.02) {
-          lbl.style.left = "6px";
-          lbl.style.right = "auto";
-          lbl.style.transform = "translateX(0)";
-        } else if (viewFrac > 0.98) {
-          lbl.style.right = "6px";
-          lbl.style.left = "auto";
-          lbl.style.transform = "translateX(0)";
-        } else {
-          lbl.style.left = "auto";
-          lbl.style.right = "auto";
-          lbl.style.transform = "translateX(-50%)";
-        }
-      }
+
+    const cursor = cursorElementRef?.current;
+    if (!cursor) return;
+
+    cursor.style.left = `${playheadPct.toFixed(5)}%`;
+    cursor.style.transform = "none";
+
+    const label = cursor.firstElementChild as HTMLElement | null;
+    if (!label) return;
+
+    const viewFraction = (time - anchor) / win;
+    if (viewFraction < 0.02) {
+      label.style.left = "6px";
+      label.style.right = "auto";
+      label.style.transform = "translateX(0)";
+    } else if (viewFraction > 0.98) {
+      label.style.right = "6px";
+      label.style.left = "auto";
+      label.style.transform = "translateX(0)";
+    } else {
+      label.style.left = "auto";
+      label.style.right = "auto";
+      label.style.transform = "translateX(-50%)";
     }
-  }, [getCurrentTime, cursorElementRef]);
+  }, [cursorElementRef, playedElementRef]);
 
-  const commitAnchor = useCallback((target: number) => {
-    setHsAnchor(target);
-  }, []);
-
-  const commitAnchorNow = useCallback(
-    (target: number) => {
-      hsAnchorRef.current = target;
-      hsSmoothRef.current = target;
-      setHsAnchor(target);
-      drawFrame();
-    },
-    [drawFrame],
-  );
-
+  // React has now committed WaveformCanvas + Clip for renderedBufferAnchor.
+  // Only here do we switch the imperative coordinate origin. The viewport
+  // anchor is intentionally preserved, preventing a buffer refresh from
+  // snapping the visible window backward.
   useLayoutEffect(() => {
-    hsAnchorRef.current = hsAnchor;
-    barAnchorRef.current = quantizeBarsAnchor(hsAnchor);
-    drawFrame();
-  }, [hsAnchor, drawFrame]);
+    bufferAnchorRef.current = renderedBufferAnchor;
+    pendingBufferAnchorRef.current = null;
 
-const clipPlaySkipRef = useRef(false);
-// Timestamp until which follow commits/glides are held after an in-view
-// background click that set the cursor.
-const cursorClickUntilRef = useRef(0);
-const previousTimeRef = useRef(currentTime);
-
-  useEffect(() => {
-    const previousTime = previousTimeRef.current;
-    previousTimeRef.current = currentTime;
-    if (draggingRef.current) return;
-    // While playing the rAF follow loop below owns all live-clock commits
-    // (read straight from getCurrentTime()). The Redux clock only updates on
-    // media timeupdate events, so committing on it would lag the window behind
-    // the audio by a media event and lurch it on every tick.
-    if (playingRef.current) return;
-    if (Math.abs(currentTime - previousTime) < 1) return;
-    // While a clip range owns playback the view must not be repositioned:
-    // the initial seek into the clip and every loop wrap would otherwise
-    // re-center the window, yanking it off wherever the user is looking.
-    // The rAF follow handles the (only) sanctioned in-view animation.
-    if (clipPlayActiveRef.current) return;
-    // A click that placed the cursor inside the current window must not
-    // re-center the window on the playhead.
-    if (performance.now() < cursorClickUntilRef.current) return;
-    const ep = followEpochRef.current;
-    commitAnchorNow(
-      ep.align
-        ? clampWindowAnchor(currentTime - HS_FOLLOW_FRAC * hsWinLenRef.current, hsMaxStartRef.current)
-        : clampWindowAnchor(ep.anchor + (currentTime - ep.time), hsMaxStartRef.current),
+    renderFrame(
+      getCurrentTime(),
+      viewportAnchorRef.current,
     );
-    setFollowEpoch();
-  }, [currentTime, commitAnchorNow, setFollowEpoch]);
+  }, [getCurrentTime, renderFrame, renderedBufferAnchor]);
 
+  // ---------------------------------------------------------------------------
+  // Single animation owner
+  // ---------------------------------------------------------------------------
   useEffect(() => {
-    const wasPlaying = prevPlayingRef.current;
-    prevPlayingRef.current = playing;
-    if (!wasPlaying && playing) setFollowEpoch();
-    // Only a genuine play -> stop transition ends a clip range. Arming a clip
-    // while paused takes a moment to set playing=true; clearing here would
-    // disarm the clip-follow protection before the range ever starts.
-    if (!wasPlaying) return;
-    if (playing) return;
-    if (!clipPlayActive) return;
-    setClipPlayActiveLocal(false);
-    clipPlayFollowEndRef.current = 0;
-    clipPlaySkipRef.current = false;
-  }, [clipPlayActive, playing, setFollowEpoch]);
+    let raf = 0;
 
-  useEffect(() => {
-    if (prevClipPlayActiveRef.current && !clipPlayActive) {
-      // After a clip range ends, only hold the view still when the user moved
-      // it (panned/wheeled) while the clip was playing — that keeps a
-      // manually-browsed region put. If the view never left the clip, normal
-      // follow must resume immediately, or playback would appear frozen.
-      clipPlaySkipRef.current =
-        Math.abs(hsAnchorRef.current - clipPlayAnchorStartRef.current) > 0.05;
-      setScrolling(false);
-      setFollowEpoch();
-    }
-    prevClipPlayActiveRef.current = clipPlayActive;
-  }, [clipPlayActive, setFollowEpoch, setScrolling]);
+    const frame = () => {
+      const time = getCurrentTime();
+      let anchor = viewportAnchorRef.current;
 
-  useEffect(() => {
-    if (!playing) return;
-    // Self-scheduling rAF loop: follow the live clock every frame instead of
-    // only when the Redux currentTime ticks. Committing the window start each
-    // frame (~1px steps) keeps the right edge of the window re-rendered in
-    // lock-step with the audio clock, so auto-scroll glides smoothly instead
-    // of popping the new bars in ~250ms chunks as the redux clock arrives.
-    let id = 0;
-    const tick = () => {
-      id = requestAnimationFrame(() => {
-        tick();
-        if (draggingRef.current) return;
-        if (scrollingRef.current) return;
-        if (performance.now() < cursorClickUntilRef.current) return;
-        const t = getCurrentTime();
-        if (clipPlayActiveRef.current) {
-          const followEnd = clipPlayFollowEndRef.current;
-          if (!followEnd) return;
-          if (hsAnchorRef.current + hsWinLenRef.current >= followEnd) return;
-          if (t < hsAnchorRef.current || t > hsAnchorRef.current + hsWinLenRef.current) return;
-          const elapsed = t - clipPlayStartRef.current;
-          const target = Math.min(
-            clipPlayAnchorStartRef.current + elapsed,
-            Math.max(0, followEnd - hsWinLenRef.current),
-          );
-          if (Math.abs(target - hsAnchorRef.current) > 0.05) commitAnchor(target);
-          return;
-        }
-        if (clipPlaySkipRef.current) {
-          if (t <= hsAnchorRef.current + hsWinLenRef.current) return;
-          clipPlaySkipRef.current = false;
-        }
-        const ep = followEpochRef.current;
-        const target = ep.align
-          ? clampWindowAnchor(
-              t - HS_FOLLOW_FRAC * hsWinLenRef.current,
-              hsMaxStartRef.current,
-            )
-          : clampWindowAnchor(ep.anchor + (t - ep.time), hsMaxStartRef.current);
-        if (Math.abs(target - hsAnchorRef.current) > 0.05) commitAnchor(target);
-      });
-    };
-    tick();
-    return () => cancelAnimationFrame(id);
-  }, [scrolling, playing, commitAnchor, getCurrentTime]);
-
-  const playClip = useCallback(
-    (start: number, end: number, reps: number) => {
-      setClipPlayActiveLocal(true);
-      clipPlayFollowEndRef.current = 0;
-      clipPlayStartRef.current = start;
-      const a = hsAnchorRef.current;
-      const w = hsWinLenRef.current;
-      clipPlayAnchorStartRef.current = a;
-      // Only reposition when nothing of the clip is visible at all. Clicking a
-      // clip (even a mid-slice of a long one) must play it where the user is
-      // looking, never snap the window back to the clip's start.
-      if (end < a) {
-        commitAnchor(clampWindowAnchor(start, hsMaxStartRef.current));
-      } else if (start > a + w) {
-        commitAnchor(clampWindowAnchor(start, hsMaxStartRef.current));
-      } else if (end > a + w) {
-        clipPlayFollowEndRef.current = end;
+      if (playingRef.current && !draggingRef.current && !scrollingRef.current) {
+        anchor = resolveAnchor(
+          modeRef.current,
+          anchor,
+          time,
+          hsWinLenRef.current,
+          hsMaxStartRef.current,
+          performance.now(),
+        );
+        setLiveAnchor(anchor);
       }
-      onPlayRange(start, end, reps, () => {
-        clipPlayFollowEndRef.current = 0;
-        setClipPlayActiveLocal(false);
-      });
-    },
-    [commitAnchor, onPlayRange],
-  );
 
+      renderFrame(time, viewportAnchorRef.current);
+      raf = requestAnimationFrame(frame);
+    };
+
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, [getCurrentTime, renderFrame, setLiveAnchor]);
+
+  // ---------------------------------------------------------------------------
+  // External seek / playback lifecycle -> controller state transitions
+  // ---------------------------------------------------------------------------
+  const previousPlayingRef = useRef(playing);
+
+  useEffect(() => {
+    const wasPlaying = previousPlayingRef.current;
+    previousPlayingRef.current = playing;
+
+    if (!wasPlaying && playing) {
+      if (modeRef.current.type !== "clip") setModeFollow();
+      return;
+    }
+
+    if (wasPlaying && !playing && modeRef.current.type === "clip") {
+      const clip = modeRef.current;
+      modeRef.current = clip.userMoved
+        ? { type: "manual" }
+        : {
+          type: "follow",
+          epoch: makeFollowEpoch(
+            viewportAnchorRef.current,
+            hsWinLenRef.current,
+            getCurrentTime(),
+          ),
+        };
+      setScrolling(false);
+    }
+  }, [getCurrentTime, playing, setModeFollow, setScrolling]);
+
+  useEffect(() => {
+    const previous = previousTimeRef.current;
+    previousTimeRef.current = currentTime;
+
+    if (playingRef.current || draggingRef.current) return;
+    if (Math.abs(currentTime - previous) < 1) return;
+    if (modeRef.current.type === "clip" || modeRef.current.type === "manual") return;
+
+    const next = resolveAnchor(
+      modeRef.current,
+      viewportAnchorRef.current,
+      currentTime,
+      hsWinLenRef.current,
+      hsMaxStartRef.current,
+      performance.now(),
+    );
+    setLiveAnchor(next);
+    setModeFollow(currentTime);
+  }, [currentTime, setLiveAnchor, setModeFollow]);
+
+  // ---------------------------------------------------------------------------
+  // Clip playback
+  // ---------------------------------------------------------------------------
+  const playClip = useCallback((start: number, end: number, reps: number) => {
+    const anchor = viewportAnchorRef.current;
+    const win = hsWinLenRef.current;
+
+    // Preserve the user's current view whenever any part of the clip is visible.
+    // Only jump when the entire clip lies outside the viewport.
+    if (end < anchor || start > anchor + win) {
+      setLiveAnchor(start);
+    }
+
+    const clipAnchor = viewportAnchorRef.current;
+    modeRef.current = {
+      type: "clip",
+      start,
+      end,
+      playbackStart: start,
+      anchorStart: clipAnchor,
+      followEnd: end > clipAnchor + win ? end : null,
+      userMoved: false,
+    };
+
+    onPlayRange(start, end, reps, () => {
+      const mode = modeRef.current;
+      if (mode.type !== "clip") return;
+
+      modeRef.current = mode.userMoved
+        ? { type: "manual" }
+        : {
+          type: "follow",
+          epoch: makeFollowEpoch(
+            viewportAnchorRef.current,
+            hsWinLenRef.current,
+            getCurrentTime(),
+          ),
+        };
+      setScrolling(false);
+    });
+  }, [getCurrentTime, onPlayRange, setLiveAnchor, setScrolling]);
+
+  // ---------------------------------------------------------------------------
+  // Manual navigation
+  // ---------------------------------------------------------------------------
   const bumpScrolling = useCallback(() => {
     scrollingRef.current = true;
     setScrolling(true);
     window.clearTimeout(scrollTimeoutRef.current);
-    if (clipPlayActive) return;
-    scrollTimeoutRef.current = window.setTimeout(() => setScrolling(false), 1500);
-  }, [clipPlayActive, scrollTimeoutRef, setScrolling]);
 
-  const hsDragRef = useRef<{
+    if (modeRef.current.type === "clip") {
+      modeRef.current = { ...modeRef.current, userMoved: true };
+      return;
+    }
+
+    modeRef.current = { type: "manual" };
+    scrollTimeoutRef.current = window.setTimeout(() => {
+      scrollingRef.current = false;
+      setScrolling(false);
+      setModeFollow();
+    }, 1500);
+  }, [scrollTimeoutRef, setModeFollow, setScrolling]);
+
+  const dragRef = useRef<{
     pointerId: number;
     startX: number;
     startY: number;
     startAnchor: number;
     panned: boolean;
   } | null>(null);
-  const hsSuppressClickRef = useRef(false);
 
-  const onHsPointerDown = useCallback(
-    (e: ReactPointerEvent<HTMLDivElement>) => {
-      if (e.button !== 0 && e.pointerType === "mouse") return;
-      const downTarget = e.target as Element;
-      if (!hsRef.current?.contains(downTarget)) return;
-      if (downTarget.closest(".waveform-clip, .clip-label, .stacked-clip-label")) return;
-      if (hsDragRef.current?.pointerId === e.pointerId) return;
-      hsDragRef.current = null;
-      hsSuppressClickRef.current = false;
-      const el = e.currentTarget;
-      const drag = {
-        pointerId: e.pointerId,
-        startX: e.clientX,
-        startY: e.clientY,
-        startAnchor: hsAnchorRef.current,
-        panned: false,
-      };
-      hsDragRef.current = drag;
-      draggingRef.current = true;
+  const onHsPointerDown = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0 && e.pointerType === "mouse") return;
 
-      const onMove = (ev: PointerEvent) => {
-        if (ev.pointerId !== drag.pointerId) return;
-        const dx = ev.clientX - drag.startX;
-        const dy = ev.clientY - drag.startY;
-        if (!drag.panned) {
-          if (Math.abs(dx) < HS_PAN_DECIDE_PX && Math.abs(dy) < HS_PAN_DECIDE_PX) return;
-          if (Math.abs(dy) >= Math.abs(dx)) return;
-        }
-        ev.preventDefault();
-        drag.panned = true;
-        const target = panTarget(
+    const downTarget = e.target as Element;
+    if (!hsRef.current?.contains(downTarget)) return;
+    if (downTarget.closest(".clip-label, .stacked-clip-label")) return;
+    if (dragRef.current?.pointerId === e.pointerId) return;
+
+    suppressClickRef.current = false;
+    const element = e.currentTarget;
+    const drag = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      startAnchor: viewportAnchorRef.current,
+      panned: false,
+    };
+    dragRef.current = drag;
+    draggingRef.current = true;
+
+    const onMove = (ev: PointerEvent) => {
+      if (ev.pointerId !== drag.pointerId) return;
+      const dx = ev.clientX - drag.startX;
+      const dy = ev.clientY - drag.startY;
+
+      if (!drag.panned) {
+        if (Math.abs(dx) < HS_PAN_DECIDE_PX && Math.abs(dy) < HS_PAN_DECIDE_PX) return;
+        if (Math.abs(dy) >= Math.abs(dx)) return;
+      }
+
+      ev.preventDefault();
+      drag.panned = true;
+
+      setLiveAnchor(
+        panTarget(
           drag.startAnchor,
           dx,
           hsWinLenRef.current,
-          el.clientWidth,
+          element.clientWidth,
           hsMaxStartRef.current,
-        );
-        commitAnchorNow(target);
-        setFollowEpoch();
-        bumpScrolling();
-      };
-
-      const onEnd = (ev: PointerEvent) => {
-        if (ev.pointerId !== drag.pointerId) return;
-        ev.preventDefault();
-        window.removeEventListener("pointermove", onMove);
-        window.removeEventListener("pointerup", onEnd);
-        window.removeEventListener("pointercancel", onEnd);
-        hsDragRef.current = null;
-        draggingRef.current = false;
-        if (!drag.panned) return;
-        hsSuppressClickRef.current = true;
-      };
-
-      window.addEventListener("pointermove", onMove);
-      window.addEventListener("pointerup", onEnd);
-      window.addEventListener("pointercancel", onEnd);
+        ),
+      );
       bumpScrolling();
-    },
-    [bumpScrolling, commitAnchorNow, setFollowEpoch],
-  );
+    };
+
+    const onEnd = (ev: PointerEvent) => {
+      if (ev.pointerId !== drag.pointerId) return;
+      ev.preventDefault();
+      window.removeEventListener("pointermove", onMove, true);
+      window.removeEventListener("pointerup", onEnd, true);
+      window.removeEventListener("pointercancel", onEnd, true);
+      dragRef.current = null;
+      draggingRef.current = false;
+      if (drag.panned) suppressClickRef.current = true;
+    };
+
+    window.addEventListener("pointermove", onMove, true);
+    window.addEventListener("pointerup", onEnd, true);
+    window.addEventListener("pointercancel", onEnd, true);
+  }, [bumpScrolling, setLiveAnchor]);
 
   useEffect(() => {
-    const el = hsRef.current;
-    if (!el) return;
+    const element = hsRef.current;
+    if (!element) return;
+
     const onWheel = (e: WheelEvent) => {
-      const wheelTarget = e.target as Node;
-      if (!trackRef.current?.contains(wheelTarget)) return;
+      const target = e.target as Node;
+      if (!trackRef.current?.contains(target)) return;
       e.preventDefault();
-      const elNow = hsRef.current;
-      if (!elNow) return;
-      const delta =
-        Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+
+      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
       const scale = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1;
       const dSec = Math.max(
         -2,
         Math.min(
           2,
-          ((delta * scale) / (elNow.clientWidth || 1)) * (hsWinLenRef.current || 1),
+          ((delta * scale) / (element.clientWidth || 1)) * hsWinLenRef.current,
         ),
       );
-      commitAnchorNow(clampWindowAnchor(hsAnchorRef.current + dSec, hsMaxStartRef.current));
-      setFollowEpoch();
+
+      setLiveAnchor(viewportAnchorRef.current + dSec);
       bumpScrolling();
     };
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, [bumpScrolling, commitAnchorNow, setFollowEpoch]);
 
-  useEffect(() => {
-    let raf = 0;
-    const frame = () => {
-      raf = requestAnimationFrame(frame);
-      drawFrame();
+    element.addEventListener("wheel", onWheel, { passive: false });
+    return () => element.removeEventListener("wheel", onWheel);
+  }, [bumpScrolling, setLiveAnchor]);
+
+  // ---------------------------------------------------------------------------
+  // Seeking
+  // ---------------------------------------------------------------------------
+  const onWaveformClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
+    if (modeRef.current.type === "clip") return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const fraction = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const target = viewportAnchorRef.current + fraction * hsWinLenRef.current;
+
+    onSeek(target);
+    onActiveClipChange(-1);
+
+    modeRef.current = {
+      type: "cursor",
+      epoch: makeFollowEpoch(viewportAnchorRef.current, hsWinLenRef.current, target),
+      holdUntil: performance.now() + CURSOR_CLICK_HOLD_MS,
     };
-    raf = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(raf);
-  }, [drawFrame]);
-
-  const getPlayedPct = useCallback(() => {
-    return Math.max(0, Math.min(1, (getCurrentTime() - barAnchorRef.current) / (hsWinLenRef.current + BARS_TAIL_SEC)));
-  }, [getCurrentTime]);
-
-  const getStripPlayedPct = useCallback(() => {
-    return cursorLeftPctRef.current;
-  }, []);
-
-  const onWaveformClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      if (hsSuppressClickRef.current) {
-        hsSuppressClickRef.current = false;
-        return;
-      }
-      if (clipPlayActiveRef.current) return;
-      const rect = e.currentTarget.getBoundingClientRect();
-      const f = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-      const target = hsSmoothRef.current + f * hsWinLenRef.current;
-      onSeek(target);
-      onActiveClipChange(-1);
-      // From here the follow preserves the playhead's on-screen position until
-      // the window is moved again, so playback that starts (even later) never
-      // re-anchors the window to the 60% slot.
-      setFollowEpoch(target);
-      // The click targeted a spot inside the visible window: keep the window
-      // put while the seek lands.
-      if (
-        target >= hsAnchorRef.current &&
-        target <= hsAnchorRef.current + hsWinLenRef.current
-      ) {
-        cursorClickUntilRef.current = performance.now() + CURSOR_CLICK_HOLD_MS;
-      }
-    },
-    [onActiveClipChange, onSeek, setFollowEpoch],
-  );
+  }, [onActiveClipChange, onSeek]);
 
   const onRootClickCapture = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (hsSuppressClickRef.current) {
-      hsSuppressClickRef.current = false;
-      e.stopPropagation();
-    }
+    if (!suppressClickRef.current) return;
+    suppressClickRef.current = false;
+    e.stopPropagation();
   }, []);
+
+  const getStripPlayedPct = useCallback(() => {
+    const bufferLen = bufferLengthRef.current;
+    if (bufferLen <= 0) return 0;
+
+    return (
+      getCurrentTime() - bufferAnchorRef.current
+    ) / bufferLen;
+  }, [getCurrentTime]);
 
   return {
     hsRef,
     trackRef,
-    hsAnchor,
+    // React render source for the buffer start. Use this for WaveWindow.
+    renderedBufferAnchor,
+    // Compatibility alias.
+    hsAnchor: renderedBufferAnchor,
+    // Duration of the visible viewport.
     hsWinLenRef,
-    hsSmoothRef,
+    // Duration/start of the pre-rendered waveform buffer. Wave drawing code
+    // should render [hsAnchor, hsAnchor + bufferLengthRef.current].
+    bufferLengthRef,
+    bufferAnchorRef,
+    // Live visible-window start; changes cheaply during manual/auto scrolling.
+    viewportAnchorRef,
+    // Compatibility alias used by existing callers for the live viewport.
+    hsSmoothRef: viewportAnchorRef,
     innerH,
     onHsPointerDown,
     onRootClickCapture,
     onWaveformClick,
-    getPlayedPct,
     getStripPlayedPct,
     playClip,
   };

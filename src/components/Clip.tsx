@@ -1,90 +1,87 @@
 ﻿/**
- * Renders detected audio clips (silence-split segments) on the waveform.
- * Each clip is a highlighted rect that user can click to select or play.
+ * Renders a single detected audio clip (silence-split segment) on the
+ * waveform: a highlighted rectangle the user can click to select or play.
+ * Positioned as a `<div>` (percentage of the overlay layer that exactly
+ * matches the canvas bars' window), so it layers over the canvas bars.
+ * Rendered by the `Clips` list, which supplies the geometry and callbacks.
  */
 
-import { memo, useRef } from "react";
-import { type Clip as ClipData } from "../utils/clips";
+import { memo, useRef, type ReactNode } from "react";
+import type { Clip as ClipData } from "../utils/clips";
 import { shouldCaptureClipPointer } from "../utils/gestures";
-import { type WaveWindow } from "../types";
+import type { WaveWindow } from "../types";
 import { formatTimePrecise } from "../utils/time";
 
-interface ClipProps {
-  clips: ClipData[];
+export interface ClipProps {
+  clip: ClipData;
   window: WaveWindow;
+  /** Global clip index reported by activation/swipe callbacks. */
+  id: number;
+  active: boolean;
+  /** Label node (badge, duration, Split/Merge) nested inside the rect. */
+  label?: ReactNode;
   onPlayRange: (start: number, end: number, repetitions: number) => void;
   repetitions: number;
   playing: boolean;
   onStopPlayback?: () => void;
-  activeClip: number;
   onActivate: (idx: number) => void;
   onSwipe?: (idx: number, direction: "up" | "down") => void;
-  /** Maps a clip's position in `clips` to the global clip index it reports
-   *  (default: the array position). Lets a row render only its own clips while
-   *  still reporting real indices for activation/swiping. */
-  getIdx?: (c: ClipData, indexInArray: number) => number;
 }
 
 const SWIPE_THRESHOLD_PX = 24;
 const TAP_THRESHOLD_PX = 8;
 
 export const Clip = memo(function Clip({
-  clips,
+  clip,
   window,
+  id,
+  active,
+  label,
   onPlayRange,
   repetitions,
   playing,
   onStopPlayback,
-  activeClip,
   onActivate,
   onSwipe,
-  getIdx,
 }: ClipProps) {
-  const { windowStartSec, windowLen, innerH, vbW, vbH } = window;
-  const pointerStartRef = useRef<{ x: number; y: number; idx: number } | null>(
-    null,
-  );
+  const { windowStartSec, windowLen, innerH, vbH } = window;
+  const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
   const suppressClickRef = useRef(false);
 
-  const activateClip = (idx: number, start: number, end: number) => {
-    if (playing && idx === activeClip) {
+  // The clip band is the vertical center half of the waveform strip, expressed
+  // as percentages of the overlay layer (which has the same box as the bars).
+  const topPct = ((vbH / 2 - innerH / 4) / vbH) * 100;
+  const heightPct = (innerH / 2 / vbH) * 100;
+
+  const activateClip = () => {
+    if (playing && active) {
       onStopPlayback?.();
       return;
     }
-    onActivate(idx);
-    onPlayRange(start, end, repetitions);
+    onActivate(id);
+    onPlayRange(clip.vStart, clip.vEnd, repetitions);
   };
 
-  const handleClick = (
-    e: React.MouseEvent<SVGRectElement>,
-    idx: number,
-    start: number,
-    end: number,
-  ) => {
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation();
     if (suppressClickRef.current) {
       suppressClickRef.current = false;
       return;
     }
-    activateClip(idx, start, end);
+    activateClip();
   };
 
-  const handlePointerDown = (
-    e: React.PointerEvent<SVGRectElement>,
-    idx: number,
-  ) => {
-    pointerStartRef.current = { x: e.clientX, y: e.clientY, idx };
-    if (shouldCaptureClipPointer(e.pointerType)) {
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    pointerStartRef.current = { x: e.clientX, y: e.clientY };
+    if (
+      shouldCaptureClipPointer(e.pointerType) &&
+      typeof e.currentTarget.setPointerCapture === "function"
+    ) {
       e.currentTarget.setPointerCapture(e.pointerId);
     }
   };
 
-  const handlePointerUp = (
-    e: React.PointerEvent<SVGRectElement>,
-    idx: number,
-    startTime: number,
-    endTime: number,
-  ) => {
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
     const start = pointerStartRef.current;
     pointerStartRef.current = null;
     if (!start) return;
@@ -96,16 +93,23 @@ export const Clip = memo(function Clip({
       Math.abs(dy) > Math.abs(dx)
     ) {
       suppressClickRef.current = true;
-      onSwipe?.(start.idx, dy < 0 ? "up" : "down");
+      onSwipe?.(id, dy < 0 ? "up" : "down");
     } else if (
       Math.abs(dx) < TAP_THRESHOLD_PX &&
       Math.abs(dy) < TAP_THRESHOLD_PX
     ) {
       e.stopPropagation();
       suppressClickRef.current = true;
-      activateClip(idx, startTime, endTime);
+      activateClip();
+    } else if (Math.abs(dx) >= TAP_THRESHOLD_PX) {
+      // A horizontal drag hands the pointer to the row's own pan/scroll; the
+      // gesture must not also fire a play on release.
+      suppressClickRef.current = true;
     }
-    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+    if (
+      typeof e.currentTarget.hasPointerCapture === "function" &&
+      e.currentTarget.hasPointerCapture(e.pointerId)
+    ) {
       e.currentTarget.releasePointerCapture(e.pointerId);
     }
   };
@@ -114,41 +118,25 @@ export const Clip = memo(function Clip({
     pointerStartRef.current = null;
   };
 
-  const visible = (c: ClipData) =>
-    c.vEnd > windowStartSec && c.vStart < windowStartSec + windowLen;
-  const rect = (c: ClipData) => {
-    const x = Math.max(0, ((c.vStart - windowStartSec) / windowLen) * vbW);
-    const right = ((c.vEnd - windowStartSec) / windowLen) * vbW;
-    return { x, w: Math.max(1, right - x) };
-  };
+  const left = ((clip.vStart - windowStartSec) / windowLen) * 100;
+  const width = Math.max(0.2, ((clip.vEnd - clip.vStart) / windowLen) * 100);
 
   return (
-    <>
-      {clips.map((c, idx) => {
-        if (!visible(c)) return null;
-        const { x, w } = rect(c);
-        const id = getIdx ? getIdx(c, idx) : idx;
-        const isActive = id === activeClip;
-        const y = vbH / 2 - innerH / 4;
-        return (
-          <rect
-            key={id}
-            className={`waveform-clip ${isActive ? "waveform-clip--active" : ""}`}
-            x={x}
-            y={y}
-            width={w}
-            height={innerH / 2}
-            onClick={(e) => handleClick(e, id, c.vStart, c.vEnd)}
-            onPointerDown={(e) => handlePointerDown(e, id)}
-            onPointerUp={(e) =>
-              handlePointerUp(e, id, c.vStart, c.vEnd)
-            }
-            onPointerCancel={handlePointerCancel}
-          >
-            <title>{`${formatTimePrecise(c.vStart)} - ${formatTimePrecise(c.vEnd)}`}</title>
-          </rect>
-        );
-      })}
-    </>
+    <div
+      className={`waveform-clip ${active ? "waveform-clip--active" : ""}`}
+      style={{
+        left: `${left}%`,
+        top: `${topPct}%`,
+        width: `${width}%`,
+        height: `${heightPct}%`,
+      }}
+      title={`${formatTimePrecise(clip.vStart)} - ${formatTimePrecise(clip.vEnd)}`}
+      onClick={handleClick}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+    >
+      {label}
+    </div>
   );
 });

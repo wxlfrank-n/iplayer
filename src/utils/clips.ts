@@ -96,7 +96,7 @@ export function splitBySilence(
   }
 
   const silenceThreshold = silenceRatio * trackPeak;
-  const clips: Clip[] = [];
+  let clips: Clip[] = [];
   let clipStartBlock = -1;
   for (let b = 0; b <= numBlocks; b++) {
     const isSound = b < numBlocks && blockPeak[b] > silenceThreshold;
@@ -112,8 +112,10 @@ export function splitBySilence(
       clipStartBlock = -1;
     }
   }
+  clips = mergeClipsByConfig(clips, options.minClipLength, 0.1);
   expandClips(clips, audioDuration);
-  return findMinMergeGap(clips, getClipGaps(clips), options.minClipLength);
+  const gaps = getClipGaps(clips);
+  return {clips, minGap: gaps.length > 0 ? gaps[0] : 0, gaps};
 
 }
 
@@ -136,11 +138,10 @@ export function expandClip(
   expandRatio: number,
   maxEnd: number,
 ): void {
-  const maxRange = 0.1 * (clip.end - clip.start);
   const startExpand = expandRatio * (clip.start - prevEnd);
   const endExpand = expandRatio * (nextStart - clip.end);
-  clip.vStart = Math.max(0, clip.start - Math.min(maxRange, startExpand));
-  clip.vEnd = Math.min(maxEnd, clip.end + Math.min(maxRange, endExpand));
+  clip.vStart = Math.max(0, clip.start - startExpand);
+  clip.vEnd = Math.min(maxEnd, clip.end + endExpand);
 }
 
 /**
@@ -257,4 +258,103 @@ export function findMinMergeGap(
     }
   }
   return result;
+}
+
+export function mergeClipsByConfig(
+  clips: Clip[],
+  minClipLength: number,
+  mustMergeThan: number,
+): Clip[] {
+  if (clips.length <= 1) return clips;
+
+  const result = [...clips];
+
+  while (result.length > 1) {
+    let merged = false;
+
+    for (let i = 0; i < result.length; i++) {
+      const clip = result[i];
+      const clipLength = clip.end - clip.start;
+
+      // Keep clips that are already long enough.
+      if (clipLength >= minClipLength) {
+        continue;
+      }
+
+      const left = i > 0 ? result[i - 1] : undefined;
+      const right =
+        i < result.length - 1
+          ? result[i + 1]
+          : undefined;
+
+      const leftGap = left
+        ? clip.start - left.end
+        : Infinity;
+
+      const rightGap = right
+        ? right.start - clip.end
+        : Infinity;
+
+      // Find the nearest adjacent clip by silence length.
+      const mergeLeft = leftGap <= rightGap;
+      const nearest = mergeLeft ? left! : right!;
+
+      const nearestLength =
+        nearest.end - nearest.start;
+
+      // Merge when:
+      // 1. The current clip is very short, or
+      // 2. Its nearest neighbour is also shorter than minClipLength.
+      if (
+        clipLength > mustMergeThan &&
+        nearestLength >= minClipLength
+      ) {
+        continue;
+      }
+
+      if (mergeLeft) {
+        result.splice(
+          i - 1,
+          2,
+          mergeTwoClips(left!, clip),
+        );
+      } else {
+        result.splice(
+          i,
+          2,
+          mergeTwoClips(clip, right!),
+        );
+      }
+
+      // The structure changed, so restart and
+      // evaluate the new merged clips again.
+      merged = true;
+      break;
+    }
+
+    // A complete pass without merging means
+    // the result is stable.
+    if (!merged) {
+      break;
+    }
+  }
+
+  return result;
+}
+
+function mergeTwoClips(
+  left: Clip,
+  right: Clip,
+): Clip {
+  return {
+    start: left.start,
+    end: right.end,
+    vStart: left.vStart,
+    vEnd: right.vEnd,
+
+    children: [
+      ...(left.children ?? [left]),
+      ...(right.children ?? [right]),
+    ],
+  };
 }

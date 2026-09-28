@@ -5,10 +5,10 @@
  *
  * iOS/WebKit cannot route the <audio> element through the Web Audio graph
  * (`createMediaElementSource` desyncs playback, which breaks clip loops), so
- * the analyser is intentionally unavailable there. As a fallback, when
- * `getAnalyser` returns null the bars are derived from decoded waveform
- * samples around the live playhead (a moving energy profile of the actual
- * audio), so the canvas still dances on iOS.
+ * the analyser is intentionally unavailable there. As a fallback, and whenever
+ * playback is paused, the bars are derived from decoded waveform samples
+ * around the playhead (a moving energy profile of the actual audio), so the
+ * canvas still reflects the current/clicked spot.
  */
 
 import { memo, useEffect, useRef } from "react";
@@ -25,24 +25,33 @@ interface DancingLinesProps {
    *  fallback prefers this when playback isn't advancing and the live element
    *  time while it is. */
   currentTime?: number;
+  /** Live playback state. The live analyser spectrum only reflects what the
+   *  audio graph is currently outputting, so when paused it shows nothing at
+   *  the clicked position; the decoded-sample profile is used instead. */
+  playing: boolean;
 }
 
 const BAR_COUNT = 56;
 const SMOOTHING = 0.2;
 const MIN_BAR_HEIGHT_PX = 3;
 // How far behind the playhead the energy window trails (needs decoded audio).
-const ENERGY_WINDOW_SEC = 1.2;
-const ENERGY_LEAD_SEC = 0.02;
+// Kept short so the bars react to the current beat/transients instead of a
+// long smoothed average (which read as a static picture).
+const ENERGY_WINDOW_SEC = 0.32;
+const ENERGY_LEAD_SEC = 0.03;
 
 export const DancingLines = memo(function DancingLines({
   getAnalyser,
   getCurrentTime,
   waveform,
   currentTime,
+  playing,
 }: DancingLinesProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const currentTimeRef = useRef(currentTime);
   currentTimeRef.current = currentTime;
+  const playingRef = useRef(playing);
+  playingRef.current = playing;
   const prevLiveRef = useRef(-1);
 
   useEffect(() => {
@@ -57,10 +66,12 @@ export const DancingLines = memo(function DancingLines({
 
     const frame = () => {
       raf = requestAnimationFrame(frame);
+      // Size the backing store to the display box (cls-scaling kept crisp).
+      // This CAN'T fight the layout anymore: the strip's box is set purely by
+      // CSS `flex: 1 1 0` + width, not by the canvas' intrinsic size.
       const rect = canvas.getBoundingClientRect();
       if (rect.width === 0 || rect.height === 0) return;
-
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
       const pw = Math.round(rect.width * dpr);
       const ph = Math.round(rect.height * dpr);
       if (canvas.width !== pw || canvas.height !== ph) {
@@ -69,9 +80,13 @@ export const DancingLines = memo(function DancingLines({
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, rect.width, rect.height);
+      const cw = rect.width;
+      const ch = rect.height;
 
-      const analyser = getAnalyser ? getAnalyser(false) : null;
+      const playing = playingRef.current;
+      const analyser = playing ? (getAnalyser ? getAnalyser(false) : null) : null;
       if (analyser) {
+        // Live spectrum while audio is actually flowing.
         const len = analyser.frequencyBinCount;
         if (data.length !== len) data = new Uint8Array(len);
         analyser.getByteFrequencyData(data);
@@ -85,14 +100,22 @@ export const DancingLines = memo(function DancingLines({
           levels[i] += (Math.pow(v, 1.7) - levels[i]) * SMOOTHING;
         }
       } else if (waveform && getCurrentTime) {
-        // iOS fallback: energy profile of the decoded samples trailing the
-        // playhead — bar 0 is the newest energy, the last bar the oldest.
+        // Energy profile of the decoded samples at the playhead — the live
+        // analyser shows nothing while paused, so this keeps the strip
+        // reflecting the clicked/current spot at all times.
         const samples = waveform.data;
         const rate = waveform.sampleRate;
         const live = getCurrentTime();
         const prevLive = prevLiveRef.current;
         prevLiveRef.current = live;
-        const t = live > prevLive ? live : (currentTimeRef.current ?? live);
+        // Prefer the live element time while it advances, the Redux-confirmed
+        // playhead otherwise (or always while paused: it reflects seeks right
+        // away, which is exactly what a click on a silent spot needs).
+        const t = playing
+          ? live > prevLive
+            ? live
+            : (currentTimeRef.current ?? live)
+          : (currentTimeRef.current ?? live);
         const lead = Math.max(0, t - ENERGY_LEAD_SEC);
         const s0 = Math.floor(Math.max(0, lead - ENERGY_WINDOW_SEC) * rate);
         const s1 = Math.min(samples.length, Math.ceil(Math.max(0, lead) * rate));
@@ -125,9 +148,9 @@ export const DancingLines = memo(function DancingLines({
       }
       ctx.globalAlpha = 0.8;
       ctx.fillStyle = color;
-      const bw = rect.width / BAR_COUNT;
-      const base = rect.height - 4;
-      const maxH = rect.height - 8;
+      const bw = cw / BAR_COUNT;
+      const base = ch - 4;
+      const maxH = ch - 8;
       for (let i = 0; i < BAR_COUNT; i++) {
         const h = Math.max(MIN_BAR_HEIGHT_PX, levels[i] * maxH);
         const x = i * bw + bw * 0.25;

@@ -966,11 +966,13 @@ body {
 .stacked-clip-label {
   position: absolute;
   top: 50%;
+  left: 50%;
   transform: translate(-50%, -50%);
   z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 1px;
   font-size: 0.62rem;
   font-weight: 600;
   color: var(--clip-label-text);
@@ -1060,6 +1062,17 @@ body {
   display: block;
 }
 
+/* Transparent hit/overlay layer holding only the clip rects, painting above
+   the canvas-drawn bars. Shares the bars' viewBox so geometry lines up. */
+.stacked-waveform__clip-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 .row-waveform {
   flex: 1;
   align-self: stretch;
@@ -1086,21 +1099,35 @@ body {
 }
 
 .row-waveform__track {
-  flex: 0 0 var(--row-wave-h, 90px);
+  flex: 0 0 auto;
+  height: var(--row-wave-h, 90px);
   position: relative;
   width: 100%;
   will-change: transform;
 }
 
 .row-waveform__svg {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   display: block;
 }
 
+/* Clip hit/overlay layer above the canvas bars; width matches the canvas via
+   the same inline percentage set by RowWaveform. */
+.row-waveform__clip-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  display: block;
+}
+
 .row-waveform__dance {
-  flex: 1 1 auto;
-  min-height: 80px;
+  flex: 1 1 0;
+  min-height: 0;
   display: block;
   width: 100%;
   pointer-events: none;
@@ -1116,9 +1143,6 @@ body {
   width: 3px;
   z-index: 30;
   background-color: var(--accent);
-  box-shadow:
-    0 0 4px var(--accent),
-    0 0 12px var(--accent-dim);
   pointer-events: none;
 }
 
@@ -1308,22 +1332,23 @@ body {
 }
 
 .waveform-clip {
+  position: absolute;
   cursor: pointer;
-  fill: rgba(var(--accent-rgb), 0.32);
+  background: rgba(var(--accent-rgb), 0.32);
   touch-action: pan-y;
   transition:
-    fill 0.15s ease,
+    background 0.15s ease,
     filter 0.2s ease;
 }
 
 .waveform-clip:hover {
-  fill: rgba(var(--accent-rgb), 0.5);
+  background: rgba(var(--accent-rgb), 0.5);
   filter: drop-shadow(0 0 6px rgba(var(--accent-rgb), 0.65))
     drop-shadow(0 0 14px rgba(var(--accent-rgb), 0.35));
 }
 
 .waveform-clip--active {
-  fill: rgba(var(--accent-rgb), 0.65);
+  background: rgba(var(--accent-rgb), 0.65);
   filter: drop-shadow(0 0 6px rgba(var(--accent-rgb), 0.7))
     drop-shadow(0 0 16px rgba(var(--accent-rgb), 0.4));
 }

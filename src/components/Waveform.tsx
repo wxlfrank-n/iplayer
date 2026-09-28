@@ -1,168 +1,205 @@
-/**
- * Renders waveform visualization as SVG bars.
- *
- * Algorithm:
- * - One vertical bar per horizontal pixel "frame"
- * - Each frame covers a slice of samples and spans that slice's min..max amplitude
- * - Traces the wave shape instead of showing symmetric peaks
- * - 3-tap smoothing on edges keeps adjacent bars visually continuous
- * - Silent (sub-peak) frames get dimmed min-height tick for visibility
- * - Played portion highlighted in blue, unplayed in gray, silent in darker gray
- */
-
-import { memo, useMemo } from "react";
+import { memo, useCallback, useEffect, useRef } from "react";
+import type { CSSProperties } from "react";
 import type { WaveWindow } from "../types";
 
-interface WaveformBarsProps {
+interface WaveformCanvasProps {
   data: Float32Array;
   sampleRate: number;
   window: WaveWindow;
-  fracPlayed: number;
-  idPrefix?: string;
-  strokeWidth?: number;
-  /** Optional time (sec) at which drawn content ends; columns at/after it are
-   *  left blank. Used to stop the bars bleeding into the padded (empty)
-   *  portion of a row while keeping the same pixels-per-second scale. */
   contentEndSec?: number;
+  className?: string;
+  style?: CSSProperties;
+  strokeWidth?: number;
+  /** Overrides normal and silent waveform colors. */
+  color?: string;
+  /** Distance between waveform bars in CSS pixels. */
+  barSpacing?: number;
 }
 
-const BASE_STYLE = { stroke: "var(--waveform-bar)" } as const;
-const PLAYED_STYLE = { stroke: "var(--accent)" } as const;
-const SILENT_STYLE = { stroke: "var(--waveform-bar-silent)" } as const;
 const MIN_BAR_PX = 2;
 
-export const WaveformBars = memo(function WaveformBars({
+interface Segment {
+  x: number;
+  y0: number;
+  y1: number;
+}
+
+export const WaveformCanvas = memo(function WaveformCanvas({
   data,
   sampleRate,
   window,
-  fracPlayed,
-  idPrefix = "playedClip",
-  strokeWidth = 1,
   contentEndSec,
-}: WaveformBarsProps) {
-  const { windowStartSec, windowLen, innerH, vbW, vbH } = window;
-  // One vertical bar per horizontal pixel "frame": each frame covers a slice of
-  // samples and the bar spans that slice's min..max sample amplitude, tracing
-  // the wave shape instead of a symmetric peak. A 3-tap smoothing pass on both
-  // edges keeps adjacent bars visually continuous. Sub-pixel (silent) frames get
-  // a dimmed min-height tick so silent stretches stay visible.
-  const { waveD, silentD } = useMemo(() => {
-    if (data.length === 0 || windowLen <= 0) return { waveD: "", silentD: "" };
-    // Bars are computed on a GLOBAL absolute sample lattice: every column f
-    // always covers [lat0 + f*step, lat0 + (f+1)*step) where `lat0` is an exact
-    // multiple of `step`. Re-rendering after a window-anchor commit therefore
-    // produces pixel-identical bars (the same absolute columns are shown at the
-    // same pixels), so auto-scroll commits can't re-grid/re-min-max the pattern
-    // and shake the waveform. (Relative slicing `perFrame = total/frames` would
-    // aggregate a different sample set per column on every anchor change.)
-    const step = Math.max(1, Math.round((windowLen / vbW) * sampleRate));
-    const i0 = Math.max(0, Math.floor(windowStartSec * sampleRate));
-    const lat0 = Math.floor(i0 / step) * step;
-    const i1 = Math.min(
+  className,
+  style,
+  strokeWidth = 1,
+  color,
+  barSpacing = 3,
+}: WaveformCanvasProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const {
+    windowStartSec: bufferStartSec,
+    windowLen: bufferLen,
+    innerH,
+    vbW,
+    vbH,
+  } = window;
+
+  const draw = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const cssW = canvas.clientWidth;
+    const cssH = canvas.clientHeight;
+    if (cssW <= 0 || cssH <= 0) return;
+
+    const dpr = Math.max(1, globalThis.devicePixelRatio || 1);
+    const bw = Math.max(1, Math.round(cssW * dpr));
+    const bh = Math.max(1, Math.round(cssH * dpr));
+
+    if (canvas.width !== bw) canvas.width = bw;
+    if (canvas.height !== bh) canvas.height = bh;
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cssW, cssH);
+
+    if (data.length === 0 || bufferLen <= 0 || sampleRate <= 0) return;
+
+    // Keep the same sparse visual density on desktop and mobile:
+    // one bar every `barSpacing` CSS pixels.
+    const spacingPx = Math.max(1, barSpacing);
+    const durationPerPixel = bufferLen / cssW;
+    const durationPerBar = durationPerPixel * spacingPx;
+    const step = Math.max(1, Math.round(durationPerBar * sampleRate));
+
+    const bufferStartSample = Math.max(0, Math.floor(bufferStartSec * sampleRate));
+    const latticeStart = Math.floor(bufferStartSample / step) * step;
+    const bufferEndSample = Math.min(
       data.length,
-      Math.ceil((windowStartSec + windowLen) * sampleRate),
+      Math.ceil((bufferStartSec + bufferLen) * sampleRate),
     );
-    const endSample =
+
+    const contentEndSample =
       contentEndSec !== undefined
-        ? Math.min(i1, Math.max(i0, Math.floor(contentEndSec * sampleRate)))
-        : i1;
-    const frames = Math.max(1, Math.min(vbW, Math.ceil((i1 - lat0) / step)));
+        ? Math.min(
+            bufferEndSample,
+            Math.max(bufferStartSample, Math.floor(contentEndSec * sampleRate)),
+          )
+        : bufferEndSample;
+
+    const frames = Math.max(
+      1,
+      Math.min(
+        Math.ceil(cssW / spacingPx) + 1,
+        Math.ceil((bufferEndSample - latticeStart) / step),
+      ),
+    );
+
     const midY = vbH / 2;
     const scaleY = innerH / 2;
+    const cs = getComputedStyle(canvas);
 
-    const topPts: number[] = [];
-    const botPts: number[] = [];
-    for (let f = 0; f < frames; f++) {
-      const s0 = lat0 + f * step;
-      if (s0 >= endSample) continue;
-      const s1 = Math.min(i1, s0 + step);
-      let min = s0 < i1 ? data[s0] : 0;
+    const baseColor =
+      color || cs.getPropertyValue("--waveform-bar").trim() || "#8f96a0";
+    const silentColor =
+      color || cs.getPropertyValue("--waveform-bar-silent").trim() || "#434a53";
+
+    const topV: number[] = [];
+    const botV: number[] = [];
+
+    for (let frame = 0; frame < frames; frame++) {
+      const s0 = latticeStart + frame * step;
+      if (s0 >= contentEndSample) break;
+
+      const readStart = Math.max(s0, bufferStartSample);
+      const readEnd = Math.min(contentEndSample, s0 + step);
+      if (readStart >= readEnd) continue;
+
+      let min = data[readStart];
       let max = min;
-      for (let s = s0; s < s1; s++) {
-        const v = data[s];
-        if (v < min) min = v;
-        if (v > max) max = v;
+
+      for (let sample = readStart + 1; sample < readEnd; sample++) {
+        const value = data[sample];
+        if (value < min) min = value;
+        if (value > max) max = value;
       }
-      topPts.push(midY - max * scaleY);
-      botPts.push(midY - min * scaleY);
+
+      topV.push(midY - max * scaleY);
+      botV.push(midY - min * scaleY);
     }
 
-    const smooth = (pts: number[]) => {
-      const out = new Array<number>(pts.length);
-      for (let f = 0; f < pts.length; f++) {
-        const a = pts[Math.max(0, f - 1)];
-        const b = pts[f];
-        const c = pts[Math.min(pts.length - 1, f + 1)];
-        out[f] = (a + 2 * b + c) / 4;
+    const smooth = (values: number[]) => {
+      const output = new Array<number>(values.length);
+      for (let i = 0; i < values.length; i++) {
+        const left = values[Math.max(0, i - 1)];
+        const center = values[i];
+        const right = values[Math.min(values.length - 1, i + 1)];
+        output[i] = (left + 2 * center + right) / 4;
       }
-      return out;
+      return output;
     };
-    const topSm = smooth(topPts);
-    const botSm = smooth(botPts);
 
-    let waveD = "";
-    let silentD = "";
-    for (let f = 0; f < topSm.length; f++) {
-      const top = topSm[f];
-      const bot = botSm[f];
-      if (bot - top >= MIN_BAR_PX) {
-        waveD += `M${f} ${top.toFixed(2)}L${f} ${bot.toFixed(2)}`;
-        continue;
+    const topSm = smooth(topV);
+    const botSm = smooth(botV);
+    const sy = cssH / vbH;
+
+    const waveSegments: Segment[] = [];
+    const silentSegments: Segment[] = [];
+
+    for (let frame = 0; frame < topSm.length; frame++) {
+      const top = topSm[frame];
+      const bottom = botSm[frame];
+      const x = frame * spacingPx;
+      const height = (bottom - top) * sy;
+
+      if (height >= MIN_BAR_PX) {
+        waveSegments.push({ x, y0: top * sy, y1: bottom * sy });
+      } else {
+        const mid = ((top + bottom) / 2) * sy;
+        const half = MIN_BAR_PX / 2;
+        silentSegments.push({ x, y0: mid - half, y1: mid + half });
       }
-      const mid = (top + bot) / 2;
-      const half = MIN_BAR_PX / 2;
-      silentD += `M${f} ${(mid - half).toFixed(2)}L${f} ${(mid + half).toFixed(2)}`;
     }
-    return { waveD, silentD };
+
+    const strokeSegments = (segments: Segment[], strokeColor: string) => {
+      if (segments.length === 0) return;
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = strokeWidth;
+      ctx.lineCap = "butt";
+      ctx.beginPath();
+      for (const segment of segments) {
+        ctx.moveTo(segment.x, segment.y0);
+        ctx.lineTo(segment.x, segment.y1);
+      }
+      ctx.stroke();
+    };
+
+    strokeSegments(waveSegments, baseColor);
+    strokeSegments(silentSegments, silentColor);
   }, [
     data,
     sampleRate,
-    windowStartSec,
-    windowLen,
+    bufferStartSec,
+    bufferLen,
     innerH,
     vbW,
     vbH,
     contentEndSec,
+    strokeWidth,
+    color,
+    barSpacing,
   ]);
 
-  const clipWidth = Math.max(fracPlayed * vbW, 1);
+  useEffect(() => {
+    draw();
+    const canvas = canvasRef.current;
+    if (!canvas || typeof ResizeObserver === "undefined") return;
 
-  return (
-    <>
-      <path
-        d={waveD}
-        fill="none"
-        style={BASE_STYLE}
-        strokeWidth={strokeWidth}
-        vectorEffect="non-scaling-stroke"
-      />
-      {silentD && (
-        <path
-          d={silentD}
-          fill="none"
-          style={SILENT_STYLE}
-          strokeWidth={strokeWidth}
-          vectorEffect="non-scaling-stroke"
-        />
-      )}
-      <path
-        d={waveD}
-        fill="none"
-        style={PLAYED_STYLE}
-        strokeWidth={strokeWidth}
-        vectorEffect="non-scaling-stroke"
-        clipPath={`url(#${idPrefix})`}
-      />
-      <defs>
-        <clipPath id={idPrefix}>
-          <rect
-            x={0}
-            y={vbH / 2 - innerH / 4}
-            width={clipWidth}
-            height={innerH / 2}
-          />
-        </clipPath>
-      </defs>
-    </>
-  );
+    const observer = new ResizeObserver(() => draw());
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, [draw]);
+
+  return <canvas ref={canvasRef} className={className} style={style} />;
 });

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RowWaveform } from "./RowWaveform";
 import type { WaveformData } from "../hooks/useWaveform";
 import type { Clip as ClipData } from "../utils/clips";
+import { getWindowSecs } from "../utils/rowWaveform";
 
 vi.mock("./ClipLabel", () => ({
   ClipLabel: () => null,
@@ -16,7 +17,7 @@ vi.mock("./WaveformCursor", () => ({
   WaveformCursor: () => null,
 }));
 vi.mock("./Waveform", () => ({
-  WaveformBars: ({ window }: { window: { windowStartSec: number } }) => (
+  WaveformCanvas: ({ window }: { window: { windowStartSec: number } }) => (
     <div data-window-start={window.windowStartSec} />
   ),
 }));
@@ -68,8 +69,23 @@ function renderRow({ initialTime = 10, playing = false, clips: useClips = clips 
   );
   const row = view.container.querySelector(".row-waveform") as HTMLDivElement;
   Object.defineProperty(row, "clientWidth", { value: 600 });
-  const windowStart = () =>
-    Number(row.querySelector("[data-window-start]")?.getAttribute("data-window-start"));
+  const inner = row.querySelector(".row-waveform__inner") as HTMLElement;
+  Object.defineProperty(inner, "clientWidth", { value: 600 });
+  // The rendered buffer is translated by -(viewportAnchor - bufferStart)*pxPerSec;
+  // recover the live viewport anchor from the track transform.
+  const windowStart = () => {
+    const buffer = Number(
+      row.querySelector("[data-window-start]")?.getAttribute("data-window-start") ?? 0,
+    );
+    const track = row.querySelector(".row-waveform__track") as HTMLElement;
+    const transform = track?.style.transform ?? "";
+    const px = transform
+      ? Number(transform.replace("translateX(", "").replace("px)", ""))
+      : 0;
+    const win = getWindowSecs(window.innerWidth);
+    const pxPerSec = (inner.clientWidth || 1) / win;
+    return buffer - px / pxPerSec;
+  };
 
   const rerender = (next: Partial<typeof props>) => {
     Object.assign(props, next);
@@ -145,6 +161,7 @@ describe("RowWaveform clip play follow", () => {
       });
       fireEvent.pointerUp(window, { pointerId: 1, clientX: 0, clientY: 50 });
     });
+    act(() => flushRaf());
     expect(windowStart()).toBe(40);
 
     // The clip's clock wraps when it repeats: currentTime jumps 19 -> 10.5,
@@ -179,6 +196,7 @@ describe("RowWaveform clip play follow", () => {
       });
       fireEvent.pointerUp(window, { pointerId: 2, clientX: 0, clientY: 50 });
     });
+    act(() => flushRaf());
     expect(windowStart()).toBe(5);
 
     // A pan swallows the click that ends it; emit (and discard) one so the
@@ -192,6 +210,31 @@ describe("RowWaveform clip play follow", () => {
     rerender({ playing: true });
 
     expect(windowStart()).toBe(5);
+  });
+
+  it("releases the pan on a clip tap so later mouse moves do not scroll", () => {
+    const { row, windowStart } = renderRow();
+
+    // A tap on a clip: the clip's pointerup handler stopPropagation's (it
+    // starts clip playback), which must not leave the row pan armed. With a
+    // bubble-phase release on window the follow-up mouse move — no button —
+    // would drag the window to the right.
+    const clip = row.querySelector(".waveform-clip")!;
+    act(() => {
+      fireEvent.pointerDown(clip, {
+        pointerId: 9,
+        pointerType: "mouse",
+        clientX: 300,
+        clientY: 50,
+        button: 0,
+      });
+      fireEvent.pointerUp(clip, { pointerId: 9, clientX: 300, clientY: 50 });
+    });
+    act(() => {
+      fireEvent.pointerMove(window, { clientX: 600, clientY: 50 });
+    });
+
+    expect(windowStart()).toBe(0);
   });
 
   it("does not recenter the window when a short clip starts playing inside the view", () => {
@@ -219,6 +262,7 @@ describe("RowWaveform clip play follow", () => {
       });
       fireEvent.pointerUp(window, { pointerId: 3, clientX: 0, clientY: 50 });
     });
+    act(() => flushRaf());
     expect(windowStart()).toBe(4);
 
     // Settle the pan's trailing click suppression before the real click.

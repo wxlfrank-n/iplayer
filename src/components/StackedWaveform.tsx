@@ -14,10 +14,10 @@
  */
 
 import { memo, useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { Clip } from "./Clip";
 import { ClipLabel } from "./ClipLabel";
+import { Clips } from "./Clips";
 import { WaveformCursor } from "./WaveformCursor";
-import { WaveformBars } from "./Waveform";
+import { WaveformCanvas } from "./Waveform";
 import { type WaveformData } from "../types";
 import type { Clip as ClipData } from "../utils/clips";
 
@@ -45,7 +45,6 @@ interface StackedWaveformProps {
     repetitions: number,
     onComplete?: () => void,
   ) => void;
-  onClipPlayActiveChange?: (active: boolean) => void;
   getCurrentTime: () => number;
 }
 
@@ -69,7 +68,6 @@ export const StackedWaveform = memo(function StackedWaveform({
   onSeek,
   onActiveClipChange,
   onPlayRange,
-  onClipPlayActiveChange,
   getCurrentTime,
 }: StackedWaveformProps) {
   const innerH = VB_H - PAD * 2;
@@ -119,9 +117,6 @@ export const StackedWaveform = memo(function StackedWaveform({
   const [viewPage, setViewPage] = useState(0);
 
   const [clipPlayActive, setClipPlayActive] = useState(false);
-  useEffect(() => {
-    onClipPlayActiveChange?.(clipPlayActive);
-  }, [clipPlayActive, onClipPlayActiveChange]);
 
   // Mouse-wheel users have no deltaX: translate vertical wheel motion into
   // horizontal paging so the pages can always be scrolled by hand.
@@ -394,26 +389,23 @@ export const StackedWaveform = memo(function StackedWaveform({
                     handleRowSeek(rowStart + f * rowLen);
                   }}
                 >
-                  <svg
+                  <WaveformCanvas
                     className="stacked-waveform__svg"
-                    viewBox={`0 0 ${VB_W} ${VB_H}`}
-                    preserveAspectRatio="none"
+                    data={waveform.data}
+                    sampleRate={waveform.sampleRate}
+                    window={{
+                      windowStartSec: rowStart,
+                      windowLen: rowLen,
+                      innerH,
+                      vbW: VB_W,
+                      vbH: VB_H,
+                    }}
+                    contentEndSec={row.end}
+                  />
+                  <div
+                    className="stacked-waveform__clip-layer"
                   >
-                    <WaveformBars
-                      data={waveform.data}
-                      sampleRate={waveform.sampleRate}
-                      window={{
-                        windowStartSec: rowStart,
-                        windowLen: rowLen,
-                        innerH,
-                        vbW: VB_W,
-                        vbH: VB_H,
-                      }}
-                      fracPlayed={getPlayedPct()}
-                      idPrefix={`stack-${gi}`}
-                      contentEndSec={row.end}
-                    />
-                    <Clip
+<Clips
                       clips={row.clips.map(({ clip }) => clip)}
                       window={{
                         windowStartSec: rowStart,
@@ -432,8 +424,35 @@ export const StackedWaveform = memo(function StackedWaveform({
                       }}
                       onSwipe={onSwipeClip}
                       getIdx={(_c, i) => row.clips[i].idx}
+                      renderLabel={(id, s) => (
+                        <ClipLabel
+                          key={`lbl-${id}`}
+                          index={id}
+                          duration={s.vEnd - s.vStart}
+                          active={id === activeClip}
+                          canSplit={
+                            !playing &&
+                            s.children?.length != null &&
+                            s.children.length > 1
+                          }
+                          canMerge={
+                            !playing &&
+                            (id > 0 || id < displayClips.length - 1)
+                          }
+                          onSplit={
+                            onSwipeClip
+                              ? () => onSwipeClip(id, "up")
+                              : undefined
+                          }
+                          onMerge={
+                            onSwipeClip
+                              ? () => onSwipeClip(id, "down")
+                              : undefined
+                          }
+                        />
+                      )}
                     />
-                  </svg>
+                  </div>
                   {showCursor && (
                     <WaveformCursor
                       view="stacked"
@@ -441,36 +460,6 @@ export const StackedWaveform = memo(function StackedWaveform({
                       getCurrentTime={getCurrentTime}
                     />
                   )}
-                  {row.clips.map(({ clip: s, idx }) => {
-                    const center =
-                      ((s.vStart + (s.vEnd - s.vStart) / 2 - rowStart) /
-                        rowLen) *
-                      100;
-                    return (
-                      <ClipLabel
-                        key={`lbl-${idx}`}
-                        index={idx}
-                        duration={s.vEnd - s.vStart}
-                        left={center}
-                        active={idx === activeClip}
-                        canSplit={
-                          !playing && s.children?.length != null && s.children.length > 1
-                        }
-                        canMerge={
-                          !playing &&
-                          (idx > 0 || idx < displayClips.length - 1)
-                        }
-                        onSplit={
-                          onSwipeClip ? () => onSwipeClip(idx, "up") : undefined
-                        }
-                        onMerge={
-                          onSwipeClip
-                            ? () => onSwipeClip(idx, "down")
-                            : undefined
-                        }
-                      />
-                    );
-                  })}
                 </div>
               );
             })}

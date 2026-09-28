@@ -23,32 +23,29 @@ const clip: ClipData = {
 
 const renderClip = (overrides: Partial<React.ComponentProps<typeof Clip>> = {}) => {
   const props: React.ComponentProps<typeof Clip> = {
-    clips: [clip],
+    clip,
     window: windowConfig,
+    id: 0,
+    active: false,
     onPlayRange: vi.fn(),
     repetitions: 3,
     playing: false,
     onStopPlayback: vi.fn(),
-    activeClip: -1,
     onActivate: vi.fn(),
     onSwipe: vi.fn(),
     ...overrides,
   };
-  const view = render(
-    <svg>
-      <Clip {...props} />
-    </svg>,
-  );
-  return { ...view, rect: view.container.querySelector("rect")!, props };
+  const view = render(<Clip {...props} />);
+  return { ...view, rect: view.container.querySelector(".waveform-clip")!, props };
 };
 
 beforeAll(() => {
-  SVGElement.prototype.setPointerCapture = vi.fn();
-  SVGElement.prototype.releasePointerCapture = vi.fn();
-  SVGElement.prototype.hasPointerCapture = vi.fn(() => false);
+  HTMLElement.prototype.setPointerCapture = vi.fn();
+  HTMLElement.prototype.releasePointerCapture = vi.fn();
+  HTMLElement.prototype.hasPointerCapture = vi.fn(() => false);
 });
 
-describe("Clip UI gestures", () => {
+describe("Clip gestures", () => {
   it("plays on a tap without requiring a second click", () => {
     const { rect, props } = renderClip();
 
@@ -67,6 +64,22 @@ describe("Clip UI gestures", () => {
 
     expect(props.onActivate).toHaveBeenCalledWith(0);
     expect(props.onPlayRange).toHaveBeenCalledWith(1, 3, 3);
+  });
+
+  it("stops playback when the active clip is tapped again", () => {
+    const onStopPlayback = vi.fn();
+    const onPlayRange = vi.fn();
+    const { rect } = renderClip({
+      playing: true,
+      active: true,
+      onStopPlayback,
+      onPlayRange,
+    });
+
+    fireEvent.click(rect);
+
+    expect(onStopPlayback).toHaveBeenCalledTimes(1);
+    expect(onPlayRange).not.toHaveBeenCalled();
   });
 
   it("reports a swipe up without playing the clip", () => {
@@ -91,10 +104,10 @@ describe("Clip UI gestures", () => {
     expect(onPlayRange).not.toHaveBeenCalled();
   });
 
-  it("reports a swipe down without playing the clip", () => {
+  it("reports a swipe down with the reported id", () => {
     const onSwipe = vi.fn();
     const onPlayRange = vi.fn();
-    const { rect } = renderClip({ onSwipe, onPlayRange });
+    const { rect } = renderClip({ id: 7, onSwipe, onPlayRange });
 
     fireEvent.pointerDown(rect, {
       pointerId: 3,
@@ -109,44 +122,16 @@ describe("Clip UI gestures", () => {
       clientY: 140,
     });
 
-    expect(onSwipe).toHaveBeenCalledWith(0, "down");
+    expect(onSwipe).toHaveBeenCalledWith(7, "down");
     expect(onPlayRange).not.toHaveBeenCalled();
   });
 
-  it("stops playback when the playing clip is clicked again", () => {
-    const onStopPlayback = vi.fn();
-    const onPlayRange = vi.fn();
-    const { rect } = renderClip({
-      playing: true,
-      activeClip: 0,
-      onStopPlayback,
-      onPlayRange,
-    });
+  it("marks the clip rectangle active and renders its label", () => {
+    const label = <span className="clip-label-marker">x</span>;
+    const { container } = renderClip({ id: 3, active: true, label });
 
-    fireEvent.click(rect);
-
-    expect(onStopPlayback).toHaveBeenCalledTimes(1);
-    expect(onPlayRange).not.toHaveBeenCalled();
-  });
-
-  it("plays a different clip instead of stopping while one is playing", () => {
-    const onStopPlayback = vi.fn();
-    const onPlayRange = vi.fn();
-    const onActivate = vi.fn();
-    const clipB: ClipData = { start: 4, end: 6, vStart: 4, vEnd: 6 };
-    const { container } = renderClip({
-      clips: [clip, clipB],
-      playing: true,
-      activeClip: 0,
-      onStopPlayback,
-      onPlayRange,
-      onActivate,
-    });
-
-    fireEvent.click(container.querySelectorAll("rect")[1]);
-
-    expect(onStopPlayback).not.toHaveBeenCalled();
-    expect(onActivate).toHaveBeenCalledWith(1);
-    expect(onPlayRange).toHaveBeenCalledWith(4, 6, 3);
+    const rect = container.querySelector(".waveform-clip") as HTMLElement;
+    expect(rect.classList.contains("waveform-clip--active")).toBe(true);
+    expect(container.querySelector(".clip-label-marker")).not.toBeNull();
   });
 });

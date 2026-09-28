@@ -1,12 +1,10 @@
 /**
- * Clip label rendered above the clip's waveform: an index badge plus its
- * duration. Shared by the stacked and single-row waveform views; `left` is the
- * un-clamped center position of the clip in percent.
- *
- * On the active clip the badge shows contextual Split/Merge icon buttons that
- * sit in the direction of the equivalent swipe gesture (swipe up =
- * split/unpack, swipe down = merge/pack). The buttons are clickable so the
- * actions stay discoverable without the gesture.
+ * Clip label rendered inside the clip's `<div>`, hanging just below the clip
+ * band: an index badge plus its duration. Shared by the stacked and single-row
+ * waveform views. On the active clip the badge shows contextual Split/Merge
+ * icon buttons that sit in the direction of the equivalent swipe gesture
+ * (swipe up = split/unpack, swipe down = merge/pack). The buttons are clickable
+ * so the actions stay discoverable without the gesture.
  */
 
 import { memo } from "react";
@@ -14,14 +12,11 @@ import { memo } from "react";
 interface ClipLabelProps {
   index: number;
   duration: number;
-  left: number;
   active: boolean;
   canSplit: boolean;
   canMerge: boolean;
   onSplit?: () => void;
   onMerge?: () => void;
-  minLeft?: number;
-  maxLeft?: number;
 }
 
 const SplitIcon = () => (
@@ -55,7 +50,6 @@ const MergeIcon = () => (
 export const ClipLabel = memo(function ClipLabel({
   index,
   duration,
-  left,
   active,
   canSplit,
   canMerge,
@@ -65,7 +59,6 @@ export const ClipLabel = memo(function ClipLabel({
   return (
     <span
       className={`stacked-clip-label ${active ? "stacked-clip-label--active" : ""}`}
-      style={{ left: `${left}%` }}
     >
       {index + 1}
       <span className="stacked-clip-dur">{duration.toFixed(1)}s</span>
