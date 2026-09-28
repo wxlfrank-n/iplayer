@@ -13,7 +13,7 @@ import { memo } from "react";
 import { useAudioMeta } from "../hooks/useAudioMeta";
 import { useAppSelector } from "../store/hooks";
 import { selectCurrentTrack } from "../store/selectors";
-import MusicNoteIcon from "../assets/icons/favicon.svg?react";
+import { ListeningLoopIcon } from "./ListeningLoopIcon";
 
 export const NowPlaying = memo(function NowPlaying() {
   const track = useAppSelector(selectCurrentTrack);
@@ -24,7 +24,7 @@ export const NowPlaying = memo(function NowPlaying() {
     return (
       <div className="now-playing now-playing--empty">
         <div className="now-playing__art">
-          <MusicNoteIcon opacity={0.4} />
+          <ListeningLoopIcon size="100%" className="app-logo"/>
         </div>
         <div className="now-playing__info">
           <span className="now-playing__title">No track selected</span>
@@ -37,7 +37,7 @@ export const NowPlaying = memo(function NowPlaying() {
   return (
     <div className="now-playing">
       <div className="now-playing__art now-playing__art--active">
-        <MusicNoteIcon />
+        <ListeningLoopIcon size="100%" className="app-logo"/>
       </div>
       <div className="now-playing__info">
         <span className="now-playing__title">{track.title}</span>

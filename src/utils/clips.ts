@@ -115,8 +115,7 @@ export function splitBySilence(
   clips = mergeClipsByConfig(clips, options.minClipLength, 0.1);
   expandClips(clips, audioDuration);
   const gaps = getClipGaps(clips);
-  return {clips, minGap: gaps.length > 0 ? gaps[0] : 0, gaps};
-
+  return findMinMergeGap(clips, gaps, options.minClipLength);
 }
 
 function expandClips(clips: Clip[], audioDuration: number, expandRatio: number = 0.25) {

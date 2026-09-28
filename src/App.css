@@ -628,7 +628,6 @@ body {
 .now-playing__art {
   width: 50px;
   height: 50px;
-  background: var(--bg-tertiary);
   border-radius: var(--radius);
   display: flex;
   align-items: center;
@@ -1957,4 +1956,22 @@ body {
   top: 0;
   right: 0;
   z-index: 30;
+}
+
+.app-logo {
+  display: block;
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  transition:
+    filter 180ms ease,
+    transform 180ms ease;
+}
+
+.app-logo:hover {
+  transform: scale(1.04);
+  filter:
+    drop-shadow(
+      0 3px 8px rgba(var(--accent-rgb), 0.25)
+    );
 }
