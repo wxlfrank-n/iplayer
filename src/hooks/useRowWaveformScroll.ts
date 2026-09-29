@@ -187,6 +187,12 @@ export function useRowWaveformScroll({
     };
   }, [getCurrentTime]);
 
+  const isTimeInViewport = useCallback((time: number) => {
+    const start = viewportAnchorRef.current;
+    const end = start + hsWinLenRef.current;
+    return time >= start && time <= end;
+  }, []);
+
   const calculateBufferStart = useCallback((viewportStart: number) => {
     const win = hsWinLenRef.current;
     const bufferLength = Math.min(waveformDuration, win * WAVE_BUFFER_WINDOWS);
@@ -289,18 +295,14 @@ export function useRowWaveformScroll({
     const viewportWidthPx = viewport.clientWidth || 1;
     const pxPerSec = viewportWidthPx / win;
 
-    // This ref always describes the buffer currently committed to the DOM.
     const bufferStart = bufferAnchorRef.current;
     const bufferLen = bufferLengthRef.current || win;
 
-    // The track is the complete render buffer. Scrolling only translates it.
     track.style.width = `${(bufferLen / win) * 100}%`;
     track.style.transform =
       `translate3d(${(-(anchor - bufferStart) * pxPerSec).toFixed(2)}px, 0, 0)`;
 
-    // IMPORTANT: Clip.tsx uses:
-    //   (clipTime - bufferStart) / bufferLen * 100
-    // Cursor and played waveform deliberately use the identical coordinate map.
+    // Played waveform represents the real playback position.
     const playheadFraction =
       bufferLen > 0 ? (time - bufferStart) / bufferLen : 0;
     const playheadPct = playheadFraction * 100;
@@ -317,27 +319,67 @@ export function useRowWaveformScroll({
     const cursor = cursorElementRef?.current;
     if (!cursor) return;
 
-    cursor.style.left = `${playheadPct.toFixed(5)}%`;
+    const viewportStart = anchor;
+    const viewportEnd = Math.min(waveformDuration, anchor + win);
+
+    let cursorTime = time;
+    let cursorEdge: "left" | "right" | null = null;
+
+    if (time < viewportStart) {
+      cursorTime = viewportStart;
+      cursorEdge = "left";
+    } else if (time > viewportEnd) {
+      cursorTime = viewportEnd;
+      cursorEdge = "right";
+    } else if (
+      Math.abs(time - waveformDuration) < 1e-6 &&
+      Math.abs(viewportEnd - waveformDuration) < 1e-6
+    ) {
+      // Exact end-of-track is the visual right boundary.
+      cursorTime = viewportEnd;
+      cursorEdge = "right";
+    }
+
+    // Use pixel coordinates, matching the track transform exactly.
+    // Keep edge cursors slightly inside the clipping box.
+    let cursorX = (cursorTime - bufferStart) * pxPerSec;
+
+    if (cursorEdge === "right") {
+      cursorX -= cursor.offsetWidth;
+    }
+
+    cursor.style.left = `${Math.max(0, cursorX).toFixed(2)}px`;
     cursor.style.transform = "none";
 
     const label = cursor.firstElementChild as HTMLElement | null;
     if (!label) return;
 
-    const viewFraction = (time - anchor) / win;
-    if (viewFraction < 0.02) {
+    if (cursorEdge === "left") {
       label.style.left = "6px";
       label.style.right = "auto";
       label.style.transform = "translateX(0)";
-    } else if (viewFraction > 0.98) {
-      label.style.right = "6px";
+    } else if (cursorEdge === "right") {
       label.style.left = "auto";
+      label.style.right = "6px";
       label.style.transform = "translateX(0)";
     } else {
-      label.style.left = "auto";
-      label.style.right = "auto";
-      label.style.transform = "translateX(-50%)";
+      const viewFraction = (time - viewportStart) / win;
+
+      if (viewFraction <= 0.02) {
+        label.style.left = "6px";
+        label.style.right = "auto";
+        label.style.transform = "translateX(0)";
+      } else if (viewFraction >= 0.98) {
+        label.style.left = "auto";
+        label.style.right = "6px";
+        label.style.transform = "translateX(0)";
+      } else {
+        label.style.left = "auto";
+        label.style.right = "auto";
+        label.style.transform = "translateX(-50%)";
+      }
     }
-  }, [cursorElementRef, playedElementRef]);
+  }, [cursorElementRef, playedElementRef, waveformDuration]);
 
   // React has now committed WaveformCanvas + Clip for renderedBufferAnchor.
   // Only here do we switch the imperative coordinate origin. The viewport
@@ -418,8 +460,14 @@ export function useRowWaveformScroll({
     previousTimeRef.current = currentTime;
 
     if (playingRef.current || draggingRef.current) return;
-    if (Math.abs(currentTime - previous) < 1) return;
-    if (modeRef.current.type === "clip" || modeRef.current.type === "manual") return;
+    if (Math.abs(currentTime - previous) < 1e-6) return;
+
+    if (modeRef.current.type === "clip" || modeRef.current.type === "manual") {
+      // Keep the manually chosen viewport, but still render an external paused
+      // seek immediately (especially currentTime === waveformDuration).
+      renderFrame(currentTime, viewportAnchorRef.current);
+      return;
+    }
 
     const next = resolveAnchor(
       modeRef.current,
@@ -429,9 +477,14 @@ export function useRowWaveformScroll({
       hsMaxStartRef.current,
       performance.now(),
     );
+
     setLiveAnchor(next);
     setModeFollow(currentTime);
-  }, [currentTime, setLiveAnchor, setModeFollow]);
+
+    // Render the exact external seek value immediately rather than waiting for
+    // getCurrentTime()/rAF after the media element has entered its ended state.
+    renderFrame(currentTime, next);
+  }, [currentTime, renderFrame, setLiveAnchor, setModeFollow]);
 
   // ---------------------------------------------------------------------------
   // Clip playback
@@ -492,9 +545,27 @@ export function useRowWaveformScroll({
     scrollTimeoutRef.current = window.setTimeout(() => {
       scrollingRef.current = false;
       setScrolling(false);
-      setModeFollow();
+
+      const time = getCurrentTime();
+
+      // If the user has manually moved playback outside the visible viewport,
+      // remain detached. Playback must not pull the viewport/buffer back.
+      // renderFrame() will keep the cursor pinned to the appropriate edge.
+      if (playingRef.current && !isTimeInViewport(time)) {
+        modeRef.current = { type: "manual" };
+        return;
+      }
+
+      // Playback is still visible, so normal following can resume.
+      setModeFollow(time);
     }, 1500);
-  }, [scrollTimeoutRef, setModeFollow, setScrolling]);
+  }, [
+    getCurrentTime,
+    isTimeInViewport,
+    scrollTimeoutRef,
+    setModeFollow,
+    setScrolling,
+  ]);
 
   const dragRef = useRef<{
     pointerId: number;
