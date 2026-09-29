@@ -58,7 +58,7 @@ export const ClipLabel = memo(function ClipLabel({
             onSplit();
           }}
         >
-          <span aria-hidden="true">✂</span>
+          <span className="split-icon">✂️</span>
         </button>
       )}
 
@@ -73,7 +73,7 @@ export const ClipLabel = memo(function ClipLabel({
             onMerge();
           }}
         >
-          <span aria-hidden="true">{"\u22C8"}</span>
+          <span className="merge-icon">🔗</span>
         </button>
       )}
     </span>
