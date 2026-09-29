@@ -74,15 +74,6 @@
   margin-top: 0;
   align-items: stretch;
 }
-.progress-container__swipe-zone {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 18px;
-  z-index: 5;
-  touch-action: none;
-}
 
 .clip-toolbar {
   display: flex;

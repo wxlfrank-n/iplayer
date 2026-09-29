@@ -29,6 +29,10 @@ import NextIcon from "../assets/icons/next.svg?react";
 import PlayIcon from "../assets/icons/play.svg?react";
 import PauseIcon from "../assets/icons/pause.svg?react";
 import "./PlayerControls.css";
+import {
+  useAppDispatch,
+} from "../store/hooks";
+import { updateConfig } from "../store/configSlice";
 
 interface PlayerControlsProps {
   onTogglePlay: () => void;
@@ -45,6 +49,7 @@ export const PlayerControls = memo(function PlayerControls({
   onSkipForward,
   onSkipBackward,
 }: PlayerControlsProps) {
+  const dispatch = useAppDispatch();
   const isPlaying = useAppSelector(selectIsPlaying);
   const hasTrack = useAppSelector(selectCanPlay);
   const skipSeconds = useAppSelector(selectSkipSeconds);
@@ -54,7 +59,13 @@ export const PlayerControls = memo(function PlayerControls({
   const atStart = currentTime <= 0;
   const atEnd = duration > 0 && currentTime >= duration;
   return (
-    <div className="player-controls">
+    <div className="player-controls" onDoubleClick={() => {
+      dispatch(
+        updateConfig({
+          showAdvancedControls: true,
+        }),
+      );
+    }}>
       <button
         className="control-btn control-btn--skip"
         onClick={onSkipBackward}

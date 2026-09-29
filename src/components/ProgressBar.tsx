@@ -72,10 +72,6 @@ interface ProgressBarProps {
   getCurrentTime: () => number;
 }
 
-const MIN_SWIPE = 28;
-
-const SWIPE_DIAGONAL_RATIO =
-  1.2;
 
 export function ProgressBar({
   onSeek,
@@ -272,54 +268,6 @@ export function ProgressBar({
       ],
     );
 
-  /*
-   * Vertical swipe on the bottom edge of the progress container toggles the
-   * clip toolbar. Track the gesture from pointer-down to pointer-up; a swipe
-   * up hides the toolbar, a swipe down shows it.
-   */
-  const swipeRef = useRef<{
-    startX: number;
-    startY: number;
-    active: boolean;
-  }>({
-    startX: 0,
-    startY: 0,
-    active: false,
-  });
-
-  const handleSwipeDown = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      const swipe = swipeRef.current;
-      swipe.startX = e.clientX;
-      swipe.startY = e.clientY;
-      swipe.active = true;
-      e.currentTarget.setPointerCapture(e.pointerId);
-    },
-    [],
-  );
-
-  const handleSwipeUp = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      const swipe = swipeRef.current;
-      if (!swipe.active) return;
-      swipe.active = false;
-      const dy = e.clientY - swipe.startY;
-      const dx = e.clientX - swipe.startX;
-      if (
-        Math.abs(dy) >= MIN_SWIPE &&
-        Math.abs(dy) > Math.abs(dx) * SWIPE_DIAGONAL_RATIO
-      ) {
-        dispatch(
-          updateConfig({
-            showAdvancedControls: dy > 0,
-          }),
-        );
-      }
-    },
-    [dispatch],
-  );
-
   return (
     <>
       <div
@@ -358,9 +306,9 @@ export function ProgressBar({
          */}
         <div
           className={`progress-row ${waveformView ===
-              "horizontal"
-              ? "progress-row--horizontal"
-              : ""
+            "horizontal"
+            ? "progress-row--horizontal"
+            : ""
             }`}
         >
           {waveformStatus ===
@@ -481,24 +429,6 @@ export function ProgressBar({
             </div>
           )}
 
-        {/*
-         * -----------------------------------------------------
-         * CLIP TOOLBAR SWIPE ZONE
-         * -----------------------------------------------------
-         *
-         * Thin strip along the bottom edge of the container that
-         * detects a vertical swipe: up hides the clip toolbar,
-         * down shows it.
-         */}
-        {hasWaveform && (
-          <div
-            className="progress-container__swipe-zone"
-            aria-hidden="true"
-            onPointerDown={handleSwipeDown}
-            onPointerUp={handleSwipeUp}
-            onPointerCancel={handleSwipeUp}
-          />
-        )}
       </div>
 
       {/*
@@ -510,17 +440,15 @@ export function ProgressBar({
         showAdvancedControls && (
           <div
             className={`clip-toolbar ${playing
-                ? "clip-toolbar--disabled"
-                : ""
+              ? "clip-toolbar--disabled"
+              : ""
               }`}
-            onDoubleClick={(e) => {
-              if (e.target === e.currentTarget) {
-                dispatch(
-                  updateConfig({
-                    showAdvancedControls: false,
-                  }),
-                );
-              }
+            onDoubleClick={() => {
+              dispatch(
+                updateConfig({
+                  showAdvancedControls: false,
+                }),
+              );
             }}
           >
             <MergeSlider
