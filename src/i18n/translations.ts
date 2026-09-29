@@ -23,9 +23,9 @@ export const en = {
   },
 
   actions: {
-    showPlaylist: "Show playlist",
-    hidePlaylist: "Hide playlist",
+    playlist: "Playlist",
     settings: "Settings",
+    more: "More",
   },
 
   nowPlaying: {
@@ -159,9 +159,9 @@ export const zh: Messages = {
   },
 
   actions: {
-    showPlaylist: "显示播放列表",
-    hidePlaylist: "隐藏播放列表",
+    playlist: "播放列表",
     settings: "设置",
+    more: "更多",
   },
 
   nowPlaying: {
