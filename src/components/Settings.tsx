@@ -113,7 +113,7 @@ function SliderSetting({
   );
 }
 
-function ThemeCardPreview({ theme }: { theme: ThemeId }) {
+function ThemeCardPreview({ theme, label }: { theme: ThemeId; label: string }) {
   const t = THEMES[theme];
   return (
     <span
@@ -137,6 +137,12 @@ function ThemeCardPreview({ theme }: { theme: ThemeId }) {
         className="theme-card__dot"
         style={{ background: t.accent }}
       />
+      <span
+        className="theme-card__label"
+        style={{ color: t.textPrimary, background: t.bgSecondary }}
+      >
+        {label}
+      </span>
     </span>
   );
 }
@@ -169,9 +175,9 @@ function AppearanceTab() {
               className={`theme-card ${config.theme === id ? "theme-card--active" : ""}`}
               onClick={() => updateConfig({ theme: id })}
               aria-pressed={config.theme === id}
+              aria-label={t(THEME_LABEL_KEYS[id])}
             >
-              <ThemeCardPreview theme={id} />
-              <span className="theme-card__label">{t(THEME_LABEL_KEYS[id])}</span>
+              <ThemeCardPreview theme={id} label={t(THEME_LABEL_KEYS[id])} />
             </button>
           ))}
         </div>
