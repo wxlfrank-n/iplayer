@@ -1,5 +1,6 @@
 import { memo, useEffect, useRef, useState } from "react";
 import { formatTime } from "../utils/format";
+import "./WaveformCursor.css";
 
 interface WaveformCursorProps {
   view: "row" | "stacked";

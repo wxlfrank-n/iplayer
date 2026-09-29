@@ -32,6 +32,7 @@ import type { Clip as ClipData } from "../utils/clips";
 import type { WaveWindow } from "../types";
 
 import { formatTimePrecise } from "../utils/time";
+import "./Clip.css";
 
 export interface ClipProps {
   clip: ClipData;

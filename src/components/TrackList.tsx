@@ -5,6 +5,7 @@
  */
 
 import type { Track } from "../types";
+import "./TrackList.css";
 
 interface TrackListProps {
   tracks: Track[];

@@ -1,0 +1,74 @@
+/* Full-card empty state shown when no track is loaded. */
+.empty-state-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  width: 100%;
+  padding: var(--space-5);
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 420px;
+  padding: 48px 32px;
+  background: var(--bg-secondary);
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.empty-state__art {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-state__art svg {
+  width: 32px;
+  height: 32px;
+}
+
+.empty-state__title {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.empty-state__subtitle {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.empty-state__add {
+  margin-top: var(--space-2);
+  padding: 10px 24px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--accent-dim);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    transform 0.1s;
+}
+
+.empty-state__add:hover,
+.empty-state__add:active {
+  background: var(--accent);
+}
+
+.empty-state__add:active {
+  transform: scale(0.97);
+}

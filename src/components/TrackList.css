@@ -1,0 +1,100 @@
+.track-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.track-list--empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  color: var(--text-secondary);
+  text-align: center;
+  gap: 8px;
+}
+
+.track-list__hint {
+  font-size: 0.8rem;
+  opacity: 0.6;
+}
+
+.track-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 24px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.track-item:hover {
+  background: var(--bg-secondary);
+}
+
+.track-item--active {
+  background: var(--bg-tertiary);
+}
+
+.track-item--active .track-item__title {
+  color: var(--accent);
+}
+
+.track-item__info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.track-item__number {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  min-width: 20px;
+  text-align: right;
+}
+
+.track-item__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.track-item__title {
+  font-size: 0.9rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.track-item__artist {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.track-item__remove {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  opacity: 0;
+  transition:
+    opacity 0.15s,
+    color 0.15s,
+    background 0.15s;
+}
+
+.track-item:hover .track-item__remove {
+  opacity: 1;
+}
+
+.track-item__remove:hover,
+.track-item__remove:active {
+  color: var(--danger);
+  background: rgba(248, 81, 73, 0.1);
+}

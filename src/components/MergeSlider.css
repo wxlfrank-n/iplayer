@@ -1,0 +1,164 @@
+.clip-merge {
+  flex: 1;
+  min-width: 0;
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 0 2px;
+}
+
+.clip-merge__stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.clip-merge__slider {
+  --thumb-w: 10px;
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.clip-merge__bubble {
+  position: absolute;
+  bottom: -10px;
+  transform: translate(-50%, -100%);
+  font-size: 0.66rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  border: none;
+  border-radius: 4px;
+  padding: 1px 5px;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 2;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.clip-merge__slider input[type="range"] {
+  display: block;
+  width: 100%;
+  height: 3px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--bg-tertiary);
+  border-radius: 1.5px;
+  outline: none;
+  cursor: pointer;
+  transform: scaleX(-1);
+}
+
+.clip-merge__stepper button {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  line-height: 1;
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+}
+
+.clip-merge__stepper button:hover:not(:disabled),
+.clip-merge__stepper button:active:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--bg-hover);
+}
+
+.clip-merge__stepper button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.clip-merge input[type="range"]::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 1.5px;
+}
+
+.clip-merge input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 10px;
+  background: var(--accent);
+  border-radius: 50%;
+  margin-top: -3.5px;
+  cursor: pointer;
+  border: none;
+}
+
+.clip-merge input[type="range"]::-moz-range-track {
+  height: 3px;
+  border-radius: 1.5px;
+  background: var(--bg-tertiary);
+}
+
+.clip-merge input[type="range"]::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  background: var(--accent);
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+}
+
+@media (max-width: 767px) {
+  .clip-merge {
+    flex: 1;
+    min-width: 0;
+    max-width: none;
+    width: auto;
+  }
+
+  .clip-merge__slider input[type="range"] {
+    width: 100%;
+  }
+}
+
+/* Touch devices: make the merge slider thumb large enough to grab with a
+   finger. The clip toolbar itself stays hidden until the progress bar is
+   hovered, matching desktop behavior. */
+@media (hover: none) {
+  .clip-merge input[type="range"] {
+    height: 6px;
+  }
+
+  .clip-merge__slider {
+    --thumb-w: 22px;
+  }
+
+  .clip-merge__bubble {
+    top: -3px;
+  }
+
+  .clip-merge input[type="range"]::-webkit-slider-runnable-track {
+    height: 6px;
+  }
+
+  .clip-merge input[type="range"]::-webkit-slider-thumb {
+    width: 22px;
+    height: 22px;
+    margin-top: -8px;
+  }
+
+  .clip-merge input[type="range"]::-moz-range-track {
+    height: 6px;
+  }
+
+  .clip-merge input[type="range"]::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+  }
+}
+

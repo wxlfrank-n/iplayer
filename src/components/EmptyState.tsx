@@ -8,6 +8,7 @@
 
 import { useRef } from "react";
 import MusicNoteIcon from "../assets/icons/favicon.svg?react";
+import "./EmptyState.css";
 
 interface EmptyStateProps {
   onAddFiles: (files: FileList) => void;

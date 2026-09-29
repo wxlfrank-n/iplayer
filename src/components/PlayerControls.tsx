@@ -27,6 +27,7 @@ import PrevIcon from "../assets/icons/prev.svg?react";
 import NextIcon from "../assets/icons/next.svg?react";
 import PlayIcon from "../assets/icons/play.svg?react";
 import PauseIcon from "../assets/icons/pause.svg?react";
+import "./PlayerControls.css";
 
 interface PlayerControlsProps {
   onTogglePlay: () => void;

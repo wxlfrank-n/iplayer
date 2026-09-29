@@ -1,0 +1,78 @@
+.stacked-clip-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--clip-label-text);
+  background: var(--clip-label-bg);
+  border: 1px solid var(--clip-label-border);
+  border-radius: 4px;
+  padding: 1px 4px;
+  line-height: 1.25;
+  pointer-events: none;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.stacked-clip-dur {
+  font-size: 0.5rem;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.9;
+}
+
+.stacked-clip-action {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--clip-swipe);
+  cursor: pointer;
+  z-index: 3;
+  pointer-events: auto;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.stacked-clip-action svg {
+  display: block;
+  width: 12px;
+  height: 16px;
+}
+
+.stacked-clip-action:hover {
+  background: rgba(var(--accent-rgb), 0.16);
+  color: var(--accent);
+  transform: translateX(-50%) scale(1.12);
+}
+
+.stacked-clip-action--split {
+  bottom: calc(100% + 2px);
+}
+
+.stacked-clip-action--merge {
+  top: calc(100% + 2px);
+}
+.stacked-clip-label--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}

@@ -13,6 +13,7 @@
 
 import { memo, useEffect, useRef } from "react";
 import type { WaveformData } from "../types";
+import "./DancingLines.css";
 
 interface DancingLinesProps {
   getAnalyser?: (resume: boolean) => AnalyserNode | null;

@@ -1,0 +1,9 @@
+.row-waveform__dance {
+  flex: 1 1 0;
+  min-height: 0;
+  display: block;
+  width: 100%;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}

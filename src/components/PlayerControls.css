@@ -1,0 +1,78 @@
+.player-controls {
+  flex: none;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 480px;
+}
+.control-btn--play {
+  width: 60px;
+  height: 60px;
+  margin: 0 6px;
+  background: var(--accent-dim);
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(var(--accent-dim-rgb), 0.45);
+}
+
+.control-btn--playing {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(var(--accent-rgb), 0.35);
+  animation: control-pulse 1.6s ease-in-out infinite;
+}
+
+.control-btn--playing:hover:not(:disabled) {
+  background: var(--accent);
+  color: #fff;
+  transform: scale(1.05);
+  box-shadow:
+    0 0 20px rgba(var(--accent-rgb), 0.9),
+    0 0 50px rgba(var(--accent-rgb), 0.5);
+}
+
+.control-btn--paused:hover:not(:disabled) {
+  background: var(--accent);
+  color: #fff;
+  transform: scale(1.05);
+}
+
+.control-btn--play:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+@keyframes control-pulse {
+  0%,
+  100% {
+    box-shadow: 0 2px 8px rgba(var(--accent-rgb), 0.35);
+  }
+  50% {
+    box-shadow:
+      0 0 18px rgba(var(--accent-rgb), 0.7),
+      0 2px 8px rgba(var(--accent-rgb), 0.4);
+  }
+}
+
+.control-btn--play:disabled {
+  background: var(--bg-tertiary);
+  color: var(--bg-primary);
+  box-shadow: none;
+  animation: none;
+}
+
+.control-btn--skip {
+  position: relative;
+}
+
+.control-btn__label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  font-weight: 700;
+  pointer-events: none;
+}

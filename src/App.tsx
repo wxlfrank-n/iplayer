@@ -24,6 +24,8 @@
  * - Auto-save config to localStorage
  */
 
+import "./App.css";
+
 import { useRef, useCallback, useState, useEffect, useMemo } from "react";
 import { useAudioPlayer } from "./hooks/useAudioPlayer";
 import { useConfig } from "./hooks/useConfig";
@@ -40,7 +42,6 @@ import { Playlist } from "./components/Playlist";
 import { ProgressBar } from "./components/ProgressBar";
 import { Settings } from "./components/Settings";
 import { EmptyState } from "./components/EmptyState";
-import "./App.css";
 
 export default function App() {
   // Load user configuration from localStorage

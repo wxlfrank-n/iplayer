@@ -16,6 +16,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAppSelector } from "../store/hooks";
 import { selectGaps } from "../store/selectors";
+import "./MergeSlider.css";
 
 interface MergeSliderProps {
   /** Snapped merge gap (seconds) used for merging clips. */

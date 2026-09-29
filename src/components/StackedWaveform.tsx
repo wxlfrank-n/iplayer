@@ -27,6 +27,7 @@ import { WaveformCanvas } from "./Waveform";
 
 import { type WaveformData } from "../types";
 import type { Clip as ClipData } from "../utils/clips";
+import "./StackedWaveform.css";
 
 const STACK_ROW_TARGET_SECS = 10;
 

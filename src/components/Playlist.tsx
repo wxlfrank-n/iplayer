@@ -10,6 +10,7 @@ import { useAppSelector } from "../store/hooks";
 import { selectTracks, selectCurrentTrackIndex } from "../store/selectors";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import CloseIcon from "../assets/icons/close.svg?react";
+import "./Playlist.css";
 
 interface PlaylistProps {
   onSelectTrack: (index: number) => void;

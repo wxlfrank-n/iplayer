@@ -14,6 +14,7 @@ import { CONFIG_RANGES, DEFAULT_CONFIG } from "../store/configSlice";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { THEMES, THEME_IDS, type ThemeId } from "../themes";
 import CloseIcon from "../assets/icons/close.svg?react";
+import "./Settings.css";
 
 interface SettingsProps {
   onClose: () => void;

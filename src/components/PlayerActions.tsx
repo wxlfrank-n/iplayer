@@ -6,6 +6,7 @@
 import { memo } from "react";
 import PlaylistIcon from "../assets/icons/playlist.svg?react";
 import SettingsIcon from "../assets/icons/settings.svg?react";
+import "./PlayerActions.css";
 
 interface PlayerActionsProps {
   playlistOpen: boolean;

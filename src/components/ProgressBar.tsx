@@ -42,6 +42,7 @@ import { setActiveClip } from "../store/analysisSlice";
 import { updateConfig } from "../store/configSlice";
 
 import { mergeClipsByGap } from "../utils/clips";
+import "./ProgressBar.css";
 
 import {
   getClipSplitResult,

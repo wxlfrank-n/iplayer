@@ -1,0 +1,60 @@
+.player-main__top-actions {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 10;
+}
+
+.settings-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+
+.settings-btn:hover,
+.settings-btn:active {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+.playlist-toggle {
+  position: relative;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius);
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.playlist-toggle:hover,
+.playlist-toggle:active {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.playlist-toggle--active {
+  background: var(--accent-dim);
+  color: white;
+  border-color: var(--accent-dim);
+}

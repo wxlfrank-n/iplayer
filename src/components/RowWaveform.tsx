@@ -7,6 +7,7 @@ import { WaveformCanvas } from "./Waveform";
 import { type WaveformData } from "../hooks/useWaveform";
 import { useRowWaveformScroll, VB_W, VB_H } from "../hooks/useRowWaveformScroll";
 import type { Clip as ClipData } from "../utils/clips";
+import "./RowWaveform.css";
 
 const PAD = 4;
 

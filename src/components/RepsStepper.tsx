@@ -8,6 +8,9 @@
  * - Fully controlled: the parent owns the count and receives changes via
  *   `onChange(value)`.
  */
+
+import "./RepsStepper.css";
+
 interface RepsStepperProps {
   /** Number of times a clicked clip is repeated. */
   value: number;

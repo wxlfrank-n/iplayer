@@ -12,6 +12,7 @@
  */
 
 import { memo } from "react";
+import "./ClipLabel.css";
 
 interface ClipLabelProps {
   index: number;

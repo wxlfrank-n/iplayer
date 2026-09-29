@@ -1,0 +1,42 @@
+.stacked-waveform__cursor {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  z-index: 1;
+  background: var(--accent);
+  box-shadow:
+    0 0 4px var(--accent),
+    0 0 10px var(--accent-dim);
+  pointer-events: none;
+}
+.row-waveform__cursor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  z-index: 30;
+  background-color: var(--accent);
+  pointer-events: none;
+}
+.row-waveform__time,
+.stacked-waveform__time {
+  position: absolute;
+  bottom: 2px;
+  transform: translateX(-50%);
+  font-size: 0.58rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--clip-label-text);
+  background: var(--clip-label-bg);
+  border: 1px solid var(--clip-label-border);
+  border-radius: 4px;
+  padding: 0 4px;
+  line-height: 1.4;
+  z-index: 3;
+  pointer-events: none;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-user-select: none;
+}

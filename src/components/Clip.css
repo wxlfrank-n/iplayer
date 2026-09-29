@@ -1,0 +1,21 @@
+.waveform-clip {
+  position: absolute;
+  cursor: pointer;
+  background: rgba(var(--accent-rgb), 0.32);
+  touch-action: pan-y;
+  transition:
+    background 0.15s ease,
+    filter 0.2s ease;
+}
+
+.waveform-clip:hover {
+  background: rgba(var(--accent-rgb), 0.5);
+  filter: drop-shadow(0 0 6px rgba(var(--accent-rgb), 0.65))
+    drop-shadow(0 0 14px rgba(var(--accent-rgb), 0.35));
+}
+
+.waveform-clip--active {
+  background: rgba(var(--accent-rgb), 0.65);
+  filter: drop-shadow(0 0 6px rgba(var(--accent-rgb), 0.7))
+    drop-shadow(0 0 16px rgba(var(--accent-rgb), 0.4));
+}

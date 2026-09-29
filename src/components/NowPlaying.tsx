@@ -14,6 +14,7 @@ import { useAudioMeta } from "../hooks/useAudioMeta";
 import { useAppSelector } from "../store/hooks";
 import { selectCurrentTrack } from "../store/selectors";
 import { ListeningLoopIcon } from "./ListeningLoopIcon";
+import "./NowPlaying.css";
 
 export const NowPlaying = memo(function NowPlaying() {
   const track = useAppSelector(selectCurrentTrack);
