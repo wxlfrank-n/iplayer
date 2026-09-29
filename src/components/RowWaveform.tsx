@@ -8,6 +8,7 @@ import { type WaveformData } from "../hooks/useWaveform";
 import { useRowWaveformScroll, VB_W, VB_H } from "../hooks/useRowWaveformScroll";
 import type { Clip as ClipData } from "../utils/clips";
 import "./RowWaveform.css";
+import { getCssVar } from "../utils/css";
 
 const PAD = 4;
 
@@ -91,6 +92,7 @@ export const RowWaveform = memo(function RowWaveform({
   const bufferLen = bufferLengthRef.current;
   const bufferScale = viewportLen > 0 ? bufferLen / viewportLen : 1;
   const vbW = VB_W * bufferScale;
+  const color = getCssVar("--accent");
 
   const waveformWindow = {
     windowStartSec: renderedBufferAnchor,
@@ -107,6 +109,7 @@ export const RowWaveform = memo(function RowWaveform({
     height: "100%",
   };
 
+
   return (
     <div
       className="row-waveform"
@@ -121,6 +124,7 @@ export const RowWaveform = memo(function RowWaveform({
           waveform={waveform}
           currentTime={currentTime}
           playing={playing}
+          color={color}
         />
 
         <div className="row-waveform__track" ref={trackRef}>
@@ -150,7 +154,7 @@ export const RowWaveform = memo(function RowWaveform({
               sampleRate={waveform.sampleRate}
               window={waveformWindow}
               strokeWidth={1.6}
-              color="var(--accent)"
+              color={color}
               style={canvasStyle}
             />
           </div>

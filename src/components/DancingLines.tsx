@@ -13,6 +13,7 @@
 
 import { memo, useEffect, useRef } from "react";
 import type { WaveformData } from "../types";
+import { getCssVar } from "../utils/css";
 import "./DancingLines.css";
 
 interface DancingLinesProps {
@@ -30,6 +31,7 @@ interface DancingLinesProps {
    *  audio graph is currently outputting, so when paused it shows nothing at
    *  the clicked position; the decoded-sample profile is used instead. */
   playing: boolean;
+  color?: string;
 }
 
 const BAR_COUNT = 56;
@@ -47,6 +49,7 @@ export const DancingLines = memo(function DancingLines({
   waveform,
   currentTime,
   playing,
+  color,
 }: DancingLinesProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const currentTimeRef = useRef(currentTime);
@@ -63,7 +66,6 @@ export const DancingLines = memo(function DancingLines({
     const levels = new Float32Array(BAR_COUNT);
     let data = new Uint8Array(0);
     let raf = 0;
-    let color = "";
 
     const frame = () => {
       raf = requestAnimationFrame(frame);
@@ -141,14 +143,8 @@ export const DancingLines = memo(function DancingLines({
         }
       }
 
-      if (!color) {
-        const v = getComputedStyle(document.documentElement)
-          .getPropertyValue("--accent")
-          .trim();
-        color = v || "#58a6ff";
-      }
       ctx.globalAlpha = 0.8;
-      ctx.fillStyle = color;
+      ctx.fillStyle = color || getCssVar("--accent");
       const bw = cw / BAR_COUNT;
       const base = ch - 4;
       const maxH = ch - 8;
