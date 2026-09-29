@@ -74,6 +74,16 @@
   margin-top: 0;
   align-items: stretch;
 }
+.progress-container__swipe-zone {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 18px;
+  z-index: 5;
+  touch-action: none;
+}
+
 .clip-toolbar {
   display: flex;
   align-items: center;
@@ -84,6 +94,19 @@
   align-self: center;
   user-select: none;
   -webkit-user-select: none;
+  transform-origin: top center;
+  animation: clip-toolbar-in 0.18s ease-out;
+}
+
+@keyframes clip-toolbar-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .clip-toolbar--disabled {
