@@ -7,6 +7,7 @@
  */
 
 import { Component, type ReactNode } from "react";
+import { t } from "./i18n";
 
 interface State {
   error: Error | null;
@@ -36,7 +37,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
             whiteSpace: "pre-wrap",
           }}
         >
-          <h3>App crashed</h3>
+          <h3>{t("errorBoundary.crashed")}</h3>
           <p>{String(this.state.error)}</p>
           <p style={{ color: "#888" }}>{this.state.error.stack}</p>
         </div>

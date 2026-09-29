@@ -8,6 +8,7 @@
 
 import { useRef } from "react";
 import MusicNoteIcon from "../assets/icons/favicon.svg?react";
+import { useT } from "../i18n";
 import "./EmptyState.css";
 
 interface EmptyStateProps {
@@ -16,6 +17,7 @@ interface EmptyStateProps {
 
 export function EmptyState({ onAddFiles }: EmptyStateProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const t = useT();
 
   return (
     <div className="empty-state-wrap">
@@ -23,16 +25,15 @@ export function EmptyState({ onAddFiles }: EmptyStateProps) {
         <div className="empty-state__art">
           <MusicNoteIcon />
         </div>
-        <h2 className="empty-state__title">Add MP3 files to get started</h2>
+        <h2 className="empty-state__title">{t("emptyState.title")}</h2>
         <p className="empty-state__subtitle">
-          Drop files anywhere in this window, or pick them with the button
-          below.
+          {t("emptyState.subtitle")}
         </p>
         <button
           className="empty-state__add"
           onClick={() => fileInputRef.current?.click()}
         >
-          Add MP3 files
+          {t("emptyState.addFiles")}
         </button>
         <input
           ref={fileInputRef}

@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 
+import { useT } from "../i18n";
 import "./WaveformViewFlipButton.css";
 
 export type WaveformView = "horizontal" | "stacked";
@@ -70,6 +71,8 @@ export const WaveformViewFlipButton = memo(
 
     const finishTimerRef =
       useRef<number | undefined>(undefined);
+
+    const t = useT();
 
     const nextView: WaveformView =
       view === "horizontal"
@@ -155,13 +158,13 @@ export const WaveformViewFlipButton = memo(
         disabled={disabled}
         aria-label={
           nextView === "stacked"
-            ? "Switch to stacked waveform"
-            : "Switch to single-row waveform"
+            ? t("viewFlip.toStacked")
+            : t("viewFlip.toSingle")
         }
         title={
           nextView === "stacked"
-            ? "Stacked waveform"
-            : "Single-row waveform"
+            ? t("viewFlip.stacked")
+            : t("viewFlip.single")
         }
       >
         {/*

@@ -13,6 +13,7 @@
  *   controls) is shown above the waveform (default: true).
  * - theme: Appearance palette (dark/light/midnight/paper/rose/nova). Each theme
  *   carries its own accent color, so there is no separate accent setting.
+ * - language: UI locale ("en" | "zh", default: "en").
  *
  * Changes persist to localStorage immediately.
  */
@@ -22,6 +23,7 @@ import type { PayloadAction } from "@reduxjs/toolkit";
 import type { WaveformView } from "../types";
 import type { ThemeId } from "../themes";
 import { DEFAULT_THEME, THEME_IDS } from "../themes";
+import { isLocale, type LocaleId } from "../i18n/translations";
 
 const STORAGE_KEY = "Listeenoop_config";
 
@@ -34,6 +36,7 @@ interface ConfigState {
   repetitions: number;
   showAdvancedControls: boolean;
   theme: ThemeId;
+  language: LocaleId;
 }
 
 export const DEFAULT_CONFIG: ConfigState = {
@@ -45,6 +48,7 @@ export const DEFAULT_CONFIG: ConfigState = {
   repetitions: 3,
   showAdvancedControls: false,
   theme: DEFAULT_THEME,
+  language: "en",
 };
 
 /** Valid numeric ranges for each configurable value (drives the Settings UI). */
@@ -75,6 +79,9 @@ function loadConfig(): ConfigState {
           typeof parsed.showAdvancedControls === "boolean"
             ? parsed.showAdvancedControls
             : DEFAULT_CONFIG.showAdvancedControls,
+        language: isLocale(parsed.language)
+          ? parsed.language
+          : DEFAULT_CONFIG.language,
       };
     }
   } catch {}

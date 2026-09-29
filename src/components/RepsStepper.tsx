@@ -9,6 +9,7 @@
  *   `onChange(value)`.
  */
 
+import { useT } from "../i18n";
 import "./RepsStepper.css";
 
 interface RepsStepperProps {
@@ -31,20 +32,21 @@ export function RepsStepper({
   max = 20,
   disabled = false,
 }: RepsStepperProps) {
+  const t = useT();
   const step = (delta: number) =>
     onChange(Math.min(max, Math.max(min, value + delta)));
 
   return (
     <div
       className="clip-reps"
-      title={`Repeat ${value} times when you click a clip`}
+      title={t("reps.title", { count: value })}
     >
-      <span className="clip-reps__label">Repeat:</span>
+      <span className="clip-reps__label">{t("reps.label")}</span>
       <div className="clip-reps__stepper">
         <button
           type="button"
-          aria-label="Decrease repeats"
-          title="Play each clip fewer times"
+          aria-label={t("reps.decrease")}
+          title={t("reps.decreaseHint")}
           disabled={disabled || value <= min}
           onClick={() => step(-1)}
         >
@@ -53,8 +55,8 @@ export function RepsStepper({
         <span className="clip-reps__value">{value}</span>
         <button
           type="button"
-          aria-label="Increase repeats"
-          title="Play each clip more times"
+          aria-label={t("reps.increase")}
+          title={t("reps.increaseHint")}
           disabled={disabled || value >= max}
           onClick={() => step(1)}
         >

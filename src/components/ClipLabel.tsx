@@ -12,6 +12,7 @@
  */
 
 import { memo } from "react";
+import { useT } from "../i18n";
 import "./ClipLabel.css";
 
 interface ClipLabelProps {
@@ -33,6 +34,7 @@ export const ClipLabel = memo(function ClipLabel({
   onSplit,
   onMerge,
 }: ClipLabelProps) {
+  const t = useT();
   return (
     <span
       className={`stacked-clip-label ${
@@ -49,8 +51,8 @@ export const ClipLabel = memo(function ClipLabel({
         <button
           type="button"
           className="stacked-clip-action stacked-clip-action--split"
-          title="Split clip"
-          aria-label="Split clip"
+          title={t("clipLabel.split")}
+          aria-label={t("clipLabel.split")}
           onClick={(e) => {
             e.stopPropagation();
             onSplit();
@@ -64,8 +66,8 @@ export const ClipLabel = memo(function ClipLabel({
         <button
           type="button"
           className="stacked-clip-action stacked-clip-action--merge"
-          title="Merge with adjacent clip"
-          aria-label="Merge with adjacent clip"
+          title={t("clipLabel.merge")}
+          aria-label={t("clipLabel.merge")}
           onClick={(e) => {
             e.stopPropagation();
             onMerge();

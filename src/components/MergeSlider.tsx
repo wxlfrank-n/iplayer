@@ -16,6 +16,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAppSelector } from "../store/hooks";
 import { selectGaps } from "../store/selectors";
+import { useT } from "../i18n";
 import "./MergeSlider.css";
 
 interface MergeSliderProps {
@@ -52,6 +53,7 @@ export function MergeSlider({
 }: MergeSliderProps) {
   // Detected silent-gap lengths the slider snaps to, ascending.
   const gapValues = useAppSelector(selectGaps);
+  const t = useT();
   // Raw thumb position (seconds). Internal so the thumb tracks the pointer
   // continuously while dragging; only the reported `value` snaps.
   const [sliderValue, setSliderValue] = useState(value);
@@ -130,8 +132,8 @@ export function MergeSlider({
       <div className="clip-merge__stepper">
         <button
           type="button"
-          aria-label="Increase merge gap"
-          title="Fewer clips"
+          aria-label={t("merge.increaseGap")}
+          title={t("merge.increaseHint")}
           disabled={disabled || value >= gapValues[gapValues.length - 1]}
           onClick={stepToNext}
         >
@@ -141,9 +143,11 @@ export function MergeSlider({
           <span
             className="clip-merge__bubble"
             style={{ left: `${bubbleLeft}px` }}
-            title="Clips separated by a silent gap up to this long are merged into one"
+            title={t("merge.bubbleTitle")}
           >
-            {clipCount} {clipCount === 1 ? "clip" : "clips"}
+            {t(clipCount === 1 ? "merge.clipCount" : "merge.clipCountPlural", {
+              count: clipCount,
+            })}
           </span>
           <input
             type="range"
@@ -152,14 +156,14 @@ export function MergeSlider({
             step={0.005}
             value={sliderValue}
             disabled={disabled}
-            title={`clips separated less than ${sliderValue.toFixed(2)}s are combined into one`}
+            title={t("merge.rangeTitle", { gap: sliderValue.toFixed(2) })}
             onChange={onSliderChange}
           />
         </div>
         <button
           type="button"
-          aria-label="Decrease merge gap"
-          title="more clips"
+          aria-label={t("merge.decreaseGap")}
+          title={t("merge.decreaseHint")}
           disabled={disabled || value <= gapValues[0]}
           onClick={stepToPrev}
         >

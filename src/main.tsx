@@ -19,6 +19,7 @@ import App from "./App.tsx";
 import { ThemeProvider } from "./ThemeProvider.tsx";
 import { ErrorBoundary } from "./ErrorBoundary.tsx";
 import { store } from "./store/store.ts";
+import { ConfiguredI18nProvider } from "./i18n/ConfiguredI18nProvider.tsx";
 
 /**
  * Logs errors to console and localStorage.
@@ -43,13 +44,15 @@ window.addEventListener("unhandledrejection", (e) => {
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <Provider store={store}>
-      <ThemeProvider>
-        <DndProvider backend={HTML5Backend}>
-          <ErrorBoundary>
-            <App />
-          </ErrorBoundary>
-        </DndProvider>
-      </ThemeProvider>
+      <ConfiguredI18nProvider>
+        <ThemeProvider>
+          <DndProvider backend={HTML5Backend}>
+            <ErrorBoundary>
+              <App />
+            </ErrorBoundary>
+          </DndProvider>
+        </ThemeProvider>
+      </ConfiguredI18nProvider>
     </Provider>
   </StrictMode>,
 );

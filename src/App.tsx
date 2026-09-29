@@ -42,11 +42,13 @@ import { Playlist } from "./components/Playlist";
 import { ProgressBar } from "./components/ProgressBar";
 import { Settings } from "./components/Settings";
 import { EmptyState } from "./components/EmptyState";
+import { useT } from "./i18n";
 
 export default function App() {
   // Load user configuration from localStorage
   const { config } = useConfig();
   const dispatch = useAppDispatch();
+  const t = useT();
 
   // Set up audio player with all playback controls and state
   const {
@@ -146,9 +148,12 @@ export default function App() {
     useCallback(
       (skipped: number) =>
         showNotice(
-          `Skipped ${skipped} non-MP3 file${skipped > 1 ? "s" : ""}. Only MP3 files are supported.`,
+          t(
+            skipped > 1 ? "app.skippedNonMp3Plural" : "app.skippedNonMp3",
+            { count: skipped },
+          ),
         ),
-      [showNotice],
+      [showNotice, t],
     ),
   );
 

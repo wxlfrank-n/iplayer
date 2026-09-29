@@ -14,12 +14,14 @@ import { useAudioMeta } from "../hooks/useAudioMeta";
 import { useAppSelector } from "../store/hooks";
 import { selectCurrentTrack } from "../store/selectors";
 import { ListeningLoopIcon } from "./ListeningLoopIcon";
+import { useT } from "../i18n";
 import "./NowPlaying.css";
 
 export const NowPlaying = memo(function NowPlaying() {
   const track = useAppSelector(selectCurrentTrack);
   // Fetch and display audio metadata (channels, sample rate, bitrate)
   const meta = useAudioMeta(track?.url ?? null);
+  const t = useT();
 
   if (!track) {
     return (
@@ -28,8 +30,8 @@ export const NowPlaying = memo(function NowPlaying() {
           <ListeningLoopIcon size="100%" className="app-logo"/>
         </div>
         <div className="now-playing__info">
-          <span className="now-playing__title">No track selected</span>
-          <span className="now-playing__artist">Add music to get started</span>
+          <span className="now-playing__title">{t("nowPlaying.noTrack")}</span>
+          <span className="now-playing__artist">{t("nowPlaying.addMusic")}</span>
         </div>
       </div>
     );
@@ -45,7 +47,7 @@ export const NowPlaying = memo(function NowPlaying() {
         <span className="now-playing__artist">{track.artist}</span>
         {meta && (
           <span className="now-playing__meta">
-            {meta.channels === 1 ? "Mono" : "Stereo"}
+            {meta.channels === 1 ? t("nowPlaying.mono") : t("nowPlaying.stereo")}
             {" · "}
             {(meta.sampleRate / 1000).toFixed(1)} kHz{" · "}
             {meta.bitrate} kbps

@@ -6,6 +6,7 @@
 import { memo } from "react";
 import PlaylistIcon from "../assets/icons/playlist.svg?react";
 import SettingsIcon from "../assets/icons/settings.svg?react";
+import { useT } from "../i18n";
 import "./PlayerActions.css";
 
 interface PlayerActionsProps {
@@ -19,22 +20,23 @@ export const PlayerActions = memo(function PlayerActions({
   onTogglePlaylist,
   onOpenSettings,
 }: PlayerActionsProps) {
+  const t = useT();
   return (
     <div className="player-main__top-actions">
       <button
         className={`playlist-toggle control-btn ${playlistOpen ? "playlist-toggle--active" : ""}`}
         onClick={onTogglePlaylist}
         aria-pressed={playlistOpen}
-        aria-label={playlistOpen ? "Hide playlist" : "Show playlist"}
-        title={playlistOpen ? "Hide playlist" : "Show playlist"}
+        aria-label={playlistOpen ? t("actions.hidePlaylist") : t("actions.showPlaylist")}
+        title={playlistOpen ? t("actions.hidePlaylist") : t("actions.showPlaylist")}
       >
         <PlaylistIcon width={20} height={20} />
       </button>
       <button
         className="settings-btn control-btn"
         onClick={onOpenSettings}
-        aria-label="Settings"
-        title="Settings"
+        aria-label={t("actions.settings")}
+        title={t("actions.settings")}
       >
         <SettingsIcon width={20} height={20} />
       </button>

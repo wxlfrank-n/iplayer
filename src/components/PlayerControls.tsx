@@ -14,6 +14,7 @@
 
 import { memo } from "react";
 import { useAppSelector } from "../store/hooks";
+import { useT } from "../i18n";
 import {
   selectIsPlaying,
   selectCanPlay,
@@ -49,6 +50,7 @@ export const PlayerControls = memo(function PlayerControls({
   const skipSeconds = useAppSelector(selectSkipSeconds);
   const currentTime = useAppSelector(selectCurrentTime);
   const duration = useAppSelector(selectDuration);
+  const t = useT();
   const atStart = currentTime <= 0;
   const atEnd = duration > 0 && currentTime >= duration;
   return (
@@ -57,8 +59,8 @@ export const PlayerControls = memo(function PlayerControls({
         className="control-btn control-btn--skip"
         onClick={onSkipBackward}
         disabled={!hasTrack || atStart}
-        aria-label={`Back ${skipSeconds} seconds`}
-        title={`Back ${skipSeconds}s`}
+        aria-label={t("player.backSeconds", { seconds: skipSeconds })}
+        title={t("player.backSecondsShort", { seconds: skipSeconds })}
       >
         <SkipBackIcon width={36} height={36} />
         <span className="control-btn__label" aria-hidden="true">
@@ -69,8 +71,8 @@ export const PlayerControls = memo(function PlayerControls({
         className="control-btn"
         onClick={onPrev}
         disabled={!hasTrack}
-        aria-label="Back to start"
-        title="Back to start"
+        aria-label={t("player.backToStart")}
+        title={t("player.backToStart")}
       >
         <PrevIcon width={20} height={20} />
       </button>
@@ -78,8 +80,8 @@ export const PlayerControls = memo(function PlayerControls({
         className={`control-btn control-btn--play ${isPlaying ? "control-btn--playing" : "control-btn--paused"}`}
         onClick={onTogglePlay}
         disabled={!hasTrack}
-        aria-label={isPlaying ? "Pause" : "Play"}
-        title={isPlaying ? "Pause" : "Play"}
+        aria-label={isPlaying ? t("player.pause") : t("player.play")}
+        title={isPlaying ? t("player.pause") : t("player.play")}
       >
         {isPlaying ? <PauseIcon width={22} height={22} /> : <PlayIcon width={22} height={22} />}
       </button>
@@ -87,8 +89,8 @@ export const PlayerControls = memo(function PlayerControls({
         className="control-btn"
         onClick={onNext}
         disabled={!hasTrack}
-        aria-label="Skip to end"
-        title="Skip to end"
+        aria-label={t("player.skipToEnd")}
+        title={t("player.skipToEnd")}
       >
         <NextIcon width={20} height={20} />
       </button>
@@ -96,8 +98,8 @@ export const PlayerControls = memo(function PlayerControls({
         className="control-btn control-btn--skip"
         onClick={onSkipForward}
         disabled={!hasTrack || atEnd}
-        aria-label={`Forward ${skipSeconds} seconds`}
-        title={`Forward ${skipSeconds}s`}
+        aria-label={t("player.forwardSeconds", { seconds: skipSeconds })}
+        title={t("player.forwardSecondsShort", { seconds: skipSeconds })}
       >
         <SkipForwardIcon width={36} height={36} />
         <span className="control-btn__label" aria-hidden="true">

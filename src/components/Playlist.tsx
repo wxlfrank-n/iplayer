@@ -9,6 +9,7 @@ import { TrackList } from "./TrackList";
 import { useAppSelector } from "../store/hooks";
 import { selectTracks, selectCurrentTrackIndex } from "../store/selectors";
 import { useFocusTrap } from "../hooks/useFocusTrap";
+import { useT } from "../i18n";
 import CloseIcon from "../assets/icons/close.svg?react";
 import "./Playlist.css";
 
@@ -28,6 +29,7 @@ export function Playlist({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const tracks = useAppSelector(selectTracks);
   const currentTrackIndex = useAppSelector(selectCurrentTrackIndex);
+  const t = useT();
 
   const handleClose = useCallback(() => onClose(), [onClose]);
   const trapRef = useFocusTrap<HTMLDivElement>(true, handleClose);
@@ -41,11 +43,11 @@ export function Playlist({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="playlist-header">
-          <h2 id="playlist-title">Playlist ({tracks.length})</h2>
+          <h2 id="playlist-title">{t("playlist.title", { count: tracks.length })}</h2>
           <div className="playlist-header__actions">
             <button
               className="add-btn"
-              aria-label="Add tracks"
+              aria-label={t("playlist.addTracks")}
               onClick={() => fileInputRef.current?.click()}
             >
               +
@@ -53,8 +55,8 @@ export function Playlist({
             <button
               className="playlist-close"
               onClick={handleClose}
-              aria-label="Close playlist"
-              title="Close"
+              aria-label={t("playlist.close")}
+              title={t("common.close")}
             >
               <CloseIcon width={18} height={18} />
             </button>

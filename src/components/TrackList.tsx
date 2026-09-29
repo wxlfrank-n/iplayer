@@ -5,6 +5,7 @@
  */
 
 import type { Track } from "../types";
+import { useT } from "../i18n";
 import "./TrackList.css";
 
 interface TrackListProps {
@@ -20,12 +21,13 @@ export function TrackList({
   onSelectTrack,
   onRemoveTrack,
 }: TrackListProps) {
+  const t = useT();
   if (tracks.length === 0) {
     return (
       <div className="track-list track-list--empty">
-        <p>No tracks loaded</p>
+        <p>{t("trackList.empty")}</p>
         <p className="track-list__hint">
-          Drop MP3 files here or use the button above
+          {t("trackList.hint")}
         </p>
       </div>
     );
@@ -52,7 +54,7 @@ export function TrackList({
               e.stopPropagation();
               onRemoveTrack(index);
             }}
-            title="Remove track"
+            title={t("trackList.removeTrack")}
           >
             {"\u2715"}
           </button>

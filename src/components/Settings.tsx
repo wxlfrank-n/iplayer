@@ -13,6 +13,8 @@ import { useConfig } from "../hooks/useConfig";
 import { CONFIG_RANGES, DEFAULT_CONFIG } from "../store/configSlice";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { THEMES, THEME_IDS, type ThemeId } from "../themes";
+import { LanguageSelect } from "./LanguageSelect";
+import { useT, type TranslationKey } from "../i18n";
 import CloseIcon from "../assets/icons/close.svg?react";
 import "./Settings.css";
 
@@ -20,13 +22,24 @@ interface SettingsProps {
   onClose: () => void;
 }
 
-const SETTINGS_TABS = [
-  { id: "theme", label: "Appearance" },
-  { id: "playback", label: "Playback" },
-  { id: "clips", label: "Clip detection" },
-] as const;
+const SETTINGS_TABS = [{ id: "theme" }, { id: "playback" }, { id: "clips" }] as const;
 
 type SettingsTabId = (typeof SETTINGS_TABS)[number]["id"];
+
+const TAB_LABEL_KEYS: Record<SettingsTabId, TranslationKey> = {
+  theme: "settings.tabAppearance",
+  playback: "settings.tabPlayback",
+  clips: "settings.tabClips",
+};
+
+const THEME_LABEL_KEYS: Record<ThemeId, TranslationKey> = {
+  dark: "themes.dark",
+  light: "themes.light",
+  midnight: "themes.midnight",
+  paper: "themes.paper",
+  nova: "themes.nova",
+  rose: "themes.rose",
+};
 
 const clamp = (v: number, min: number, max: number) =>
   Math.min(max, Math.max(min, v));
@@ -130,32 +143,46 @@ function ThemeCardPreview({ theme }: { theme: ThemeId }) {
 
 function AppearanceTab() {
   const { config, updateConfig } = useConfig();
+  const t = useT();
   return (
-    <div className="settings-field">
-      <div className="settings-field-head">
-        <label id="theme-label" className="settings-label">
-          Theme
-        </label>
+    <>
+      <div className="settings-field">
+        <div className="settings-field-head">
+          <label className="settings-label">{t("settings.language")}</label>
+        </div>
+        <LanguageSelect
+          value={config.language}
+          onChange={(language) => updateConfig({ language })}
+          label={t("settings.language")}
+        />
       </div>
-      <div className="theme-grid" role="group" aria-labelledby="theme-label">
-        {THEME_IDS.map((id) => (
-          <button
-            key={id}
-            className={`theme-card ${config.theme === id ? "theme-card--active" : ""}`}
-            onClick={() => updateConfig({ theme: id })}
-            aria-pressed={config.theme === id}
-          >
-            <ThemeCardPreview theme={id} />
-            <span className="theme-card__label">{THEMES[id].label}</span>
-          </button>
-        ))}
+      <div className="settings-field">
+        <div className="settings-field-head">
+          <label id="theme-label" className="settings-label">
+            {t("settings.theme")}
+          </label>
+        </div>
+        <div className="theme-grid" role="group" aria-labelledby="theme-label">
+          {THEME_IDS.map((id) => (
+            <button
+              key={id}
+              className={`theme-card ${config.theme === id ? "theme-card--active" : ""}`}
+              onClick={() => updateConfig({ theme: id })}
+              aria-pressed={config.theme === id}
+            >
+              <ThemeCardPreview theme={id} />
+              <span className="theme-card__label">{t(THEME_LABEL_KEYS[id])}</span>
+            </button>
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
 function PlaybackTab() {
   const { config, updateConfig } = useConfig();
+  const t = useT();
   const {
     waveformView,
     skipSeconds,
@@ -166,9 +193,9 @@ function PlaybackTab() {
     <>
       <div className="settings-field">
         <div className="settings-field-head">
-          <label className="settings-label">Waveform view</label>
+          <label className="settings-label">{t("settings.waveformView")}</label>
           <output className="settings-value">
-            {waveformView === "horizontal" ? "Single row" : "Stacked"}
+            {waveformView === "horizontal" ? t("settings.singleRow") : t("settings.stacked")}
           </output>
         </div>
         <label className="settings-switch">
@@ -185,13 +212,13 @@ function PlaybackTab() {
             <span className="settings-switch__knob" />
           </span>
           <span className="settings-switch__label">
-            Single row
-            <small>One scrollable row that follows the playhead.</small>
+            {t("settings.singleRow")}
+            <small>{t("settings.singleRowHint")}</small>
           </span>
         </label>
       </div>
       <SliderSetting
-        label="Skip forward / back by"
+        label={t("settings.skipBy")}
         presets={[5, 10, 15, 20, 30]}
         value={skipSeconds}
         min={CONFIG_RANGES.skipSeconds.min}
@@ -201,8 +228,8 @@ function PlaybackTab() {
         onChange={(v) => updateConfig({ skipSeconds: v })}
       />
       <SliderSetting
-        label="Repeats per clip"
-        hint="How many times each clip plays when you click it. Mirrors the toolbar stepper above the waveform."
+        label={t("settings.repeatsPerClip")}
+        hint={t("settings.repeatsHint")}
         presets={[1, 2, 3, 5, 10]}
         value={repetitions}
         min={CONFIG_RANGES.repetitions.min}
@@ -220,10 +247,8 @@ function PlaybackTab() {
             }
           />
           <span>
-            Show advanced controls
-            <small>
-              Merge-gap slider and repeat stepper above the waveform.
-            </small>
+            {t("settings.showAdvanced")}
+            <small>{t("settings.showAdvancedHint")}</small>
           </span>
         </label>
       </div>
@@ -233,12 +258,13 @@ function PlaybackTab() {
 
 function ClipDetectionTab() {
   const { config, updateConfig } = useConfig();
+  const t = useT();
   const { blockMs, silenceRatio, minClipLength } = config;
   return (
     <>
       <SliderSetting
-        label="Silence threshold"
-        hint="How quiet a block must be to count as silence. Lower values = only very quiet parts are detected."
+        label={t("settings.silenceThreshold")}
+        hint={t("settings.silenceHint")}
         presets={[0.005, 0.01, 0.02, 0.05]}
         value={silenceRatio}
         min={CONFIG_RANGES.silenceRatio.min}
@@ -247,8 +273,8 @@ function ClipDetectionTab() {
         onChange={(v) => updateConfig({ silenceRatio: v })}
       />
       <SliderSetting
-        label="Analysis detail"
-        hint="Audio chunk granularity in milliseconds. Smaller = more precise splits, larger = faster processing."
+        label={t("settings.analysisDetail")}
+        hint={t("settings.analysisHint")}
         presets={[4, 8, 12, 24]}
         value={blockMs}
         min={CONFIG_RANGES.blockMs.min}
@@ -258,8 +284,8 @@ function ClipDetectionTab() {
         onChange={(v) => updateConfig({ blockMs: v })}
       />
       <SliderSetting
-        label="Minimum clip length"
-        hint="Shortest clip kept after splitting. Shorter clips are folded into a neighbor when the gap is small."
+        label={t("settings.minClipLength")}
+        hint={t("settings.minClipLengthHint")}
         presets={[0.1, 0.2, 0.3, 0.5]}
         value={minClipLength}
         min={CONFIG_RANGES.minClipLength.min}
@@ -274,6 +300,7 @@ function ClipDetectionTab() {
 
 export function Settings({ onClose }: SettingsProps) {
   const { updateConfig } = useConfig();
+  const t = useT();
   const close = useCallback(() => onClose(), [onClose]);
   const trapRef = useFocusTrap<HTMLDivElement>(true, close);
   const [activeTab, setActiveTab] = useState<SettingsTabId>("theme");
@@ -302,12 +329,12 @@ export function Settings({ onClose }: SettingsProps) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="settings-header">
-          <h2>Settings</h2>
+          <h2>{t("settings.title")}</h2>
           <button
             className="settings-close"
             onClick={close}
-            aria-label="Close settings"
-            title="Close"
+            aria-label={t("settings.close")}
+            title={t("common.close")}
           >
             <CloseIcon width={18} height={18} />
           </button>
@@ -315,10 +342,10 @@ export function Settings({ onClose }: SettingsProps) {
         <div
           className="settings-tabs"
           role="tablist"
-          aria-label="Settings sections"
+          aria-label={t("settings.sectionsLabel")}
           onKeyDown={handleTabKeyDown}
         >
-          {SETTINGS_TABS.map(({ id, label }) => (
+          {SETTINGS_TABS.map(({ id }) => (
             <button
               key={id}
               id={`settings-tab-${id}`}
@@ -329,7 +356,7 @@ export function Settings({ onClose }: SettingsProps) {
               tabIndex={activeTab === id ? 0 : -1}
               onClick={() => setActiveTab(id)}
             >
-              {label}
+              {t(TAB_LABEL_KEYS[id])}
             </button>
           ))}
         </div>
@@ -348,10 +375,10 @@ export function Settings({ onClose }: SettingsProps) {
             className="settings-reset"
             onClick={() => updateConfig(DEFAULT_CONFIG)}
           >
-            Reset all
+            {t("settings.resetAll")}
           </button>
           <span className="settings-footer-note">
-            Changes apply live &middot; saved automatically
+            {t("settings.changesLive")}
           </span>
         </div>
       </div>
