@@ -677,6 +677,9 @@ export function useRowWaveformScroll({
 
     const downTarget = e.target as Element;
     if (!hsRef.current?.contains(downTarget)) return;
+    // Only swipes that start on the track itself pan the waveform; the empty
+    // space above it (dancing lines area) does not scroll.
+    if (!trackRef.current?.contains(downTarget)) return;
     if (downTarget.closest(".clip-label, .stacked-clip-label")) return;
     if (dragRef.current?.pointerId === e.pointerId) return;
 

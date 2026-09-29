@@ -111,7 +111,14 @@ function renderRow({ initialTime = 10, playing = false, clips: useClips = clips 
   // settle on the 600px window (8s) before the test interacts.
   rerender({});
 
-  return { view, row, windowStart, rerender, onSeek };
+  return {
+    view,
+    row,
+    track: row.querySelector(".row-waveform__track") as HTMLElement,
+    windowStart,
+    rerender,
+    onSeek,
+  };
 }
 
 let rafQueue: FrameRequestCallback[] = [];
@@ -141,7 +148,7 @@ afterEach(() => {
 
 describe("RowWaveform clip play follow", () => {
   it("does not yank the window back to the playing clip after the user pans away", () => {
-    const { row, windowStart, rerender } = renderRow();
+    const { row, track, windowStart, rerender } = renderRow();
 
     // Play clip 1 by clicking its rect (10-20s). Window is anchored at 0 here,
     // so the follow arm registers the clip's end as the follow target.
@@ -152,7 +159,7 @@ describe("RowWaveform clip play follow", () => {
       // The clip (10-20s) lies outside the 8s window, so clicking it first
       // jumps the window to the clip start (t=10); then pan right to ~40s
       // (2250px at 75px/s from anchor 10).
-      fireEvent.pointerDown(row, {
+      fireEvent.pointerDown(track, {
         pointerId: 1,
         pointerType: "mouse",
         clientX: 2250,
@@ -183,11 +190,11 @@ describe("RowWaveform clip play follow", () => {
   it("does not yank the window back to the clip start when clicking a long clip in its middle", () => {
     // One 30s clip: the 8s window can only ever show a slice of it.
     const longClips: ClipData[] = [{ start: 0, end: 30, vStart: 0, vEnd: 30 }];
-    const { row, windowStart, rerender } = renderRow({ clips: longClips });
+    const { row, track, windowStart, rerender } = renderRow({ clips: longClips });
 
     // Pan the window to anchor 5 (viewing the clip's middle slice, 5-13s).
     act(() => {
-      fireEvent.pointerDown(row, {
+      fireEvent.pointerDown(track, {
         pointerId: 2,
         pointerType: "mouse",
         clientX: 375,
@@ -247,13 +254,13 @@ describe("RowWaveform clip play follow", () => {
     const shortClips: ClipData[] = [
       { start: 6.63, end: 7.49, vStart: 6.63, vEnd: 7.49 },
     ];
-    const { row, windowStart, rerender } = renderRow({
+    const { row, track, windowStart, rerender } = renderRow({
       clips: shortClips,
       initialTime: 0,
     });
 
     act(() => {
-      fireEvent.pointerDown(row, {
+      fireEvent.pointerDown(track, {
         pointerId: 3,
         pointerType: "mouse",
         clientX: 300,

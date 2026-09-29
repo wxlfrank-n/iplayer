@@ -107,6 +107,7 @@ function renderRow({ playing = false, currentTime = 0 } = {}) {
   return {
     ...view,
     row,
+    track: row.querySelector(".row-waveform__track") as HTMLElement,
     clip: view.container.querySelector(".waveform-clip")!,
     viewportStart,
     rerender,
@@ -179,9 +180,9 @@ describe("RowWaveform clip dragging", () => {
   });
 
   it("starts scrolling from the row viewport even when the track is transformed", () => {
-    const { row, viewportStart } = renderRow();
+    const { track, viewportStart } = renderRow();
 
-    fireEvent.pointerDown(row, {
+    fireEvent.pointerDown(track, {
       pointerId: 3,
       pointerType: "mouse",
       clientX: 150,
@@ -201,9 +202,9 @@ describe("RowWaveform clip dragging", () => {
   });
 
   it("keeps a manual drag in control when playback time is outside the window", () => {
-    const { row, rerender, viewportStart } = renderRow({ playing: true, currentTime: 60 });
+    const { track, rerender, viewportStart } = renderRow({ playing: true, currentTime: 60 });
 
-    fireEvent.pointerDown(row, {
+    fireEvent.pointerDown(track, {
       pointerId: 4,
       pointerType: "mouse",
       clientX: 150,
@@ -221,5 +222,27 @@ describe("RowWaveform clip dragging", () => {
     act(() => flushRaf());
 
     expect(viewportStart()).toBe(2);
+  });
+
+  it("does not scroll when the swipe starts above the track (dancing line area)", () => {
+    const { row, viewportStart } = renderRow();
+
+    fireEvent.pointerDown(row, {
+      pointerId: 5,
+      pointerType: "mouse",
+      clientX: 150,
+      clientY: 50,
+      button: 0,
+    });
+    act(() => {
+      fireEvent.pointerMove(window, {
+        pointerId: 5,
+        clientX: 0,
+        clientY: 50,
+      });
+    });
+    act(() => flushRaf());
+
+    expect(viewportStart()).toBe(0);
   });
 });
