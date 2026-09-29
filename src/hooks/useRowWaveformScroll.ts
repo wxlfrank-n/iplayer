@@ -299,8 +299,11 @@ export function useRowWaveformScroll({
     const bufferLen = bufferLengthRef.current || win;
 
     track.style.width = `${(bufferLen / win) * 100}%`;
+    const trackX =
+      -(anchor - bufferStart) * pxPerSec;
+
     track.style.transform =
-      `translate3d(${(-(anchor - bufferStart) * pxPerSec).toFixed(2)}px, 0, 0)`;
+      `translate3d(${trackX}px, 0, 0)`;
 
     // Played waveform represents the real playback position.
     const playheadFraction =
@@ -348,8 +351,8 @@ export function useRowWaveformScroll({
       cursorX -= cursor.offsetWidth;
     }
 
-    cursor.style.left = `${Math.max(0, cursorX).toFixed(2)}px`;
-    cursor.style.transform = "none";
+    cursor.style.left = "0";
+    cursor.style.transform = `translate3d(${cursorX}px, 0, 0)`;
 
     const label = cursor.firstElementChild as HTMLElement | null;
     if (!label) return;
