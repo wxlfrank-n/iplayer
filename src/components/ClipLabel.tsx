@@ -71,7 +71,7 @@ export const ClipLabel = memo(function ClipLabel({
             onMerge();
           }}
         >
-          <span aria-hidden="true">🔗</span>
+          <span aria-hidden="true">{"\u22C8"}</span>
         </button>
       )}
     </span>

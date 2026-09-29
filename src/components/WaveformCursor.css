@@ -1,4 +1,4 @@
-.stacked-waveform__cursor {
+.stacked-waveform__cursor, .row-waveform__cursor {
   position: absolute;
   top: 0;
   bottom: 0;
@@ -10,20 +10,10 @@
     0 0 10px var(--accent-dim);
   pointer-events: none;
 }
-.row-waveform__cursor {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  z-index: 30;
-  background-color: var(--accent);
-  pointer-events: none;
-}
 .row-waveform__time,
 .stacked-waveform__time {
   position: absolute;
-  bottom: 2px;
+  bottom: 0px;
   transform: translateX(-50%);
   font-size: 0.58rem;
   font-weight: 600;

@@ -71,6 +71,7 @@ export const RowWaveform = memo(function RowWaveform({
     playClip,
   } = useRowWaveformScroll({
     waveformDuration: waveform.duration,
+    displayClips,
     currentTime,
     onSeek,
     onPlayRange,
@@ -84,8 +85,8 @@ export const RowWaveform = memo(function RowWaveform({
     scrolling,
     setScrolling,
     scrollTimeoutRef,
-    cursorElementRef: cursorElRef,
-    playedElementRef: playedElRef,
+    cursorElRef,
+    playedElRef,
   });
 
   const viewportLen = hsWinLenRef.current;

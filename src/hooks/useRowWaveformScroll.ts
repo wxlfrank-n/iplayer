@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Dispatch, RefObject, PointerEvent as ReactPointerEvent, SetStateAction } from "react";
 import { clampWindowAnchor, getWindowSecs } from "../utils/rowWaveform";
+import type { Clip } from "../utils/clips";
 import { panTarget } from "../utils/pan";
 
 const HS_FOLLOW_FRAC = 0.6;
@@ -20,6 +21,7 @@ export const WAVE_BUFFER_MARGIN_WINDOWS = 0.4;
 
 export interface UseRowWaveformScrollArgs {
   waveformDuration: number;
+  displayClips: Clip[];
   currentTime: number;
   onSeek: (time: number) => void;
   onPlayRange: (
@@ -38,8 +40,8 @@ export interface UseRowWaveformScrollArgs {
   scrolling: boolean;
   setScrolling: Dispatch<SetStateAction<boolean>>;
   scrollTimeoutRef: RefObject<number | undefined>;
-  cursorElementRef?: RefObject<HTMLDivElement | null>;
-  playedElementRef?: RefObject<HTMLDivElement | null>;
+  cursorElRef?: RefObject<HTMLDivElement | null>;
+  playedElRef?: RefObject<HTMLDivElement | null>;
 }
 
 type FollowEpoch = {
@@ -124,6 +126,7 @@ function resolveAnchor(
 
 export function useRowWaveformScroll({
   waveformDuration,
+  displayClips,
   currentTime,
   onSeek,
   onPlayRange,
@@ -133,8 +136,8 @@ export function useRowWaveformScroll({
   scrolling,
   setScrolling,
   scrollTimeoutRef,
-  cursorElementRef,
-  playedElementRef,
+  cursorElRef,
+  playedElRef,
 }: UseRowWaveformScrollArgs) {
   const innerH = VB_H - PAD * 2;
   const hsRef = useRef<HTMLDivElement>(null);
@@ -143,8 +146,20 @@ export function useRowWaveformScroll({
   // ---------------------------------------------------------------------------
   // Viewport model
   // ---------------------------------------------------------------------------
-  const initialWidth = typeof window === "undefined" ? VB_W : window.innerWidth;
-  const hsWinLenRef = useRef(Math.min(getWindowSecs(initialWidth), waveformDuration));
+  const initialWidth =
+    typeof window === "undefined"
+      ? VB_W
+      : window.innerWidth;
+
+  const hsWinLenRef = useRef(
+    Math.min(
+      getWindowSecs(
+        initialWidth,
+        displayClips,
+      ),
+      waveformDuration,
+    ),
+  );
   const hsMaxStartRef = useRef(Math.max(0, waveformDuration - hsWinLenRef.current));
 
   // Two independent coordinate systems:
@@ -249,15 +264,94 @@ export function useRowWaveformScroll({
     ensureWaveBuffer(next, forceRedraw);
   }, [ensureWaveBuffer]);
 
-  const applyWidth = useCallback((width: number) => {
-    hsWinLenRef.current = Math.min(getWindowSecs(width), waveformDuration);
-    hsMaxStartRef.current = Math.max(0, waveformDuration - hsWinLenRef.current);
-    bufferLengthRef.current = Math.min(
+  const applyWidth = useCallback(
+    (width: number) => {
+      const nextWindowSecs = Math.min(
+        getWindowSecs(
+          width,
+          displayClips,
+        ),
+        waveformDuration,
+      );
+
+      /*
+       * Avoid rebuilding everything when the calculated
+       * window length hasn't actually changed.
+       */
+      if (
+        Math.abs(
+          nextWindowSecs -
+          hsWinLenRef.current,
+        ) < 1e-6
+      ) {
+        return;
+      }
+
+      hsWinLenRef.current =
+        nextWindowSecs;
+
+      hsMaxStartRef.current =
+        Math.max(
+          0,
+          waveformDuration -
+          nextWindowSecs,
+        );
+
+      bufferLengthRef.current =
+        Math.min(
+          waveformDuration,
+          nextWindowSecs *
+          WAVE_BUFFER_WINDOWS,
+        );
+
+      /*
+       * The old viewport anchor might no longer be valid
+       * after zooming in/out.
+       */
+      const nextAnchor =
+        clampWindowAnchor(
+          viewportAnchorRef.current,
+          hsMaxStartRef.current,
+        );
+
+      viewportAnchorRef.current =
+        nextAnchor;
+
+      /*
+       * Window scale changed, so the existing waveform
+       * buffer geometry is no longer valid.
+       */
+      setLiveAnchor(
+        nextAnchor,
+        true,
+      );
+
+      /*
+       * Rebuild follow geometry using the new window size.
+       */
+      if (
+        modeRef.current.type === "follow"
+      ) {
+        setModeFollow();
+      }
+    },
+    [
+      displayClips,
+      setLiveAnchor,
+      setModeFollow,
       waveformDuration,
-      hsWinLenRef.current * WAVE_BUFFER_WINDOWS,
-    );
-    setLiveAnchor(viewportAnchorRef.current, true);
-  }, [setLiveAnchor, waveformDuration]);
+    ],
+  );
+
+  useEffect(() => {
+    const el = hsRef.current;
+
+    const width =
+      el?.clientWidth ||
+      window.innerWidth;
+
+    applyWidth(width);
+  }, [displayClips, applyWidth]);
 
   useEffect(() => {
     const el = hsRef.current;
@@ -312,14 +406,14 @@ export function useRowWaveformScroll({
 
     cursorLeftPctRef.current = playheadFraction;
 
-    const played = playedElementRef?.current;
+    const played = playedElRef?.current;
     if (played) {
       const clampedPct = Math.max(0, Math.min(100, playheadPct));
       played.style.clipPath =
         `inset(0 ${(100 - clampedPct).toFixed(5)}% 0 0)`;
     }
 
-    const cursor = cursorElementRef?.current;
+    const cursor = cursorElRef?.current;
     if (!cursor) return;
 
     const viewportStart = anchor;
@@ -382,7 +476,7 @@ export function useRowWaveformScroll({
         label.style.transform = "translateX(-50%)";
       }
     }
-  }, [cursorElementRef, playedElementRef, waveformDuration]);
+  }, [cursorElRef, playedElRef, waveformDuration]);
 
   // React has now committed WaveformCanvas + Clip for renderedBufferAnchor.
   // Only here do we switch the imperative coordinate origin. The viewport
