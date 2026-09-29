@@ -77,35 +77,39 @@ function renderRow({ playing = false, currentTime = 0 } = {}) {
     const transform = track?.style.transform ?? "";
     const m = transform.match(/translate3d\((-?[0-9.]+)px/);
     const px = m ? Number(m[1]) : 0;
-    const win = getWindowSecs(window.innerWidth);
+    const win = getWindowSecs(row.clientWidth || window.innerWidth, clips);
     const pxPerSec = (inner.clientWidth || 1) / win;
     return buffer - px / pxPerSec;
   };
+  const rerender = (next: Partial<typeof props>) => {
+    Object.assign(props, next);
+    view.rerender(
+      <RowWaveform
+        waveform={waveform}
+        displayClips={clips}
+        currentTime={props.currentTime}
+        onSeek={vi.fn()}
+        onPlayRange={vi.fn()}
+        repetitions={3}
+        activeClip={-1}
+        onActiveClipChange={vi.fn()}
+        getCurrentTime={() => props.currentTime}
+        playing={props.playing}
+        scrolling={false}
+        setScrolling={vi.fn()}
+        scrollTimeoutRef={{ current: undefined }}
+      />,
+    );
+  };
+  // clientWidth is patched post-mount; one extra render lets the width effect
+  // settle on the 600px window (8s) before the test interacts.
+  rerender({});
   return {
     ...view,
     row,
     clip: view.container.querySelector(".waveform-clip")!,
     viewportStart,
-    rerender: (next: Partial<typeof props>) => {
-      Object.assign(props, next);
-      view.rerender(
-        <RowWaveform
-          waveform={waveform}
-          displayClips={clips}
-          currentTime={props.currentTime}
-          onSeek={vi.fn()}
-          onPlayRange={vi.fn()}
-          repetitions={3}
-          activeClip={-1}
-          onActiveClipChange={vi.fn()}
-          getCurrentTime={() => props.currentTime}
-          playing={props.playing}
-          scrolling={false}
-          setScrolling={vi.fn()}
-          scrollTimeoutRef={{ current: undefined }}
-        />,
-      );
-    },
+    rerender,
   };
 }
 
@@ -138,7 +142,7 @@ describe("RowWaveform clip dragging", () => {
     fireEvent.pointerDown(clip, {
       pointerId: 1,
       pointerType: "mouse",
-      clientX: 100,
+      clientX: 150,
       clientY: 50,
       button: 0,
     });
@@ -180,7 +184,7 @@ describe("RowWaveform clip dragging", () => {
     fireEvent.pointerDown(row, {
       pointerId: 3,
       pointerType: "mouse",
-      clientX: 100,
+      clientX: 150,
       clientY: 50,
       button: 0,
     });
@@ -202,7 +206,7 @@ describe("RowWaveform clip dragging", () => {
     fireEvent.pointerDown(row, {
       pointerId: 4,
       pointerType: "mouse",
-      clientX: 100,
+      clientX: 150,
       clientY: 50,
       button: 0,
     });

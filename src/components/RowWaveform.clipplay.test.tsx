@@ -81,7 +81,7 @@ function renderRow({ initialTime = 10, playing = false, clips: useClips = clips 
     const transform = track?.style.transform ?? "";
     const m = transform.match(/translate3d\((-?[0-9.]+)px/);
     const px = m ? Number(m[1]) : 0;
-    const win = getWindowSecs(window.innerWidth);
+    const win = getWindowSecs(row.clientWidth || window.innerWidth, useClips);
     const pxPerSec = (inner.clientWidth || 1) / win;
     return buffer - px / pxPerSec;
   };
@@ -106,6 +106,10 @@ function renderRow({ initialTime = 10, playing = false, clips: useClips = clips 
       />,
     );
   };
+
+  // clientWidth is patched post-mount; one extra render lets the width effect
+  // settle on the 600px window (8s) before the test interacts.
+  rerender({});
 
   return { view, row, windowStart, rerender, onSeek };
 }
@@ -145,11 +149,13 @@ describe("RowWaveform clip play follow", () => {
     fireEvent.click(firstClip);
     rerender({ playing: true });
     act(() => {
-      // Pan the window right out to ~40s (the "clip 20" region).
+      // The clip (10-20s) lies outside the 8s window, so clicking it first
+      // jumps the window to the clip start (t=10); then pan right to ~40s
+      // (2250px at 75px/s from anchor 10).
       fireEvent.pointerDown(row, {
         pointerId: 1,
         pointerType: "mouse",
-        clientX: 2000,
+        clientX: 2250,
         clientY: 50,
         button: 0,
       });
@@ -175,16 +181,16 @@ describe("RowWaveform clip play follow", () => {
   });
 
   it("does not yank the window back to the clip start when clicking a long clip in its middle", () => {
-    // One 30s clip: the 12s window can only ever show a slice of it.
+    // One 30s clip: the 8s window can only ever show a slice of it.
     const longClips: ClipData[] = [{ start: 0, end: 30, vStart: 0, vEnd: 30 }];
     const { row, windowStart, rerender } = renderRow({ clips: longClips });
 
-    // Pan the window to anchor 5 (viewing the clip's middle slice, 5-17s).
+    // Pan the window to anchor 5 (viewing the clip's middle slice, 5-13s).
     act(() => {
       fireEvent.pointerDown(row, {
         pointerId: 2,
         pointerType: "mouse",
-        clientX: 250,
+        clientX: 375,
         clientY: 50,
         button: 0,
       });
@@ -250,7 +256,7 @@ describe("RowWaveform clip play follow", () => {
       fireEvent.pointerDown(row, {
         pointerId: 3,
         pointerType: "mouse",
-        clientX: 200,
+        clientX: 300,
         clientY: 50,
         button: 0,
       });
@@ -291,7 +297,7 @@ describe("RowWaveform clip play follow", () => {
   it("does not move the window when clicking the track to set the cursor", () => {
     const { row, windowStart, rerender, onSeek } = renderRow({ initialTime: 0 });
 
-    // Click the empty track at 85% across the 12s window (seek target 10.2).
+    // Click the empty track at 85% across the 8s window (seek target 6.8).
     const inner = row.querySelector(".row-waveform__inner") as HTMLElement;
     Object.defineProperty(inner, "getBoundingClientRect", {
       value: () => ({
@@ -304,11 +310,11 @@ describe("RowWaveform clip play follow", () => {
       }),
     });
     fireEvent.click(inner, { clientX: 510, clientY: 50 });
-    expect(onSeek).toHaveBeenCalledWith(10.2);
+    expect(onSeek).toHaveBeenCalledWith(6.8);
 
     // The seek lands inside the window; even with playback running the window
     // must not re-center on the playhead afterwards.
-    rerender({ playing: true, currentTime: 10.2 });
+    rerender({ playing: true, currentTime: 6.8 });
     act(() => flushRaf());
 
     expect(windowStart()).toBe(0);
@@ -322,8 +328,8 @@ describe("RowWaveform clip play follow", () => {
       rerender({ currentTime: t });
       act(() => flushRaf());
     }
-    // follow target at t=8 is 8 - 0.6*12 = 0.8.
-    expect(windowStart()).toBeCloseTo(0.8);
+    // follow target at t=8 is 8 - 0.6*8 = 3.2.
+    expect(windowStart()).toBeCloseTo(3.2);
   });
 
   it("auto-scrolls while a long clip is playing near the window edge", () => {
