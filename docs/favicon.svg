@@ -1,42 +1,77 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Listening Loop">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 150" role="img" aria-labelledby="title desc">
+  <title id="title">Listening loop robot icon</title>
+  <desc id="desc">A subtle robot-like audio icon with side waveform ears, waveform bars, and a cyan-green infinity loop.</desc>
+
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="64" gradientUnits="userSpaceOnUse">
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="150" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#0c1445"/>
       <stop offset="1" stop-color="#060a24"/>
     </linearGradient>
-    <linearGradient id="loop" x1="17" y1="40" x2="47" y2="24" gradientUnits="userSpaceOnUse">
+
+    <linearGradient id="loop" x1="35" y1="94" x2="115" y2="57" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#00ff88"/>
       <stop offset=".48" stop-color="#00e8c0"/>
       <stop offset="1" stop-color="#40ffff"/>
     </linearGradient>
+
+    <linearGradient id="wave" x1="75" y1="17" x2="75" y2="133" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#dff7ff"/>
+    </linearGradient>
   </defs>
 
-  <!-- Stable brand background -->
-  <rect x="1" y="1" width="62" height="62" rx="13" fill="url(#bg)"/>
+  <!-- App-icon surface -->
+  <rect x="0" y="0" width="150" height="150" rx="28" fill="url(#bg)"/>
 
-  <!-- Short robot/audio ears; deliberately chunky for 16px rendering -->
-  <g fill="#f4fbff">
-    <rect x="6" y="28" width="3.5" height="8" rx="1.75"/>
-    <rect x="11" y="25" width="3.5" height="14" rx="1.75"/>
-    <rect x="49.5" y="25" width="3.5" height="14" rx="1.75"/>
-    <rect x="54.5" y="28" width="3.5" height="8" rx="1.75"/>
+  <!-- Top waveform / subtle robot crown -->
+  <g fill="url(#wave)">
+    <rect x="33" y="37" width="6" height="11" rx="3"/>
+    <rect x="46" y="30" width="6" height="18" rx="3"/>
+    <rect x="59" y="22" width="6" height="26" rx="3"/>
+    <rect x="72" y="16" width="6" height="32" rx="3"/>
+    <rect x="85" y="22" width="6" height="26" rx="3"/>
+    <rect x="98" y="30" width="6" height="18" rx="3"/>
+    <rect x="111" y="37" width="6" height="11" rx="3"/>
   </g>
 
-  <!-- Simplified infinity/listening loop -->
+  <!-- Side waveform ears: intentionally retained to create the subtle robot character -->
+  <g fill="url(#wave)">
+    <rect x="13" y="67" width="6" height="16" rx="3"/>
+    <rect x="22" y="62" width="6" height="26" rx="3"/>
+    <rect x="122" y="62" width="6" height="26" rx="3"/>
+    <rect x="131" y="67" width="6" height="16" rx="3"/>
+  </g>
+
+  <!-- Central loop / robot face -->
   <path
-    d="M32 32
-       C27.8 27.1 23.8 24.7 20.3 25.6
-       C16.5 26.5 14.7 29.8 15.5 33.2
-       C16.3 36.8 20 38.8 23.5 37.5
-       C26.5 36.4 29.1 33.5 32 32
-       C34.9 30.5 37.5 27.6 40.5 26.5
-       C44 25.2 47.7 27.2 48.5 30.8
-       C49.3 34.2 47.5 37.5 43.7 38.4
-       C40.2 39.3 36.2 36.9 32 32"
+    d="M75 75
+       C65 64 56 59 48 61
+       C39 63 35 70 36 78
+       C37 87 46 93 55 90
+       C63 88 69 81 75 75
+       C81 69 87 62 95 60
+       C104 58 113 64 114 73
+       C116 82 111 90 103 92
+       C94 94 85 87 75 75
+       C65 86 56 93 47 91
+       C39 89 34 81 36 72
+       C38 63 47 57 56 60
+       C64 62 70 69 75 75"
     fill="none"
     stroke="url(#loop)"
-    stroke-width="5"
+    stroke-width="9"
     stroke-linecap="round"
     stroke-linejoin="round"
   />
+
+  <!-- Bottom waveform -->
+  <g fill="url(#wave)">
+    <rect x="33" y="103" width="6" height="10" rx="3"/>
+    <rect x="46" y="103" width="6" height="16" rx="3"/>
+    <rect x="59" y="103" width="6" height="24" rx="3"/>
+    <rect x="72" y="103" width="6" height="31" rx="3"/>
+    <rect x="85" y="103" width="6" height="24" rx="3"/>
+    <rect x="98" y="103" width="6" height="16" rx="3"/>
+    <rect x="111" y="103" width="6" height="10" rx="3"/>
+  </g>
 </svg>
