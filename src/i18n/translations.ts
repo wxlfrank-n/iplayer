@@ -108,7 +108,7 @@ export const en = {
     repeatsHint: "Choose how many times a clip repeats when you click it.",
 
     showAdvanced: "Show advanced controls",
-    showAdvancedHint: "Show quick controls for merging clips and changing repeats above the waveform.",
+    showAdvancedHint: "Show quick controls for merging clips and changing repeats below the waveform.",
 
     silenceThreshold: "Silence sensitivity",
     silenceHint: "Controls how quiet the audio needs to be before it is treated as a pause. Lower values detect only quieter pauses.",
@@ -179,7 +179,7 @@ export const zh: Messages = {
 
   trackList: {
     empty: "还没有添加音频",
-    hint: "将 MP3 文件拖到这里，或使用上方按钮添加",
+    hint: "将 MP3 文件拖到这里，或使用下方按钮添加",
     removeTrack: "移除音频",
   },
 
@@ -244,7 +244,7 @@ export const zh: Messages = {
     repeatsHint: "设置点击片段后自动重复播放的次数。",
 
     showAdvanced: "显示高级控制",
-    showAdvancedHint: "在波形上方显示片段合并和重复次数的快捷控制。",
+    showAdvancedHint: "在波形下方显示片段合并和重复次数的快捷控制。",
 
     silenceThreshold: "静音灵敏度",
     silenceHint: "控制声音需要多安静才会被识别为停顿。数值越低，只会识别更安静的停顿。",

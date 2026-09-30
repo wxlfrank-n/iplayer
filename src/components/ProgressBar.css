@@ -75,34 +75,6 @@
   align-items: stretch;
 }
 
-.clip-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  width: min(100%, 480px);
-  max-width: none;
-  align-self: center;
-  user-select: none;
-  -webkit-user-select: none;
-  transform-origin: top center;
-  animation: clip-toolbar-in 0.18s ease-out;
-}
-
-@keyframes clip-toolbar-in {
-  from {
-    opacity: 0;
-    transform: translateY(-6px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.clip-toolbar--disabled {
-  opacity: 0.55;
-}
 .waveform-loading--stacked {
   position: static;
   width: 100%;
@@ -172,26 +144,19 @@
 }
 
 @media (max-width: 767px) {
-  .progress-container {
-    flex: 1;
-    justify-content: flex-start;
-    gap: 16px;
-    min-height: 0;
-  }
+    .progress-container {
+      flex: 1;
+      justify-content: flex-start;
+      gap: 16px;
+      min-height: 0;
+    }
 
-  .clip-toolbar {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px 16px;
+    .waveform-loading--stacked {
+      position: static;
+      width: 100%;
+      height: 48px;
+    }
   }
-
-  .waveform-loading--stacked {
-    position: static;
-    width: 100%;
-    height: 48px;
-  }
-}
 
 .waveform-empty-hint {
   font-size: 0.75rem;

@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import {
     act,
     renderHook,
@@ -195,7 +197,9 @@ describe(
              */
             vi.stubGlobal(
                 "Audio",
-                vi.fn(() => audio),
+                function () {
+                    return audio;
+                },
             );
 
             rafCallback = null;

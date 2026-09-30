@@ -108,7 +108,7 @@ function renderRow({ initialTime = 10, playing = false, clips: useClips = clips 
   };
 
   // clientWidth is patched post-mount; one extra render lets the width effect
-  // settle on the 600px window (8s) before the test interacts.
+  // settle on the 600px window before the test interacts.
   rerender({});
 
   return {
@@ -275,7 +275,11 @@ describe("RowWaveform clip play follow", () => {
       fireEvent.pointerUp(window, { pointerId: 3, clientX: 0, clientY: 50 });
     });
     act(() => flushRaf());
-    expect(windowStart()).toBe(4);
+    // The 0.86s clip densifies the window to getWindowSecs(600, shortClips) =
+    // 6.45s, so panning 300px at win/600 px-per-second moves 300 * win / 600.
+    const win = getWindowSecs(600, shortClips);
+    const panStart = 300 * (win / 600);
+    expect(windowStart()).toBeCloseTo(panStart, 3);
 
     // Settle the pan's trailing click suppression before the real click.
     fireEvent.click(row);
@@ -286,7 +290,7 @@ describe("RowWaveform clip play follow", () => {
     fireEvent.click(clip);
     rerender({ playing: true, currentTime: 6.63 });
 
-    expect(windowStart()).toBe(4);
+    expect(windowStart()).toBeCloseTo(panStart, 3);
   });
 
   it("does not seek when clicking silence while a clip is playing", () => {
@@ -384,10 +388,13 @@ describe("RowWaveform clip play follow", () => {
       rerender({ currentTime: t });
       act(() => flushRaf());
     }
-    // Resumed playback keeps the resume-time on-screen fraction: the window
-    // glides with the playhead instead of yanking it to the 60% slot.
-    // follow target at t=8 is 0 + (8 - 7.5) = 0.5.
-    expect(windowStart()).toBeCloseTo(8 - 7.5);
+    // The 0.86s clip densifies the window to getWindowSecs(600, shortClips) =
+    // 6.45s, so when clicked the window snaps to the clip start (it lies
+    // entirely to the right). Resuming playback at 7.5 keeps that on-screen
+    // fraction: the window glides with the playhead instead of yanking it to
+    // the 60% slot. At t=8 the anchor is 6.63 + (8 - 7.5).
+    const armedStart = 6.63;
+    expect(windowStart()).toBeCloseTo(armedStart + (8 - 7.5));
   });
 
   it("does not jump the window when playback starts with a cursor inside it", () => {

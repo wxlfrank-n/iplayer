@@ -20,24 +20,36 @@ export interface ClipSplitResult {
 export function getClipSplitResult(
   clips: Clip[],
   displayClips: Clip[],
-  idx: number
+  idx: number,
 ): ClipSplitResult | null {
   const clip = displayClips[idx];
   if (!clip) return null;
 
-  // Only a group holding at least two original clips can be unpacked.
-  const children = clip.children;
-  if (!children || children.length < 2) return null;
+  // Prefer explicit children. If the displayed clip has no children,
+  // recover the original clips contained by its range.
+  const children = clip.children?.length
+    ? clip.children
+    : clips.filter((child) => child.start >= clip.start && child.end <= clip.end);
 
-  const largestChildGap = Math.max(
-    ...children.slice(1).map((child, childIdx) =>
-      child.start - children[childIdx].end,
-    ),
-  );
-  const mergeGap = largestChildGap - 0.000001;
+  if (children.length < 2) return null;
+
+  let largestChildGap = -Infinity;
+
+  for (let i = 1; i < children.length; i++) {
+    const gap = children[i].start - children[i - 1].end;
+    largestChildGap = Math.max(largestChildGap, gap);
+  }
+
+  if (!Number.isFinite(largestChildGap)) return null;
+
+  // Put the threshold immediately below this gap so that boundary
+  // is no longer merged.
+  const mergeGap = Math.max(0, largestChildGap - 0.000001);
+
   const nextClips = mergeClipsByGap(clips, mergeGap);
   const activeClip = groupContaining(nextClips, children[0]);
-  return activeClip >= 0 ? { mergeGap, activeClip } : null;
+
+  return nextClips.length > 0 ? { mergeGap, activeClip: activeClip == -1 ? 0 : activeClip } : null;
 }
 
 export interface ClipMergeResult {

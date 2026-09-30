@@ -8,7 +8,7 @@ const MIN_WINDOW_SECS = 4;
  * This does not force every clip to be >= 60px. Very short clips are allowed.
  * It only prevents the overall clip layout from becoming too crowded.
  */
-const TARGET_CLIP_WIDTH_PX = 30;
+const TARGET_CLIP_WIDTH_PX = 80;
 
 export function getBaseWindowSecs(width: number): number {
   if (width >= 1600) return 32;
@@ -65,7 +65,7 @@ export function getWindowSecs(
    *       D * width / TARGET_CLIP_WIDTH_PX
    */
   const densityWindowSecs =
-    (medianDuration * width) /
+    (Math.max(0.1, medianDuration) * width) /
     TARGET_CLIP_WIDTH_PX;
 
   return Math.max(

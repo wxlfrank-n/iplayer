@@ -17,12 +17,7 @@ export interface RowWaveformProps {
   displayClips: ClipData[];
   currentTime: number;
   onSeek: (time: number) => void;
-  onPlayRange: (
-    start: number,
-    end: number,
-    repetitions: number,
-    onComplete?: () => void,
-  ) => void;
+  onPlayRange: (start: number, end: number, repetitions: number, onComplete?: () => void) => void;
   repetitions: number;
   onStopPlayback?: () => void;
   activeClip: number;
@@ -36,134 +31,32 @@ export interface RowWaveformProps {
   scrollTimeoutRef: React.RefObject<number | undefined>;
 }
 
-export const RowWaveform = memo(function RowWaveform({
-  waveform,
-  displayClips,
-  currentTime,
-  onSeek,
-  onPlayRange,
-  repetitions,
-  onStopPlayback,
-  activeClip,
-  onActiveClipChange,
-  onSwipeClip,
-  getAnalyser,
-  getCurrentTime,
-  playing,
-  scrolling,
-  setScrolling,
-  scrollTimeoutRef,
-}: RowWaveformProps) {
+export const RowWaveform = memo(function RowWaveform({ waveform, displayClips, currentTime, onSeek, onPlayRange, repetitions, onStopPlayback, activeClip, onActiveClipChange, onSwipeClip, getAnalyser, getCurrentTime, playing, scrolling, setScrolling, scrollTimeoutRef }: RowWaveformProps) {
   const innerH = VB_H - PAD * 2;
   const cursorElRef = useRef<HTMLDivElement>(null);
   const playedElRef = useRef<HTMLDivElement>(null);
-
-  const {
-    hsRef,
-    trackRef,
-    hsWinLenRef,
-    renderedBufferAnchor,
-    bufferLengthRef,
-    onHsPointerDown,
-    onRootClickCapture,
-    onWaveformClick,
-    getStripPlayedPct,
-    playClip,
-  } = useRowWaveformScroll({
-    waveformDuration: waveform.duration,
-    displayClips,
-    currentTime,
-    onSeek,
-    onPlayRange,
-    repetitions,
-    onStopPlayback,
-    activeClip,
-    onActiveClipChange,
-    onSwipeClip,
-    getCurrentTime,
-    playing,
-    scrolling,
-    setScrolling,
-    scrollTimeoutRef,
-    cursorElRef,
-    playedElRef,
+  const clipLabelLayerRef = useRef<HTMLDivElement>(null);
+  const { hsRef, trackRef, hsWinLenRef, renderedBufferAnchor, bufferLengthRef, onHsPointerDown, onRootClickCapture, onWaveformClick, getStripPlayedPct, playClip } = useRowWaveformScroll({
+    waveformDuration: waveform.duration, displayClips, currentTime, onSeek, onPlayRange, repetitions, onStopPlayback, activeClip, onActiveClipChange, onSwipeClip, getCurrentTime, playing, scrolling, setScrolling, scrollTimeoutRef, cursorElRef, playedElRef, clipLabelLayerRef,
   });
-
   const viewportLen = hsWinLenRef.current;
   const bufferLen = bufferLengthRef.current;
   const bufferScale = viewportLen > 0 ? bufferLen / viewportLen : 1;
   const vbW = VB_W * bufferScale;
   const color = getCssVar("--accent");
-
-  const waveformWindow = {
-    windowStartSec: renderedBufferAnchor,
-    windowLen: bufferLen,
-    innerH,
-    vbW,
-    vbH: VB_H,
-  };
-
-  const canvasStyle: React.CSSProperties = {
-    position: "absolute",
-    inset: 0,
-    width: "100%",
-    height: "100%",
-  };
-
+  const waveformWindow = { windowStartSec: renderedBufferAnchor, windowLen: bufferLen, innerH, vbW, vbH: VB_H };
+  const canvasStyle: React.CSSProperties = { position: "absolute", inset: 0, width: "100%", height: "100%" };
 
   return (
-    <div
-      className="row-waveform"
-      ref={hsRef}
-      onPointerDown={onHsPointerDown}
-      onClickCapture={onRootClickCapture}
-    >
+    <div className="row-waveform" ref={hsRef} onPointerDown={onHsPointerDown} onClickCapture={onRootClickCapture}>
       <div className="row-waveform__inner" onClick={onWaveformClick}>
-        <DancingLines
-          getAnalyser={getAnalyser}
-          getCurrentTime={getCurrentTime}
-          waveform={waveform}
-          currentTime={currentTime}
-          playing={playing}
-          color={color}
-        />
-
+        <DancingLines getAnalyser={getAnalyser} getCurrentTime={getCurrentTime} waveform={waveform} currentTime={currentTime} playing={playing} color={color} />
         <div className="row-waveform__track" ref={trackRef}>
-          <WaveformCanvas
-            className="row-waveform__svg"
-            data={waveform.data}
-            sampleRate={waveform.sampleRate}
-            window={waveformWindow}
-            strokeWidth={1.6}
-            style={canvasStyle}
-          />
-
-          <div
-            ref={playedElRef}
-            className="row-waveform__played"
-            style={{
-              position: "absolute",
-              inset: 0,
-              overflow: "hidden",
-              pointerEvents: "none",
-              clipPath: "inset(0 100% 0 0)",
-            }}
-          >
-            <WaveformCanvas
-              className="row-waveform__svg row-waveform__svg--played"
-              data={waveform.data}
-              sampleRate={waveform.sampleRate}
-              window={waveformWindow}
-              strokeWidth={1.6}
-              color={color}
-              style={canvasStyle}
-            />
+          <WaveformCanvas className="row-waveform__svg" data={waveform.data} sampleRate={waveform.sampleRate} window={waveformWindow} strokeWidth={1.6} style={canvasStyle} />
+          <div ref={playedElRef} className="row-waveform__played" style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", clipPath: "inset(0 100% 0 0)" }}>
+            <WaveformCanvas className="row-waveform__svg row-waveform__svg--played" data={waveform.data} sampleRate={waveform.sampleRate} window={waveformWindow} strokeWidth={1.6} color={color} style={canvasStyle} />
           </div>
-
-          <div
-            className="row-waveform__clip-layer"
-            style={{ position: "absolute", inset: 0, width: "100%" }}
-          >
+          <div ref={clipLabelLayerRef} className="row-waveform__clip-layer" style={{ position: "absolute", inset: 0, width: "100%" }}>
             <Clips
               clips={displayClips}
               window={waveformWindow}
@@ -175,26 +68,27 @@ export const RowWaveform = memo(function RowWaveform({
               onActivate={onActiveClipChange}
               onSwipe={onSwipeClip}
               renderLabel={(id, c) => (
-                <ClipLabel
+                <div
                   key={`hlbl-${id}`}
-                  index={id}
-                  duration={c.vEnd - c.vStart}
-                  active={id === activeClip}
-                  canSplit={!playing && c.children?.length != null && c.children.length > 1}
-                  canMerge={!playing && (id > 0 || id < displayClips.length - 1)}
-                  onSplit={onSwipeClip ? () => onSwipeClip(id, "up") : undefined}
-                  onMerge={onSwipeClip ? () => onSwipeClip(id, "down") : undefined}
-                />
+                  data-row-clip-label
+                  data-clip-start={c.start}
+                  data-clip-end={c.end}
+                  style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)", }}
+                >
+                  <ClipLabel
+                    index={id}
+                    duration={c.vEnd - c.vStart}
+                    active={id === activeClip}
+                    canSplit={!playing && c.children?.length != null && c.children.length > 1}
+                    canMerge={!playing && (id > 0 || id < displayClips.length - 1)}
+                    onSplit={onSwipeClip ? () => onSwipeClip(id, "up") : undefined}
+                    onMerge={onSwipeClip ? () => onSwipeClip(id, "down") : undefined}
+                  />
+                </div>
               )}
             />
           </div>
-
-          <WaveformCursor
-            view="row"
-            getPlayedPct={getStripPlayedPct}
-            getCurrentTime={getCurrentTime}
-            cursorRef={cursorElRef}
-          />
+          <WaveformCursor view="row" getPlayedPct={getStripPlayedPct} getCurrentTime={getCurrentTime} cursorRef={cursorElRef} />
         </div>
       </div>
     </div>

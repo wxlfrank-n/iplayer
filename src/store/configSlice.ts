@@ -10,7 +10,7 @@
  *   Clips shorter than this are folded into a neighbor when the gap is small.
  * - repetitions: How many times a clicked clip is repeated (default: 3).
  * - showAdvancedControls: Whether the clip toolbar (merge gap + repeat
- *   controls) is shown above the waveform (default: true).
+ *   controls) is shown below the waveform (default: true).
  * - theme: Appearance palette (dark/light/midnight/paper/rose/nova). Each theme
  *   carries its own accent color, so there is no separate accent setting.
  * - language: UI locale ("en" | "zh", default: "en").

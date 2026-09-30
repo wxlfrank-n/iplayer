@@ -21,8 +21,7 @@ import { shallowEqual } from "react-redux";
 
 import { RowWaveform } from "./RowWaveform";
 import { StackedWaveform } from "./StackedWaveform";
-import { MergeSlider } from "./MergeSlider";
-import { RepsStepper } from "./RepsStepper";
+import { ClipToolbar, TOOLBAR_SWIPE_THRESHOLD_PX } from "./ClipToolbar";
 import { WaveformViewFlipButton } from "./WaveformViewFlipButton";
 
 import {
@@ -136,6 +135,13 @@ export function ProgressBar({
 
   const scrollTimeoutRef =
     useRef<number | undefined>(undefined);
+
+  /*
+   * Collapsed toolbar hit area: pointer start for the swipe-down gesture
+   * that re-expands the toolbar.
+   */
+  const hitPointerStartRef =
+    useRef<{ x: number; y: number } | null>(null);
 
   /*
    * ---------------------------------------------------------
@@ -429,6 +435,77 @@ export function ProgressBar({
             </div>
           )}
 
+        {/*
+         * -----------------------------------------------------
+         * COLLAPSED TOOLBAR HIT AREA
+         * -----------------------------------------------------
+         *
+         * When the clip toolbar is collapsed its box is gone from the
+         * layout, so the double-click / swipe-down target lives here inside
+         * progress-container: an absolutely positioned strip at the
+         * container's bottom edge that expands the toolbar again.
+         */}
+        {clips.length > 0 &&
+          !showAdvancedControls && (
+            <div
+              className="clip-toolbar__collapsed-hit"
+              onDoubleClick={() => {
+                dispatch(
+                  updateConfig({
+                    showAdvancedControls: true,
+                  }),
+                );
+              }}
+              onPointerDown={(e) => {
+                hitPointerStartRef.current = {
+                  x: e.clientX,
+                  y: e.clientY,
+                };
+              }}
+              onPointerUp={(e) => {
+                const start =
+                  hitPointerStartRef.current;
+
+                hitPointerStartRef.current =
+                  null;
+
+                if (!start) {
+                  return;
+                }
+
+                const dy =
+                  e.clientY - start.y;
+                const absY =
+                  Math.abs(dy);
+                const absX =
+                  Math.abs(
+                    e.clientX -
+                      start.x,
+                  );
+
+                /*
+                 * Swipe down expands the toolbar.
+                 */
+                if (
+                  absY >=
+                    TOOLBAR_SWIPE_THRESHOLD_PX &&
+                  absY > absX &&
+                  dy > 0
+                ) {
+                  dispatch(
+                    updateConfig({
+                      showAdvancedControls: true,
+                    }),
+                  );
+                }
+              }}
+              onPointerCancel={() => {
+                hitPointerStartRef.current =
+                  null;
+              }}
+            />
+          )}
+
       </div>
 
       {/*
@@ -438,44 +515,22 @@ export function ProgressBar({
        */}
       {clips.length > 0 &&
         showAdvancedControls && (
-          <div
-            className={`clip-toolbar ${playing
-              ? "clip-toolbar--disabled"
-              : ""
-              }`}
-            onDoubleClick={() => {
-              dispatch(
-                updateConfig({
-                  showAdvancedControls: false,
-                }),
-              );
-            }}
-          >
-            <MergeSlider
-              value={mergeGap}
-              clipCount={
-                displayClips.length
-              }
-              onChange={
-                setMergeGap
-              }
-              disabled={
-                playing
-              }
-            />
-
-            <RepsStepper
-              value={
-                repetitions
-              }
-              onChange={
-                handleRepetitionsChange
-              }
-              disabled={
-                playing
-              }
-            />
-          </div>
+          <ClipToolbar
+            mergeGap={mergeGap}
+            clipCount={
+              displayClips.length
+            }
+            onMergeGapChange={
+              setMergeGap
+            }
+            repetitions={
+              repetitions
+            }
+            onRepetitionsChange={
+              handleRepetitionsChange
+            }
+            disabled={playing}
+          />
         )}
     </>
   );
