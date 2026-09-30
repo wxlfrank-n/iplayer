@@ -212,10 +212,6 @@ export function useRowWaveformScroll({
   );
   useLayoutEffect(() => {
     const element = hsRef.current;
-    if (!element && window.innerWidth > 0) {
-      applyWidth(window.innerWidth);
-      return;
-    }
     if (!element) return;
     applyWidth(element.clientWidth);
   }, [applyWidth]);
@@ -365,30 +361,10 @@ export function useRowWaveformScroll({
       }
       return;
     }
-    if (wasPlaying && !playing) {
-      if (playbackContextRef.current.type === 'clip') {
-        /*
-         * The clip's range finished outside the onComplete callback
-         * (e.g. the player paused at the end of the range). Exit clip
-         * follow mode and resume normal follow from where playback
-         * stopped, unless the user manually moved during the clip.
-         */
-        playbackContextRef.current = {type: 'idle'};
-        if (viewportContextRef.current.type !== 'manual') {
-          viewportContextRef.current = {
-            type: 'follow',
-            epoch: makeFollowEpoch(
-              viewportAnchorRef.current,
-              hsWinLenRef.current,
-              getCurrentTime(),
-            ),
-          };
-        }
-        return;
-      }
+    if (wasPlaying && !playing && playbackContextRef.current.type !== 'clip') {
       playbackContextRef.current = {type: 'idle'};
     }
-  }, [playing, setViewportFollow, getCurrentTime]);
+  }, [playing, setViewportFollow]);
   useEffect(() => {
     const previous = previousTimeRef.current;
     previousTimeRef.current = currentTime;
@@ -420,79 +396,63 @@ export function useRowWaveformScroll({
   const completeClipPlayback = useCallback(
     (end: number) => {
       playbackContextRef.current = {type: 'idle'};
+
+      const windowLength = hsWinLenRef.current;
+
+      // If clip-follow reached the clip's right boundary, keep that exact
+      // viewport after playback finishes. Do NOT let normal follow advance it.
+      const clipEndAnchor = clampWindowAnchor(
+        Math.max(0, end - windowLength),
+        hsMaxStartRef.current,
+      );
+
+      const context = viewportContextRef.current;
+
+      if (
+        context.type === 'clip-follow' &&
+        context.autoFollow &&
+        viewportAnchorRef.current >= clipEndAnchor - 1e-6
+      ) {
+        setLiveAnchor(clipEndAnchor);
+      }
+
+      // Playback has stopped. Keep the resulting viewport stationary.
       viewportContextRef.current = {type: 'manual'};
+
       scrollingRef.current = false;
       setScrolling(false);
+
       renderFrame(end, viewportAnchorRef.current);
     },
-    [renderFrame, setScrolling],
+    [renderFrame, setLiveAnchor, setScrolling],
   );
   const startClipRound = useCallback(
     (start: number, end: number, preserveManual = false) => {
       const viewport = viewportContextRef.current;
-      if (
-        preserveManual &&
-        (viewport.type === 'manual' ||
-          (viewport.type === 'clip-follow' && viewport.preserveView))
-      )
-        return;
+      // Manual takeover is preserved only between repetitions of the same
+      // playRange operation. A new explicit clip click always re-arms the
+      // clip from the current geometry.
+      if (preserveManual && viewport.type === 'manual') return;
       const windowLength = hsWinLenRef.current;
-      const clipLength = end - start;
-      const anchor = viewportAnchorRef.current;
-      const preserveView = viewport.type === 'manual';
-      /*
-       * Arm the follow:
-       * - Clip start to the left of the viewport (left-hidden): jump to the
-       *   clip start so playback begins scrolled onto the clip — unless the
-       *   user manually positioned the viewport on the clip they clicked.
-       * - Otherwise keep the current view; the clip-follow policy glides
-       *   forward as the clip plays.
-       */
-      let target = anchor;
-      /*
-       * Fully outside the viewport: jump to the clip start so playback
-       * begins scrolled onto the clip.
-       */
-      if (end < anchor || start > anchor + windowLength) {
-        target = clampWindowAnchor(start, hsMaxStartRef.current);
-      } else if (!preserveView && start < anchor) {
-        /*
-         * Left-hidden (clip start to the left of the viewport): jump to
-         * the clip start, unless the user manually positioned the viewport
-         * on the clip they clicked.
-         */
-        target = clampWindowAnchor(start, hsMaxStartRef.current);
-      }
-      let autoFollow = true;
-      if (clipLength <= windowLength) {
-        const result = getClipPlaybackViewport(
-          start,
-          end,
-          target,
-          windowLength,
-          hsMaxStartRef.current,
-        );
-        target = result.anchor;
-        autoFollow = result.autoFollow;
-      }
+      const result = getClipPlaybackViewport(
+        start,
+        end,
+        viewportAnchorRef.current,
+        windowLength,
+        hsMaxStartRef.current,
+      );
+      const target = result.anchor;
       viewportContextRef.current = {
         type: 'clip-follow',
         start,
         end,
-        autoFollow,
-        anchorStart: target,
-        playbackStart: start,
-        followEnd: end > target + windowLength ? end : null,
-        preserveView,
+        autoFollow: result.autoFollow,
+        epoch: makeFollowEpoch(target, windowLength, start),
       };
-      /*
-       * No forced re-render on purpose: the frame loop (and any buffer
-       * rebuild) renders the new anchor on the next frame, matching the
-       * historical behavior the follow tests depend on.
-       */
-      setLiveAnchor(target);
+      setLiveAnchor(target, true);
+      renderFrame(start, target);
     },
-    [setLiveAnchor],
+    [renderFrame, setLiveAnchor],
   );
   const playClip = useCallback(
     (start: number, end: number, reps: number) => {
