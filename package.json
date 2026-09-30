@@ -7,12 +7,18 @@
     "dev": "vite",
     "build": "node scripts/build.mjs",
     "build:local": "node scripts/build.mjs --local",
-    "lint": "eslint .",
+    "lint": "gts lint",
     "lint:fix": "eslint . --fix",
     "preview": "vite preview",
     "test": "vitest run",
     "serve": "vite preview",
-    "serve:local": "serve ./"
+    "serve:local": "serve ./",
+    "clean": "gts clean",
+    "compile": "tsc",
+    "fix": "gts fix",
+    "prepare": "npm.cmd run compile",
+    "pretest": "npm.cmd run compile",
+    "posttest": "npm.cmd run lint"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.12.0",
@@ -26,7 +32,7 @@
     "@eslint/js": "^10.0.1",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
-    "@types/node": "^24.13.3",
+    "@types/node": "^22.7.5",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.1.0",
@@ -40,10 +46,11 @@
     "oxlint": "^1.79.0",
     "prettier": "^3.9.6",
     "serve": "^14.2.6",
-    "typescript": "~6.0.2",
+    "typescript": "^5.6.3",
     "typescript-eslint": "^8.71.0",
     "vite": "^8.2.2",
     "vite-plugin-svgr": "^5.2.0",
-    "vitest": "^5.0.1"
+    "vitest": "^5.0.1",
+    "gts": "^7.0.0"
   }
 }

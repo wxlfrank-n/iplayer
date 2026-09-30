@@ -1,11 +1,7 @@
 export function getCssVar(
   name: string,
   element: Element = document.documentElement,
-  fallback = "",
+  fallback = '',
 ): string {
-  return (
-    getComputedStyle(element)
-      .getPropertyValue(name)
-      .trim() || fallback
-  );
+  return getComputedStyle(element).getPropertyValue(name).trim() || fallback;
 }

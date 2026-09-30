@@ -50,13 +50,17 @@ export function splitBySilence(
   sampleRate: number,
   options: SplitOptions,
 ): ClipData {
-  if (!data || data.length === 0 || sampleRate <= 0) return { clips: [], minGap: 0, gaps: [] };
+  if (!data || data.length === 0 || sampleRate <= 0)
+    return {clips: [], minGap: 0, gaps: []};
 
   const audioDuration = data.length / sampleRate;
   // min blockSamples = 64 to avoid a pathological case where a single block is
   // too short to compute a meaningful peak. blockMs is converted via the sample
   // rate: e.g. 10ms at 48kHz is 480 samples.
-  const blockSamples = Math.max(64, Math.round((options.blockMs / 1000) * sampleRate));
+  const blockSamples = Math.max(
+    64,
+    Math.round((options.blockMs / 1000) * sampleRate),
+  );
   // silenceRatio is clamped to [0.0001, 0.01] so a single block can't be
   // misclassified as silence due to a single sample being quiet. A 0.01 ratio
   // is ~-40 dB, which is already very quiet.
@@ -118,7 +122,11 @@ export function splitBySilence(
   return findMinMergeGap(clips, gaps, options.minClipLength);
 }
 
-function expandClips(clips: Clip[], audioDuration: number, expandRatio: number = 0.25) {
+function expandClips(
+  clips: Clip[],
+  audioDuration: number,
+  expandRatio: number = 0.25,
+) {
   // Expand each clip's start and end by a fraction of the surrounding silence,
   // up to 25% of the gap on each side, but never past the clip boundaries.
   // This makes clips more natural and less abrupt.
@@ -198,7 +206,7 @@ export function getClipGaps(clips: Clip[]): number[] {
 export function findMinMergeGap(
   clips: Clip[],
   gaps: number[],
-  minClipLength: number
+  minClipLength: number,
 ): ClipData {
   if (clips.length === 0) {
     return {
@@ -209,11 +217,7 @@ export function findMinMergeGap(
   }
 
   // Already valid without merging.
-  if (
-    clips.every(
-      clip => clip.end - clip.start >= minClipLength
-    )
-  ) {
+  if (clips.every(clip => clip.end - clip.start >= minClipLength)) {
     return {
       minGap: 0,
       gaps,
@@ -227,19 +231,16 @@ export function findMinMergeGap(
   // Fall back to the unmerged clips (and no merge) when no gap can satisfy
   // minClipLength, so a short track or a single short clip never wipes the
   // clip list.
-  let result: ClipData = { clips, minGap: 0, gaps };
+  let result: ClipData = {clips, minGap: 0, gaps};
 
   while (low <= high) {
     const mid = Math.floor((low + high) / 2);
     const gap = gaps[mid];
 
-    const mergedClips = mergeClipsByGap(
-      clips,
-      gap
-    );
+    const mergedClips = mergeClipsByGap(clips, gap);
 
     const valid = mergedClips.every(
-      clip => clip.end - clip.start >= minClipLength
+      clip => clip.end - clip.start >= minClipLength,
     );
 
     if (valid) {
@@ -281,48 +282,29 @@ export function mergeClipsByConfig(
       }
 
       const left = i > 0 ? result[i - 1] : undefined;
-      const right =
-        i < result.length - 1
-          ? result[i + 1]
-          : undefined;
+      const right = i < result.length - 1 ? result[i + 1] : undefined;
 
-      const leftGap = left
-        ? clip.start - left.end
-        : Infinity;
+      const leftGap = left ? clip.start - left.end : Infinity;
 
-      const rightGap = right
-        ? right.start - clip.end
-        : Infinity;
+      const rightGap = right ? right.start - clip.end : Infinity;
 
       // Find the nearest adjacent clip by silence length.
       const mergeLeft = leftGap <= rightGap;
       const nearest = mergeLeft ? left! : right!;
 
-      const nearestLength =
-        nearest.end - nearest.start;
+      const nearestLength = nearest.end - nearest.start;
 
       // Merge when:
       // 1. The current clip is very short, or
       // 2. Its nearest neighbour is also shorter than minClipLength.
-      if (
-        clipLength > mustMergeThan &&
-        nearestLength >= minClipLength
-      ) {
+      if (clipLength > mustMergeThan && nearestLength >= minClipLength) {
         continue;
       }
 
       if (mergeLeft) {
-        result.splice(
-          i - 1,
-          2,
-          mergeTwoClips(left!, clip),
-        );
+        result.splice(i - 1, 2, mergeTwoClips(left!, clip));
       } else {
-        result.splice(
-          i,
-          2,
-          mergeTwoClips(clip, right!),
-        );
+        result.splice(i, 2, mergeTwoClips(clip, right!));
       }
 
       // The structure changed, so restart and
@@ -341,19 +323,13 @@ export function mergeClipsByConfig(
   return result;
 }
 
-function mergeTwoClips(
-  left: Clip,
-  right: Clip,
-): Clip {
+function mergeTwoClips(left: Clip, right: Clip): Clip {
   return {
     start: left.start,
     end: right.end,
     vStart: left.vStart,
     vEnd: right.vEnd,
 
-    children: [
-      ...(left.children ?? [left]),
-      ...(right.children ?? [right]),
-    ],
+    children: [...(left.children ?? [left]), ...(right.children ?? [right])],
   };
 }

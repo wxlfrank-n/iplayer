@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { mergeClipsByGap, type Clip } from "./clips";
-import { getClipMergeResult, getClipSplitResult } from "./swipe";
+import {describe, expect, it} from 'vitest';
+import {mergeClipsByGap, type Clip} from './clips';
+import {getClipMergeResult, getClipSplitResult} from './swipe';
 
 const mk = (start: number, end: number): Clip => ({
   start,
@@ -9,13 +9,13 @@ const mk = (start: number, end: number): Clip => ({
   vEnd: end,
 });
 
-describe("getClipSplitResult", () => {
-  it("returns null for clips without children", () => {
+describe('getClipSplitResult', () => {
+  it('returns null for clips without children', () => {
     const clips = [mk(0, 1)];
     expect(getClipSplitResult(clips, clips, 0)).toBeNull();
   });
 
-  it("splits any group with at least two children by its largest gap", () => {
+  it('splits any group with at least two children by its largest gap', () => {
     const clip: Clip = {
       start: 0,
       end: 3,
@@ -29,7 +29,7 @@ describe("getClipSplitResult", () => {
     expect(result?.activeClip).toBe(0);
   });
 
-  it("sets the merge gap just below the largest child gap", () => {
+  it('sets the merge gap just below the largest child gap', () => {
     const clips = [mk(0, 1), mk(1.2, 2), mk(2.5, 3), mk(5, 6)];
     const displayClips = mergeClipsByGap(clips, 0.6);
 
@@ -43,7 +43,7 @@ describe("getClipSplitResult", () => {
     ]);
   });
 
-  it("returns null when splitting an unmerged clip", () => {
+  it('returns null when splitting an unmerged clip', () => {
     const clips = [mk(0, 1), mk(2, 3)];
     const displayClips = mergeClipsByGap(clips, 0.1);
 
@@ -51,8 +51,8 @@ describe("getClipSplitResult", () => {
   });
 });
 
-describe("getClipMergeResult", () => {
-  it("merges only the clip and tracks its nearest silence", () => {
+describe('getClipMergeResult', () => {
+  it('merges only the clip and tracks its nearest silence', () => {
     const clips = [mk(0, 1), mk(1.2, 2), mk(2.5, 3), mk(5, 6)];
     const displayClips = mergeClipsByGap(clips, 0.1); // all four separate
 
@@ -68,7 +68,7 @@ describe("getClipMergeResult", () => {
     expect(result?.clips[0].end).toBe(2);
   });
 
-  it("merges toward the nearest neighbor when the next gap is smaller", () => {
+  it('merges toward the nearest neighbor when the next gap is smaller', () => {
     const clips = [mk(0, 1), mk(1.2, 2), mk(2.5, 3), mk(5, 6)];
     const displayClips = mergeClipsByGap(clips, 0.1);
 
@@ -79,7 +79,7 @@ describe("getClipMergeResult", () => {
     expect(result?.mergeGap).toBeCloseTo(0.2);
   });
 
-  it("merges an already-merged group with its nearest group", () => {
+  it('merges an already-merged group with its nearest group', () => {
     const clips = [mk(0, 1), mk(1.2, 2), mk(2.5, 3), mk(5, 6)];
     const displayClips = mergeClipsByGap(clips, 0.1);
 
@@ -87,16 +87,12 @@ describe("getClipMergeResult", () => {
     const second = getClipMergeResult(first.clips, first.activeClip)!;
 
     expect(second.clips).toHaveLength(2);
-    expect(second.clips[0].children).toEqual([
-      clips[0],
-      clips[1],
-      clips[2],
-    ]);
+    expect(second.clips[0].children).toEqual([clips[0], clips[1], clips[2]]);
     expect(second.activeClip).toBe(0);
     expect(second.mergeGap).toBeCloseTo(0.5);
   });
 
-  it("returns null when merging the only displayed clip", () => {
+  it('returns null when merging the only displayed clip', () => {
     const clips = [mk(0, 1)];
     const displayClips = mergeClipsByGap(clips, 0.1);
 

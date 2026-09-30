@@ -4,12 +4,12 @@
  * context, so every descendant (and the body background) picks it up.
  */
 
-import { useEffect, type ReactNode } from "react";
-import { useConfig } from "./hooks/useConfig";
-import { applyThemeVars } from "./themes";
+import {useEffect, type ReactNode} from 'react';
+import {useConfig} from './hooks/useConfig';
+import {applyThemeVars} from './themes';
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
-  const { config } = useConfig();
+export function ThemeProvider({children}: {children: ReactNode}) {
+  const {config} = useConfig();
 
   useEffect(() => {
     applyThemeVars(config.theme);

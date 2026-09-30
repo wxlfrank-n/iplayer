@@ -9,15 +9,15 @@
  * Falls back to "No track selected" message when the playlist is empty.
  */
 
-import { memo } from "react";
-import { useAudioMeta } from "../hooks/useAudioMeta";
-import { useAppSelector } from "../store/hooks";
-import { selectCurrentTrack } from "../store/selectors";
-import { ListeningLoopIcon } from "./ListeningLoopIcon";
-import { useT } from "../i18n";
-import "./NowPlaying.css";
+import {memo} from 'react';
+import {useAudioMeta} from '../hooks/useAudioMeta';
+import {useAppSelector} from '../store/hooks';
+import {selectCurrentTrack} from '../store/selectors';
+import {ListeningLoopIcon} from './ListeningLoopIcon';
+import {useT} from '../i18n';
+import './NowPlaying.css';
 
-export const NowPlaying = memo(function NowPlaying() {
+export const NowPlaying = memo(() => {
   const track = useAppSelector(selectCurrentTrack);
   // Fetch and display audio metadata (channels, sample rate, bitrate)
   const meta = useAudioMeta(track?.url ?? null);
@@ -27,11 +27,13 @@ export const NowPlaying = memo(function NowPlaying() {
     return (
       <div className="now-playing now-playing--empty">
         <div className="now-playing__art">
-          <ListeningLoopIcon size="100%" className="app-logo"/>
+          <ListeningLoopIcon size="100%" className="app-logo" />
         </div>
         <div className="now-playing__info">
-          <span className="now-playing__title">{t("nowPlaying.noTrack")}</span>
-          <span className="now-playing__artist">{t("nowPlaying.addMusic")}</span>
+          <span className="now-playing__title">{t('nowPlaying.noTrack')}</span>
+          <span className="now-playing__artist">
+            {t('nowPlaying.addMusic')}
+          </span>
         </div>
       </div>
     );
@@ -40,16 +42,18 @@ export const NowPlaying = memo(function NowPlaying() {
   return (
     <div className="now-playing">
       <div className="now-playing__art now-playing__art--active">
-        <ListeningLoopIcon size="100%" className="app-logo"/>
+        <ListeningLoopIcon size="100%" className="app-logo" />
       </div>
       <div className="now-playing__info">
         <span className="now-playing__title">{track.title}</span>
         <span className="now-playing__artist">{track.artist}</span>
         {meta && (
           <span className="now-playing__meta">
-            {meta.channels === 1 ? t("nowPlaying.mono") : t("nowPlaying.stereo")}
-            {" · "}
-            {(meta.sampleRate / 1000).toFixed(1)} kHz{" · "}
+            {meta.channels === 1
+              ? t('nowPlaying.mono')
+              : t('nowPlaying.stereo')}
+            {' · '}
+            {(meta.sampleRate / 1000).toFixed(1)} kHz{' · '}
             {meta.bitrate} kbps
           </span>
         )}

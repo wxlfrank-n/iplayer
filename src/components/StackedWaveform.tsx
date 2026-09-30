@@ -11,23 +11,16 @@
  * This allows a page drag to begin anywhere, including directly on a clip.
  */
 
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import {memo, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 
-import { ClipLabel } from "./ClipLabel";
-import { Clips } from "./Clips";
-import { WaveformCursor } from "./WaveformCursor";
-import { WaveformCanvas } from "./Waveform";
+import {ClipLabel} from './ClipLabel';
+import {Clips} from './Clips';
+import {WaveformCursor} from './WaveformCursor';
+import {WaveformCanvas} from './Waveform';
 
-import { type WaveformData } from "../types";
-import type { Clip as ClipData } from "../utils/clips";
-import "./StackedWaveform.css";
+import {type WaveformData} from '../types';
+import type {Clip as ClipData} from '../utils/clips';
+import './StackedWaveform.css';
 
 const STACK_ROW_TARGET_SECS = 10;
 
@@ -55,10 +48,7 @@ interface StackedWaveformProps {
 
   onStopPlayback?: () => void;
 
-  onSwipeClip?: (
-    idx: number,
-    direction: "up" | "down",
-  ) => void;
+  onSwipeClip?: (idx: number, direction: 'up' | 'down') => void;
 
   onSeek: (time: number) => void;
 
@@ -101,7 +91,7 @@ interface PageDrag {
 }
 
 export const StackedWaveform = memo(
-  function StackedWaveform({
+  ({
     waveform,
     displayClips,
     currentTime,
@@ -114,7 +104,7 @@ export const StackedWaveform = memo(
     onActiveClipChange,
     onPlayRange,
     getCurrentTime,
-  }: StackedWaveformProps) {
+  }: StackedWaveformProps) => {
     const innerH = VB_H - PAD * 2;
 
     /*
@@ -123,79 +113,69 @@ export const StackedWaveform = memo(
      * =========================================================
      */
 
-    const stackedRows = useMemo<StackedRow[]>(
-      () => {
-        const rows: StackedRow[] = [];
+    const stackedRows = useMemo<StackedRow[]>(() => {
+      const rows: StackedRow[] = [];
 
-        let cur: StackedRow | null = null;
+      let cur: StackedRow | null = null;
 
-        displayClips.forEach((clip, idx) => {
-          const duration =
-            clip.vEnd - clip.vStart;
+      displayClips.forEach((clip, idx) => {
+        const duration = clip.vEnd - clip.vStart;
 
-          if (
-            !cur ||
-            duration +
-              (cur.end - cur.start) <=
-              STACK_ROW_TARGET_SECS
-          ) {
-            if (!cur) {
-              cur = {
-                start: clip.vStart,
-                end: clip.vEnd,
-                clips: [],
-              };
-            }
-
-            cur.end = clip.vEnd;
-
-            cur.clips.push({
-              clip,
-              idx,
-            });
-          } else {
-            rows.push(cur);
-
+        if (!cur || duration + (cur.end - cur.start) <= STACK_ROW_TARGET_SECS) {
+          if (!cur) {
             cur = {
               start: clip.vStart,
               end: clip.vEnd,
-              clips: [
-                {
-                  clip,
-                  idx,
-                },
-              ],
+              clips: [],
             };
           }
-        });
 
-        if (cur) {
+          cur.end = clip.vEnd;
+
+          cur.clips.push({
+            clip,
+            idx,
+          });
+        } else {
           rows.push(cur);
+
+          cur = {
+            start: clip.vStart,
+            end: clip.vEnd,
+            clips: [
+              {
+                clip,
+                idx,
+              },
+            ],
+          };
         }
+      });
 
-        if (rows.length > 0) {
-          /*
-           * First row represents the beginning of
-           * the waveform even if the first detected
-           * clip starts slightly later.
-           */
-          rows[0].start = 0;
+      if (cur) {
+        rows.push(cur);
+      }
 
-          /*
-           * Last row reaches the physical end of
-           * the audio.
-           */
-          rows[rows.length - 1].end =
-            Math.max(
-              rows[rows.length - 1].end,
-              waveform.duration,
-            );
-        }
+      if (rows.length > 0) {
+        /*
+         * First row represents the beginning of
+         * the waveform even if the first detected
+         * clip starts slightly later.
+         */
+        rows[0].start = 0;
 
-        return rows;
-      },
-      [displayClips, waveform.duration],
-    );
+        /*
+         * Last row reaches the physical end of
+         * the audio.
+         */
+        rows[rows.length - 1].end = Math.max(
+          rows[rows.length - 1].end,
+          waveform.duration,
+        );
+      }
+
+      return rows;
+    }, [displayClips, waveform.duration]);
 
     /*
      * =========================================================
@@ -203,65 +183,49 @@ export const StackedWaveform = memo(
      * =========================================================
      */
 
-    const scrollerRef =
-      useRef<HTMLDivElement>(null);
+    const scrollerRef = useRef<HTMLDivElement>(null);
 
-    const pendingAutoScrollRef =
-      useRef(false);
+    const pendingAutoScrollRef = useRef(false);
 
-    const autoScrollResetRef =
-      useRef<number | undefined>(undefined);
+    const autoScrollResetRef = useRef<number | undefined>(undefined);
 
     const currentPageRef = useRef(-1);
 
-    const previousTimeRef =
-      useRef(currentTime);
+    const previousTimeRef = useRef(currentTime);
 
-    const userScrollTimerRef =
-      useRef<number | undefined>(undefined);
+    const userScrollTimerRef = useRef<number | undefined>(undefined);
 
     /*
      * If the user manually browses during playback,
      * automatic following pauses until playback
      * catches up again.
      */
-    const manualOverrideRef =
-      useRef(false);
+    const manualOverrideRef = useRef(false);
 
     const playingRef = useRef(playing);
 
     /*
      * Pointer state for horizontal page dragging.
      */
-    const dragRef =
-      useRef<PageDrag | null>(null);
+    const dragRef = useRef<PageDrag | null>(null);
 
     /*
      * Prevent a completed page drag from turning
      * into a seek click on the row underneath.
      */
-    const suppressRowClickRef =
-      useRef(false);
+    const suppressRowClickRef = useRef(false);
 
     useEffect(() => {
       playingRef.current = playing;
     }, [playing]);
 
-    const [containerH, setContainerH] =
-      useState(0);
+    const [containerH, setContainerH] = useState(0);
 
-    const [
-      userScrolling,
-      setUserScrolling,
-    ] = useState(false);
+    const [userScrolling, setUserScrolling] = useState(false);
 
-    const [viewPage, setViewPage] =
-      useState(0);
+    const [viewPage, setViewPage] = useState(0);
 
-    const [
-      clipPlayActive,
-      setClipPlayActive,
-    ] = useState(false);
+    const [clipPlayActive, setClipPlayActive] = useState(false);
 
     /*
      * =========================================================
@@ -285,19 +249,12 @@ export const StackedWaveform = memo(
         }
       };
 
-      el.addEventListener(
-        "wheel",
-        onWheel,
-        {
-          passive: false,
-        },
-      );
+      el.addEventListener('wheel', onWheel, {
+        passive: false,
+      });
 
       return () => {
-        el.removeEventListener(
-          "wheel",
-          onWheel,
-        );
+        el.removeEventListener('wheel', onWheel);
       };
     }, []);
 
@@ -318,8 +275,7 @@ export const StackedWaveform = memo(
 
       update();
 
-      const observer =
-        new ResizeObserver(update);
+      const observer = new ResizeObserver(update);
 
       observer.observe(el);
 
@@ -331,13 +287,7 @@ export const StackedWaveform = memo(
     const rowGap = useMemo(
       () =>
         containerH
-          ? Math.min(
-              24,
-              Math.max(
-                ROW_GAP,
-                Math.floor(containerH / 45),
-              ),
-            )
+          ? Math.min(24, Math.max(ROW_GAP, Math.floor(containerH / 45)))
           : ROW_GAP,
       [containerH],
     );
@@ -347,13 +297,7 @@ export const StackedWaveform = memo(
         return 1;
       }
 
-      return Math.max(
-        1,
-        Math.floor(
-          containerH /
-            (ROW_H + rowGap),
-        ),
-      );
+      return Math.max(1, Math.floor(containerH / (ROW_H + rowGap)));
     }, [containerH, rowGap]);
 
     /*
@@ -362,52 +306,35 @@ export const StackedWaveform = memo(
      * =========================================================
      */
 
-    const pagedRows =
-      useMemo<StackedRowEntry[][]>(() => {
-        const pages: StackedRowEntry[][] =
-          [];
+    const pagedRows = useMemo<StackedRowEntry[][]>(() => {
+      const pages: StackedRowEntry[][] = [];
 
-        for (
-          let i = 0;
-          i < stackedRows.length;
-          i += rowsPerPage
-        ) {
-          pages.push(
-            stackedRows
-              .slice(
-                i,
-                i + rowsPerPage,
-              )
-              .map((row, r) => ({
-                row,
-                gi: i + r,
-              })),
-          );
-        }
+      for (let i = 0; i < stackedRows.length; i += rowsPerPage) {
+        pages.push(
+          stackedRows.slice(i, i + rowsPerPage).map((row, r) => ({
+            row,
+            gi: i + r,
+          })),
+        );
+      }
 
-        return pages;
-      }, [stackedRows, rowsPerPage]);
+      return pages;
+    }, [stackedRows, rowsPerPage]);
 
     const pageTimes = useMemo(
       () =>
-        pagedRows.map((page) => ({
-          start:
-            page[0]?.row.start ?? 0,
+        pagedRows.map(page => ({
+          start: page[0]?.row.start ?? 0,
 
-          end:
-            page[
-              page.length - 1
-            ]?.row.end ?? 0,
+          end: page[page.length - 1]?.row.end ?? 0,
         })),
       [pagedRows],
     );
 
-    const pageTimesRef =
-      useRef(pageTimes);
+    const pageTimesRef = useRef(pageTimes);
 
     useEffect(() => {
-      pageTimesRef.current =
-        pageTimes;
+      pageTimesRef.current = pageTimes;
     }, [pageTimes]);
 
     /*
@@ -422,45 +349,29 @@ export const StackedWaveform = memo(
           return 0;
         }
 
-        return Math.max(
-          0,
-          Math.min(
-            pagedRows.length - 1,
-            page,
-          ),
-        );
+        return Math.max(0, Math.min(pagedRows.length - 1, page));
       },
       [pagedRows.length],
     );
 
     const scrollToPage = useCallback(
-      (
-        page: number,
-        behavior: ScrollBehavior = "smooth",
-      ) => {
+      (page: number, behavior: ScrollBehavior = 'smooth') => {
         const el = scrollerRef.current;
 
         if (!el) return;
 
-        const target =
-          clampPage(page);
+        const target = clampPage(page);
 
-        pendingAutoScrollRef.current =
-          true;
+        pendingAutoScrollRef.current = true;
 
-        window.clearTimeout(
-          autoScrollResetRef.current,
-        );
+        window.clearTimeout(autoScrollResetRef.current);
 
-        autoScrollResetRef.current =
-          window.setTimeout(() => {
-            pendingAutoScrollRef.current =
-              false;
-          }, 1000);
+        autoScrollResetRef.current = window.setTimeout(() => {
+          pendingAutoScrollRef.current = false;
+        }, 1000);
 
         el.scrollTo({
-          left:
-            target * el.clientWidth,
+          left: target * el.clientWidth,
 
           behavior,
         });
@@ -468,42 +379,31 @@ export const StackedWaveform = memo(
       [clampPage],
     );
 
-    const pageForTime = useCallback(
-      (time: number) => {
-        const pages =
-          pageTimesRef.current;
+    const pageForTime = useCallback((time: number) => {
+      const pages = pageTimesRef.current;
 
-        if (!pages.length) {
-          return 0;
-        }
+      if (!pages.length) {
+        return 0;
+      }
 
-        const last =
-          pages.length - 1;
+      const last = pages.length - 1;
 
-        if (time < pages[0].start) {
-          return 0;
-        }
+      if (time < pages[0].start) {
+        return 0;
+      }
 
-        if (
-          time >= pages[last].end
-        ) {
-          return last;
-        }
-
-        for (
-          let i = 0;
-          i < pages.length;
-          i++
-        ) {
-          if (time < pages[i].end) {
-            return i;
-          }
-        }
-
+      if (time >= pages[last].end) {
         return last;
-      },
-      [],
-    );
+      }
+
+      for (let i = 0; i < pages.length; i++) {
+        if (time < pages[i].end) {
+          return i;
+        }
+      }
+
+      return last;
+    }, []);
 
     /*
      * =========================================================
@@ -523,219 +423,158 @@ export const StackedWaveform = memo(
      * =========================================================
      */
 
-    const handlePointerDown =
-      useCallback(
-        (
-          e: React.PointerEvent<HTMLDivElement>,
-        ) => {
+    const handlePointerDown = useCallback(
+      (e: React.PointerEvent<HTMLDivElement>) => {
+        if (e.pointerType === 'mouse' && e.button !== 0) {
+          return;
+        }
+
+        const el = scrollerRef.current;
+
+        if (!el) return;
+
+        dragRef.current = {
+          pointerId: e.pointerId,
+
+          startX: e.clientX,
+          startY: e.clientY,
+
+          startScrollLeft: el.scrollLeft,
+
+          dragging: false,
+        };
+      },
+      [],
+    );
+
+    const handlePointerMove = useCallback(
+      (e: React.PointerEvent<HTMLDivElement>) => {
+        const drag = dragRef.current;
+
+        const el = scrollerRef.current;
+
+        if (!drag || !el || drag.pointerId !== e.pointerId) {
+          return;
+        }
+
+        const dx = e.clientX - drag.startX;
+
+        const dy = e.clientY - drag.startY;
+
+        /*
+         * Direction has not yet been decided.
+         */
+        if (!drag.dragging) {
           if (
-            e.pointerType === "mouse" &&
-            e.button !== 0
+            Math.abs(dx) < HORIZONTAL_DRAG_THRESHOLD &&
+            Math.abs(dy) < HORIZONTAL_DRAG_THRESHOLD
           ) {
             return;
           }
-
-          const el =
-            scrollerRef.current;
-
-          if (!el) return;
-
-          dragRef.current = {
-            pointerId: e.pointerId,
-
-            startX: e.clientX,
-            startY: e.clientY,
-
-            startScrollLeft:
-              el.scrollLeft,
-
-            dragging: false,
-          };
-        },
-        [],
-      );
-
-    const handlePointerMove =
-      useCallback(
-        (
-          e: React.PointerEvent<HTMLDivElement>,
-        ) => {
-          const drag =
-            dragRef.current;
-
-          const el =
-            scrollerRef.current;
-
-          if (
-            !drag ||
-            !el ||
-            drag.pointerId !==
-              e.pointerId
-          ) {
-            return;
-          }
-
-          const dx =
-            e.clientX - drag.startX;
-
-          const dy =
-            e.clientY - drag.startY;
 
           /*
-           * Direction has not yet been decided.
+           * Vertical gesture.
+           *
+           * Leave it alone so Clip can interpret
+           * swipe-up / swipe-down.
            */
-          if (!drag.dragging) {
-            if (
-              Math.abs(dx) <
-                HORIZONTAL_DRAG_THRESHOLD &&
-              Math.abs(dy) <
-                HORIZONTAL_DRAG_THRESHOLD
-            ) {
-              return;
-            }
-
-            /*
-             * Vertical gesture.
-             *
-             * Leave it alone so Clip can interpret
-             * swipe-up / swipe-down.
-             */
-            if (
-              Math.abs(dy) >=
-              Math.abs(dx)
-            ) {
-              return;
-            }
-
-            /*
-             * Horizontal gesture.
-             *
-             * From this point the page scroller owns it.
-             */
-            drag.dragging = true;
-
-            suppressRowClickRef.current =
-              true;
-
-            setUserScrolling(true);
-
-            if (playingRef.current) {
-              manualOverrideRef.current =
-                true;
-            }
-
-            /*
-             * Capture only AFTER direction has
-             * been identified as horizontal.
-             */
-            try {
-              e.currentTarget.setPointerCapture(
-                e.pointerId,
-              );
-            } catch {
-              // Some browsers may already have lost it.
-            }
+          if (Math.abs(dy) >= Math.abs(dx)) {
+            return;
           }
-
-          e.preventDefault();
 
           /*
-           * Natural touch paging:
+           * Horizontal gesture.
            *
-           * finger moves left  -> content moves left
-           *                      -> next page
-           *
-           * finger moves right -> previous page
+           * From this point the page scroller owns it.
            */
-          el.scrollLeft =
-            drag.startScrollLeft -
-            dx;
-        },
-        [],
-      );
+          drag.dragging = true;
 
-    const finishPointerDrag =
-      useCallback(
-        (
-          e: React.PointerEvent<HTMLDivElement>,
-        ) => {
-          const drag =
-            dragRef.current;
+          suppressRowClickRef.current = true;
 
-          const el =
-            scrollerRef.current;
+          setUserScrolling(true);
 
-          if (
-            !drag ||
-            !el ||
-            drag.pointerId !==
-              e.pointerId
-          ) {
-            return;
+          if (playingRef.current) {
+            manualOverrideRef.current = true;
           }
 
-          dragRef.current = null;
-
-          if (!drag.dragging) {
-            return;
-          }
-
+          /*
+           * Capture only AFTER direction has
+           * been identified as horizontal.
+           */
           try {
-            if (
-              e.currentTarget.hasPointerCapture(
-                e.pointerId,
-              )
-            ) {
-              e.currentTarget.releasePointerCapture(
-                e.pointerId,
-              );
-            }
+            e.currentTarget.setPointerCapture(e.pointerId);
           } catch {
-            // Ignore capture cleanup failures.
+            // Some browsers may already have lost it.
           }
+        }
 
-          const pageWidth =
-            Math.max(
-              1,
-              el.clientWidth,
-            );
+        e.preventDefault();
 
-          const page = clampPage(
-            Math.round(
-              el.scrollLeft /
-                pageWidth,
-            ),
-          );
+        /*
+         * Natural touch paging:
+         *
+         * finger moves left  -> content moves left
+         *                      -> next page
+         *
+         * finger moves right -> previous page
+         */
+        el.scrollLeft = drag.startScrollLeft - dx;
+      },
+      [],
+    );
 
-          currentPageRef.current =
-            page;
+    const finishPointerDrag = useCallback(
+      (e: React.PointerEvent<HTMLDivElement>) => {
+        const drag = dragRef.current;
 
-          setViewPage(page);
+        const el = scrollerRef.current;
 
-          /*
-           * This is a USER initiated snap.
-           *
-           * Do not use scrollToPage(), because that helper
-           * marks the movement as an automatic scroll.
-           */
-          el.scrollTo({
-            left:
-              page * pageWidth,
+        if (!drag || !el || drag.pointerId !== e.pointerId) {
+          return;
+        }
 
-            behavior: "smooth",
-          });
+        dragRef.current = null;
 
-          window.clearTimeout(
-            userScrollTimerRef.current,
-          );
+        if (!drag.dragging) {
+          return;
+        }
 
-          userScrollTimerRef.current =
-            window.setTimeout(() => {
-              setUserScrolling(false);
-            }, 500);
-        },
-        [clampPage],
-      );
+        try {
+          if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+          }
+        } catch {
+          // Ignore capture cleanup failures.
+        }
+
+        const pageWidth = Math.max(1, el.clientWidth);
+
+        const page = clampPage(Math.round(el.scrollLeft / pageWidth));
+
+        currentPageRef.current = page;
+
+        setViewPage(page);
+
+        /*
+         * This is a USER initiated snap.
+         *
+         * Do not use scrollToPage(), because that helper
+         * marks the movement as an automatic scroll.
+         */
+        el.scrollTo({
+          left: page * pageWidth,
+
+          behavior: 'smooth',
+        });
+
+        window.clearTimeout(userScrollTimerRef.current);
+
+        userScrollTimerRef.current = window.setTimeout(() => {
+          setUserScrolling(false);
+        }, 500);
+      },
+      [clampPage],
+    );
 
     /*
      * =========================================================
@@ -744,8 +583,7 @@ export const StackedWaveform = memo(
      */
 
     useEffect(() => {
-      const el =
-        scrollerRef.current;
+      const el = scrollerRef.current;
 
       if (!el) return;
 
@@ -753,65 +591,41 @@ export const StackedWaveform = memo(
         /*
          * Programmatic auto-follow scroll.
          */
-        if (
-          pendingAutoScrollRef.current
-        ) {
+        if (pendingAutoScrollRef.current) {
           return;
         }
 
-        window.clearTimeout(
-          userScrollTimerRef.current,
-        );
+        window.clearTimeout(userScrollTimerRef.current);
 
         setUserScrolling(true);
 
         const idx = clampPage(
-          Math.round(
-            el.scrollLeft /
-              Math.max(
-                1,
-                el.clientWidth,
-              ),
-          ),
+          Math.round(el.scrollLeft / Math.max(1, el.clientWidth)),
         );
 
-        currentPageRef.current =
-          idx;
+        currentPageRef.current = idx;
 
         setViewPage(idx);
 
         if (playingRef.current) {
-          manualOverrideRef.current =
-            true;
+          manualOverrideRef.current = true;
         }
 
-        userScrollTimerRef.current =
-          window.setTimeout(() => {
-            setUserScrolling(false);
-          }, 1500);
+        userScrollTimerRef.current = window.setTimeout(() => {
+          setUserScrolling(false);
+        }, 1500);
       };
 
-      el.addEventListener(
-        "scroll",
-        onScroll,
-        {
-          passive: true,
-        },
-      );
+      el.addEventListener('scroll', onScroll, {
+        passive: true,
+      });
 
       return () => {
-        el.removeEventListener(
-          "scroll",
-          onScroll,
-        );
+        el.removeEventListener('scroll', onScroll);
 
-        window.clearTimeout(
-          userScrollTimerRef.current,
-        );
+        window.clearTimeout(userScrollTimerRef.current);
 
-        window.clearTimeout(
-          autoScrollResetRef.current,
-        );
+        window.clearTimeout(autoScrollResetRef.current);
       };
     }, [clampPage]);
 
@@ -825,47 +639,28 @@ export const StackedWaveform = memo(
       let raf = 0;
 
       const tick = () => {
-        raf =
-          requestAnimationFrame(
-            tick,
-          );
+        raf = requestAnimationFrame(tick);
 
-        if (
-          !playing ||
-          userScrolling
-        ) {
+        if (!playing || userScrolling) {
           return;
         }
 
-        const time =
-          getCurrentTime();
+        const time = getCurrentTime();
 
-        if (
-          !Number.isFinite(time)
-        ) {
+        if (!Number.isFinite(time)) {
           return;
         }
 
-        const page =
-          pageForTime(time);
+        const page = pageForTime(time);
 
-        if (
-          page ===
-          currentPageRef.current
-        ) {
-          manualOverrideRef.current =
-            false;
+        if (page === currentPageRef.current) {
+          manualOverrideRef.current = false;
 
           return;
         }
 
-        if (
-          page >
-            currentPageRef.current &&
-          !manualOverrideRef.current
-        ) {
-          currentPageRef.current =
-            page;
+        if (page > currentPageRef.current && !manualOverrideRef.current) {
+          currentPageRef.current = page;
 
           setViewPage(page);
 
@@ -873,21 +668,12 @@ export const StackedWaveform = memo(
         }
       };
 
-      raf =
-        requestAnimationFrame(
-          tick,
-        );
+      raf = requestAnimationFrame(tick);
 
       return () => {
         cancelAnimationFrame(raf);
       };
-    }, [
-      playing,
-      userScrolling,
-      pageForTime,
-      scrollToPage,
-      getCurrentTime,
-    ]);
+    }, [playing, userScrolling, pageForTime, scrollToPage, getCurrentTime]);
 
     /*
      * =========================================================
@@ -896,68 +682,41 @@ export const StackedWaveform = memo(
      */
 
     useEffect(() => {
-      const previousTime =
-        previousTimeRef.current;
+      const previousTime = previousTimeRef.current;
 
-      previousTimeRef.current =
-        currentTime;
+      previousTimeRef.current = currentTime;
 
-      if (
-        Math.abs(
-          currentTime -
-            previousTime,
-        ) < 1
-      ) {
+      if (Math.abs(currentTime - previousTime) < 1) {
         return;
       }
 
-      const page =
-        pageForTime(currentTime);
+      const page = pageForTime(currentTime);
 
-      if (
-        playing &&
-        page >
-          currentPageRef.current
-      ) {
+      if (playing && page > currentPageRef.current) {
         return;
       }
 
-      if (
-        clipPlayActive &&
-        page <
-          currentPageRef.current
-      ) {
+      if (clipPlayActive && page < currentPageRef.current) {
         return;
       }
 
-      if (
-        page ===
-        currentPageRef.current
-      ) {
+      if (page === currentPageRef.current) {
         return;
       }
 
-      currentPageRef.current =
-        page;
+      currentPageRef.current = page;
 
       setViewPage(page);
 
       scrollToPage(page);
-    }, [
-      currentTime,
-      pageForTime,
-      playing,
-      clipPlayActive,
-      scrollToPage,
-    ]);
+    }, [currentTime, pageForTime, playing, clipPlayActive, scrollToPage]);
 
     /*
      * Reset manual override when playback state or
      * waveform structure changes.
      */
     useEffect(() => {
-      manualOverrideRef.current =
-        false;
+      manualOverrideRef.current = false;
     }, [playing, stackedRows]);
 
     /*
@@ -971,35 +730,20 @@ export const StackedWaveform = memo(
         return;
       }
 
-      const clip =
-        displayClips[activeClip];
+      const clip = displayClips[activeClip];
 
       if (!clip) return;
 
-      const page =
-        pageForTime(
-          (clip.vStart +
-            clip.vEnd) /
-            2,
-        );
+      const page = pageForTime((clip.vStart + clip.vEnd) / 2);
 
-      if (
-        page !==
-        currentPageRef.current
-      ) {
-        currentPageRef.current =
-          page;
+      if (page !== currentPageRef.current) {
+        currentPageRef.current = page;
 
         setViewPage(page);
 
         scrollToPage(page);
       }
-    }, [
-      activeClip,
-      displayClips,
-      pageForTime,
-      scrollToPage,
-    ]);
+    }, [activeClip, displayClips, pageForTime, scrollToPage]);
 
     /*
      * =========================================================
@@ -1007,35 +751,24 @@ export const StackedWaveform = memo(
      * =========================================================
      */
 
-    const handleRowSeek =
-      useCallback(
-        (time: number) => {
-          onSeek(time);
+    const handleRowSeek = useCallback(
+      (time: number) => {
+        onSeek(time);
 
-          onActiveClipChange(-1);
+        onActiveClipChange(-1);
 
-          const page =
-            pageForTime(time);
+        const page = pageForTime(time);
 
-          if (
-            page !==
-            currentPageRef.current
-          ) {
-            currentPageRef.current =
-              page;
+        if (page !== currentPageRef.current) {
+          currentPageRef.current = page;
 
-            setViewPage(page);
-          }
+          setViewPage(page);
+        }
 
-          scrollToPage(page);
-        },
-        [
-          onSeek,
-          onActiveClipChange,
-          pageForTime,
-          scrollToPage,
-        ],
-      );
+        scrollToPage(page);
+      },
+      [onSeek, onActiveClipChange, pageForTime, scrollToPage],
+    );
 
     /*
      * =========================================================
@@ -1043,28 +776,16 @@ export const StackedWaveform = memo(
      * =========================================================
      */
 
-    const stackedPlayClip =
-      useCallback(
-        (
-          start: number,
-          end: number,
-          reps: number,
-        ) => {
-          setClipPlayActive(true);
+    const stackedPlayClip = useCallback(
+      (start: number, end: number, reps: number) => {
+        setClipPlayActive(true);
 
-          onPlayRange(
-            start,
-            end,
-            reps,
-            () => {
-              setClipPlayActive(
-                false,
-              );
-            },
-          );
-        },
-        [onPlayRange],
-      );
+        onPlayRange(start, end, reps, () => {
+          setClipPlayActive(false);
+        });
+      },
+      [onPlayRange],
+    );
 
     /*
      * =========================================================
@@ -1076,300 +797,164 @@ export const StackedWaveform = memo(
       <div
         className="stacked-waveform"
         ref={scrollerRef}
-        onPointerDown={
-          handlePointerDown
-        }
-        onPointerMove={
-          handlePointerMove
-        }
-        onPointerUp={
-          finishPointerDrag
-        }
-        onPointerCancel={
-          finishPointerDrag
-        }
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={finishPointerDrag}
+        onPointerCancel={finishPointerDrag}
       >
         {pagedRows.length > 0 && (
           <div className="stacked-waveform__pageno">
-            {Math.min(
-              viewPage + 1,
-              pagedRows.length,
-            )}{" "}
-            / {pagedRows.length}
+            {Math.min(viewPage + 1, pagedRows.length)} / {pagedRows.length}
           </div>
         )}
 
         <div className="stacked-waveform__pages">
-          {pagedRows.map(
-            (page, pageIndex) => (
-              <div
-                key={pageIndex}
-                className="stacked-waveform__page"
-              >
-                {page.map(
-                  ({ row, gi }) => {
-                    const rowStart =
-                      row.start;
+          {pagedRows.map((page, pageIndex) => (
+            <div key={pageIndex} className="stacked-waveform__page">
+              {page.map(({row, gi}) => {
+                const rowStart = row.start;
 
-                    const rowLen =
-                      Math.max(
-                        STACK_ROW_TARGET_SECS,
-                        row.end -
-                          row.start,
+                const rowLen = Math.max(
+                  STACK_ROW_TARGET_SECS,
+                  row.end - row.start,
+                );
+
+                const getPlayedPct = () =>
+                  Math.max(
+                    0,
+                    Math.min(1, (getCurrentTime() - rowStart) / rowLen),
+                  );
+
+                const getCursorPct = () =>
+                  Math.min(getPlayedPct(), (row.end - rowStart) / rowLen);
+
+                const isLastRow = row.end >= waveform.duration - 1e-6;
+
+                const showCursor =
+                  currentTime >= rowStart &&
+                  (currentTime < row.end ||
+                    (isLastRow && currentTime >= row.end - 1e-6));
+
+                return (
+                  <div
+                    key={gi}
+                    className="stacked-waveform__row"
+                    onClick={e => {
+                      /*
+                       * A horizontal page drag must
+                       * never become a seek.
+                       */
+                      if (suppressRowClickRef.current) {
+                        suppressRowClickRef.current = false;
+
+                        return;
+                      }
+
+                      if (clipPlayActive) {
+                        return;
+                      }
+
+                      const rect = e.currentTarget.getBoundingClientRect();
+
+                      const f = Math.max(
+                        0,
+                        Math.min(1, (e.clientX - rect.left) / rect.width),
                       );
 
-                    const getPlayedPct =
-                      () =>
-                        Math.max(
-                          0,
-                          Math.min(
-                            1,
-                            (getCurrentTime() -
-                              rowStart) /
-                              rowLen,
-                          ),
-                        );
+                      handleRowSeek(rowStart + f * rowLen);
+                    }}
+                  >
+                    <WaveformCanvas
+                      className="stacked-waveform__svg"
+                      data={waveform.data}
+                      sampleRate={waveform.sampleRate}
+                      window={{
+                        windowStartSec: rowStart,
 
-                    const getCursorPct =
-                      () =>
-                        Math.min(
-                          getPlayedPct(),
-                          (row.end -
-                            rowStart) /
-                            rowLen,
-                        );
+                        windowLen: rowLen,
 
-                    const isLastRow =
-                      row.end >=
-                      waveform.duration -
-                        1e-6;
+                        innerH,
 
-                    const showCursor =
-                      currentTime >=
-                        rowStart &&
-                      (currentTime <
-                        row.end ||
-                        (isLastRow &&
-                          currentTime >=
-                            row.end -
-                              1e-6));
+                        vbW: VB_W,
 
-                    return (
-                      <div
-                        key={gi}
-                        className="stacked-waveform__row"
-                        onClick={(
-                          e,
-                        ) => {
-                          /*
-                           * A horizontal page drag must
-                           * never become a seek.
-                           */
-                          if (
-                            suppressRowClickRef.current
-                          ) {
-                            suppressRowClickRef.current =
-                              false;
+                        vbH: VB_H,
+                      }}
+                      contentEndSec={row.end}
+                    />
 
-                            return;
-                          }
+                    <div className="stacked-waveform__clip-layer">
+                      <Clips
+                        clips={row.clips.map(({clip}) => clip)}
+                        window={{
+                          windowStartSec: rowStart,
 
-                          if (
-                            clipPlayActive
-                          ) {
-                            return;
-                          }
+                          windowLen: rowLen,
 
-                          const rect =
-                            e.currentTarget.getBoundingClientRect();
+                          innerH,
 
-                          const f =
-                            Math.max(
-                              0,
-                              Math.min(
-                                1,
-                                (e.clientX -
-                                  rect.left) /
-                                  rect.width,
-                              ),
-                            );
+                          vbW: VB_W,
 
-                          handleRowSeek(
-                            rowStart +
-                              f *
-                                rowLen,
-                          );
+                          vbH: VB_H,
                         }}
-                      >
-                        <WaveformCanvas
-                          className="stacked-waveform__svg"
-                          data={
-                            waveform.data
-                          }
-                          sampleRate={
-                            waveform.sampleRate
-                          }
-                          window={{
-                            windowStartSec:
-                              rowStart,
-
-                            windowLen:
-                              rowLen,
-
-                            innerH,
-
-                            vbW: VB_W,
-
-                            vbH: VB_H,
-                          }}
-                          contentEndSec={
-                            row.end
-                          }
-                        />
-
-                        <div className="stacked-waveform__clip-layer">
-                          <Clips
-                            clips={row.clips.map(
-                              ({
-                                clip,
-                              }) =>
-                                clip,
-                            )}
-                            window={{
-                              windowStartSec:
-                                rowStart,
-
-                              windowLen:
-                                rowLen,
-
-                              innerH,
-
-                              vbW:
-                                VB_W,
-
-                              vbH:
-                                VB_H,
-                            }}
-                            onPlayRange={
-                              stackedPlayClip
+                        onPlayRange={stackedPlayClip}
+                        repetitions={repetitions}
+                        playing={playing}
+                        onStopPlayback={onStopPlayback}
+                        activeClip={activeClip}
+                        onActivate={onActiveClipChange}
+                        onSwipe={onSwipeClip}
+                        getIdx={(_clip, i) => row.clips[i].idx}
+                        renderLabel={(id, clip) => (
+                          <ClipLabel
+                            key={`lbl-${id}`}
+                            index={id}
+                            duration={clip.vEnd - clip.vStart}
+                            active={id === activeClip}
+                            canSplit={
+                              !playing &&
+                              clip.children?.length != null &&
+                              clip.children.length > 1
                             }
-                            repetitions={
-                              repetitions
+                            canMerge={
+                              !playing &&
+                              (id > 0 || id < displayClips.length - 1)
                             }
-                            playing={
-                              playing
-                            }
-                            onStopPlayback={
-                              onStopPlayback
-                            }
-                            activeClip={
-                              activeClip
-                            }
-                            onActivate={
-                              onActiveClipChange
-                            }
-                            onSwipe={
+                            onSplit={
                               onSwipeClip
+                                ? () => onSwipeClip(id, 'up')
+                                : undefined
                             }
-                            getIdx={(
-                              _clip,
-                              i,
-                            ) =>
-                              row.clips[i]
-                                .idx
-                            }
-                            renderLabel={(
-                              id,
-                              clip,
-                            ) => (
-                              <ClipLabel
-                                key={`lbl-${id}`}
-                                index={
-                                  id
-                                }
-                                duration={
-                                  clip.vEnd -
-                                  clip.vStart
-                                }
-                                active={
-                                  id ===
-                                  activeClip
-                                }
-                                canSplit={
-                                  !playing &&
-                                  clip
-                                    .children
-                                    ?.length !=
-                                    null &&
-                                  clip
-                                    .children
-                                    .length >
-                                    1
-                                }
-                                canMerge={
-                                  !playing &&
-                                  (id >
-                                    0 ||
-                                    id <
-                                      displayClips.length -
-                                        1)
-                                }
-                                onSplit={
-                                  onSwipeClip
-                                    ? () =>
-                                        onSwipeClip(
-                                          id,
-                                          "up",
-                                        )
-                                    : undefined
-                                }
-                                onMerge={
-                                  onSwipeClip
-                                    ? () =>
-                                        onSwipeClip(
-                                          id,
-                                          "down",
-                                        )
-                                    : undefined
-                                }
-                              />
-                            )}
-                          />
-                        </div>
-
-                        {showCursor && (
-                          <WaveformCursor
-                            view="stacked"
-                            getPlayedPct={
-                              getCursorPct
-                            }
-                            getCurrentTime={
-                              getCurrentTime
+                            onMerge={
+                              onSwipeClip
+                                ? () => onSwipeClip(id, 'down')
+                                : undefined
                             }
                           />
                         )}
-                      </div>
-                    );
-                  },
-                )}
+                      />
+                    </div>
 
-                {Array.from({
-                  length: Math.max(
-                    0,
-                    rowsPerPage -
-                      page.length,
-                  ),
-                }).map(
-                  (_, virtualIndex) => (
-                    <div
-                      key={`virtual-${virtualIndex}`}
-                      className="stacked-waveform__row stacked-waveform__row--virtual"
-                    />
-                  ),
-                )}
-              </div>
-            ),
-          )}
+                    {showCursor && (
+                      <WaveformCursor
+                        view="stacked"
+                        getPlayedPct={getCursorPct}
+                        getCurrentTime={getCurrentTime}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+
+              {Array.from({
+                length: Math.max(0, rowsPerPage - page.length),
+              }).map((_, virtualIndex) => (
+                <div
+                  key={`virtual-${virtualIndex}`}
+                  className="stacked-waveform__row stacked-waveform__row--virtual"
+                />
+              ))}
+            </div>
+          ))}
         </div>
       </div>
     );

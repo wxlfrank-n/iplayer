@@ -5,14 +5,14 @@
  * `{ config, updateConfig }` shape while the actual state lives in the store.
  */
 
-import { useCallback } from "react";
-import { useAppDispatch, useAppSelector } from "../store/hooks";
-import { updateConfig as updateConfigAction } from "../store/configSlice";
+import {useCallback} from 'react';
+import {useAppDispatch, useAppSelector} from '../store/hooks';
+import {updateConfig as updateConfigAction} from '../store/configSlice';
 
-export type { WaveformView } from "../types";
+export type {WaveformView} from '../types';
 
 export function useConfig() {
-  const config = useAppSelector((s) => s.config);
+  const config = useAppSelector(s => s.config);
   const dispatch = useAppDispatch();
 
   const updateConfig = useCallback(
@@ -22,5 +22,5 @@ export function useConfig() {
     [dispatch],
   );
 
-  return { config, updateConfig };
+  return {config, updateConfig};
 }

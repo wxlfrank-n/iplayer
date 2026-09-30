@@ -1,26 +1,26 @@
 // @vitest-environment jsdom
 
-import { act, fireEvent, render } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { RowWaveform } from "./RowWaveform";
-import type { WaveformData } from "../hooks/useWaveform";
-import type { Clip as ClipData } from "../utils/clips";
-import { getWindowSecs } from "../utils/rowWaveform";
+import {act, fireEvent, render} from '@testing-library/react';
+import {beforeEach, describe, expect, it, vi} from 'vitest';
+import {RowWaveform} from './RowWaveform';
+import type {WaveformData} from '../hooks/useWaveform';
+import type {Clip as ClipData} from '../utils/clips';
+import {getWindowSecs} from '../utils/rowWaveform';
 
-vi.mock("./Clips", () => ({
+vi.mock('./Clips', () => ({
   Clips: () => <div className="waveform-clip" />,
 }));
-vi.mock("./ClipLabel", () => ({
+vi.mock('./ClipLabel', () => ({
   ClipLabel: () => null,
 }));
-vi.mock("./DancingLines", () => ({
+vi.mock('./DancingLines', () => ({
   DancingLines: () => null,
 }));
-vi.mock("./WaveformCursor", () => ({
+vi.mock('./WaveformCursor', () => ({
   WaveformCursor: () => null,
 }));
-vi.mock("./Waveform", () => ({
-  WaveformCanvas: ({ window }: { window: { windowStartSec: number } }) => (
+vi.mock('./Waveform', () => ({
+  WaveformCanvas: ({window}: {window: {windowStartSec: number}}) => (
     <div data-window-start={window.windowStartSec} />
   ),
 }));
@@ -37,11 +37,9 @@ const waveform: WaveformData = {
   duration: 120,
 };
 
-const clips: ClipData[] = [
-  { start: 1, end: 3, vStart: 1, vEnd: 3 },
-];
+const clips: ClipData[] = [{start: 1, end: 3, vStart: 1, vEnd: 3}];
 
-function renderRow({ playing = false, currentTime = 0 } = {}) {
+function renderRow({playing = false, currentTime = 0} = {}) {
   const props = {
     playing,
     currentTime,
@@ -60,21 +58,23 @@ function renderRow({ playing = false, currentTime = 0 } = {}) {
       playing={props.playing}
       scrolling={false}
       setScrolling={vi.fn()}
-      scrollTimeoutRef={{ current: undefined }}
+      scrollTimeoutRef={{current: undefined}}
     />,
   );
-  const row = view.container.querySelector(".row-waveform") as HTMLDivElement;
-  Object.defineProperty(row, "clientWidth", { value: 600 });
-  const inner = row.querySelector(".row-waveform__inner") as HTMLElement;
-  Object.defineProperty(inner, "clientWidth", { value: 600 });
+  const row = view.container.querySelector('.row-waveform') as HTMLDivElement;
+  Object.defineProperty(row, 'clientWidth', {value: 600});
+  const inner = row.querySelector('.row-waveform__inner') as HTMLElement;
+  Object.defineProperty(inner, 'clientWidth', {value: 600});
   // The rendered buffer is translated by -(viewportAnchor - bufferStart)*pxPerSec;
   // recover the live viewport anchor from the track transform.
   const viewportStart = () => {
     const buffer = Number(
-      row.querySelector("[data-window-start]")?.getAttribute("data-window-start") ?? 0,
+      row
+        .querySelector('[data-window-start]')
+        ?.getAttribute('data-window-start') ?? 0,
     );
-    const track = row.querySelector(".row-waveform__track") as HTMLElement;
-    const transform = track?.style.transform ?? "";
+    const track = row.querySelector('.row-waveform__track') as HTMLElement;
+    const transform = track?.style.transform ?? '';
     const m = transform.match(/translate3d\((-?[0-9.]+)px/);
     const px = m ? Number(m[1]) : 0;
     const win = getWindowSecs(row.clientWidth || window.innerWidth, clips);
@@ -97,7 +97,7 @@ function renderRow({ playing = false, currentTime = 0 } = {}) {
         playing={props.playing}
         scrolling={false}
         setScrolling={vi.fn()}
-        scrollTimeoutRef={{ current: undefined }}
+        scrollTimeoutRef={{current: undefined}}
       />,
     );
   };
@@ -107,8 +107,8 @@ function renderRow({ playing = false, currentTime = 0 } = {}) {
   return {
     ...view,
     row,
-    track: row.querySelector(".row-waveform__track") as HTMLElement,
-    clip: view.container.querySelector(".waveform-clip")!,
+    track: row.querySelector('.row-waveform__track') as HTMLElement,
+    clip: view.container.querySelector('.waveform-clip')!,
     viewportStart,
     rerender,
   };
@@ -122,27 +122,28 @@ const flushRaf = () => {
 };
 
 beforeEach(() => {
-  Object.defineProperty(window, "innerWidth", {
+  Object.defineProperty(window, 'innerWidth', {
     configurable: true,
     value: 1024,
   });
-  (globalThis as unknown as { ResizeObserver: typeof ResizeObserver }).ResizeObserver =
-    FakeResizeObserver as unknown as typeof ResizeObserver;
+  (
+    globalThis as unknown as {ResizeObserver: typeof ResizeObserver}
+  ).ResizeObserver = FakeResizeObserver as unknown as typeof ResizeObserver;
   rafQueue = [];
-  vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
+  vi.spyOn(window, 'requestAnimationFrame').mockImplementation(cb => {
     rafQueue.push(cb);
     return rafQueue.length;
   });
-  vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => {});
+  vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
 });
 
-describe("RowWaveform clip dragging", () => {
-  it("scrolls the row when dragging a clip horizontally", () => {
-    const { clip, viewportStart } = renderRow();
+describe('RowWaveform clip dragging', () => {
+  it('scrolls the row when dragging a clip horizontally', () => {
+    const {clip, viewportStart} = renderRow();
 
     fireEvent.pointerDown(clip, {
       pointerId: 1,
-      pointerType: "mouse",
+      pointerType: 'mouse',
       clientX: 150,
       clientY: 50,
       button: 0,
@@ -159,12 +160,12 @@ describe("RowWaveform clip dragging", () => {
     expect(viewportStart()).toBe(2);
   });
 
-  it("does not scroll horizontally for a vertical clip swipe", () => {
-    const { clip, viewportStart } = renderRow();
+  it('does not scroll horizontally for a vertical clip swipe', () => {
+    const {clip, viewportStart} = renderRow();
 
     fireEvent.pointerDown(clip, {
       pointerId: 2,
-      pointerType: "touch",
+      pointerType: 'touch',
       clientX: 100,
       clientY: 50,
     });
@@ -179,12 +180,12 @@ describe("RowWaveform clip dragging", () => {
     expect(viewportStart()).toBe(0);
   });
 
-  it("starts scrolling from the row viewport even when the track is transformed", () => {
-    const { track, viewportStart } = renderRow();
+  it('starts scrolling from the row viewport even when the track is transformed', () => {
+    const {track, viewportStart} = renderRow();
 
     fireEvent.pointerDown(track, {
       pointerId: 3,
-      pointerType: "mouse",
+      pointerType: 'mouse',
       clientX: 150,
       clientY: 50,
       button: 0,
@@ -201,12 +202,15 @@ describe("RowWaveform clip dragging", () => {
     expect(viewportStart()).toBe(2);
   });
 
-  it("keeps a manual drag in control when playback time is outside the window", () => {
-    const { track, rerender, viewportStart } = renderRow({ playing: true, currentTime: 60 });
+  it('keeps a manual drag in control when playback time is outside the window', () => {
+    const {track, rerender, viewportStart} = renderRow({
+      playing: true,
+      currentTime: 60,
+    });
 
     fireEvent.pointerDown(track, {
       pointerId: 4,
-      pointerType: "mouse",
+      pointerType: 'mouse',
       clientX: 150,
       clientY: 50,
       button: 0,
@@ -217,19 +221,19 @@ describe("RowWaveform clip dragging", () => {
         clientX: 0,
         clientY: 50,
       });
-      rerender({ currentTime: 61 });
+      rerender({currentTime: 61});
     });
     act(() => flushRaf());
 
     expect(viewportStart()).toBe(2);
   });
 
-  it("does not scroll when the swipe starts above the track (dancing line area)", () => {
-    const { row, viewportStart } = renderRow();
+  it('does not scroll when the swipe starts above the track (dancing line area)', () => {
+    const {row, viewportStart} = renderRow();
 
     fireEvent.pointerDown(row, {
       pointerId: 5,
-      pointerType: "mouse",
+      pointerType: 'mouse',
       clientX: 150,
       clientY: 50,
       button: 0,

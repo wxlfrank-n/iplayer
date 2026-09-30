@@ -1,4 +1,4 @@
-import type { Clip } from "./utils/clips";
+import type {Clip} from './utils/clips';
 
 /**
  * Represents a single audio track in the player.
@@ -38,14 +38,14 @@ export interface WaveformData {
  * - "ready": Successfully decoded
  * - "error": Failed to decode
  */
-export type WaveformStatus = "idle" | "loading" | "ready" | "error";
+export type WaveformStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 /**
  * Waveform display mode.
  * - "stacked": Multiple rows, one per track (shows all clips)
  * - "horizontal": Single scrollable row with follow behavior
  */
-export type WaveformView = "stacked" | "horizontal";
+export type WaveformView = 'stacked' | 'horizontal';
 
 /**
  * Consolidated state for the currently played audio. Owned by the app root so

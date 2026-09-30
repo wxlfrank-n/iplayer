@@ -4,9 +4,9 @@
  * Allows selecting tracks and removing them from playlist.
  */
 
-import type { Track } from "../types";
-import { useT } from "../i18n";
-import "./TrackList.css";
+import type {Track} from '../types';
+import {useT} from '../i18n';
+import './TrackList.css';
 
 interface TrackListProps {
   tracks: Track[];
@@ -25,10 +25,8 @@ export function TrackList({
   if (tracks.length === 0) {
     return (
       <div className="track-list track-list--empty">
-        <p>{t("trackList.empty")}</p>
-        <p className="track-list__hint">
-          {t("trackList.hint")}
-        </p>
+        <p>{t('trackList.empty')}</p>
+        <p className="track-list__hint">{t('trackList.hint')}</p>
       </div>
     );
   }
@@ -38,7 +36,7 @@ export function TrackList({
       {tracks.map((track, index) => (
         <div
           key={track.id}
-          className={`track-item ${index === currentTrackIndex ? "track-item--active" : ""}`}
+          className={`track-item ${index === currentTrackIndex ? 'track-item--active' : ''}`}
           onClick={() => onSelectTrack(index)}
         >
           <div className="track-item__info">
@@ -50,13 +48,13 @@ export function TrackList({
           </div>
           <button
             className="track-item__remove"
-            onClick={(e) => {
+            onClick={e => {
               e.stopPropagation();
               onRemoveTrack(index);
             }}
-            title={t("trackList.removeTrack")}
+            title={t('trackList.removeTrack')}
           >
-            {"\u2715"}
+            {'\u2715'}
           </button>
         </div>
       ))}

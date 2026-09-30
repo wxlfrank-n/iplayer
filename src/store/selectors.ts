@@ -6,8 +6,8 @@
  * "current audio" record used by the waveform and clip views.
  */
 
-import type { RootState } from "./store";
-import type { CurrentAudio } from "../types";
+import type {RootState} from './store';
+import type {CurrentAudio} from '../types';
 
 // ---- config ----
 export const selectSkipSeconds = (s: RootState) => s.config.skipSeconds;
@@ -39,13 +39,13 @@ export const selectGaps = (s: RootState) => s.analysis.gaps;
 
 export interface CurrentAudioInput {
   track: ReturnType<typeof selectCurrentTrack> | null;
-  waveform: RootState["analysis"]["waveform"];
-  waveformStatus: RootState["analysis"]["waveformStatus"];
-  clips: RootState["analysis"]["clips"];
-  gaps: RootState["analysis"]["gaps"];
-  minGap: RootState["analysis"]["minGap"];
-  currentTime: RootState["player"]["currentTime"];
-  activeClip: RootState["analysis"]["activeClip"];
+  waveform: RootState['analysis']['waveform'];
+  waveformStatus: RootState['analysis']['waveformStatus'];
+  clips: RootState['analysis']['clips'];
+  gaps: RootState['analysis']['gaps'];
+  minGap: RootState['analysis']['minGap'];
+  currentTime: RootState['player']['currentTime'];
+  activeClip: RootState['analysis']['activeClip'];
 }
 
 export function toCurrentAudio({
@@ -61,7 +61,7 @@ export function toCurrentAudio({
   return {
     url: track?.url ?? null,
     title: track?.title ?? null,
-    waveform: waveformStatus === "ready" ? waveform : null,
+    waveform: waveformStatus === 'ready' ? waveform : null,
     waveformStatus,
     clips,
     gaps,

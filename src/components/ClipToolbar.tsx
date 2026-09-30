@@ -6,16 +6,16 @@
  * repeat stepper. Collapses via double-click on its background or a swipe up;
  * the collapsed hit area that re-expands it lives inside progress-container.
  */
-import { useRef } from "react";
-import type { MouseEvent, PointerEvent } from "react";
+import {useRef} from 'react';
+import type {MouseEvent, PointerEvent} from 'react';
 
-import { MergeSlider } from "./MergeSlider";
-import { RepsStepper } from "./RepsStepper";
+import {MergeSlider} from './MergeSlider';
+import {RepsStepper} from './RepsStepper';
 
-import { useAppDispatch } from "../store/hooks";
-import { updateConfig } from "../store/configSlice";
+import {useAppDispatch} from '../store/hooks';
+import {updateConfig} from '../store/configSlice';
 
-import "./ClipToolbar.css";
+import './ClipToolbar.css';
 
 /** Vertical distance (px) that counts as a swipe to hide the toolbar. */
 export const TOOLBAR_SWIPE_THRESHOLD_PX = 24;
@@ -106,10 +106,7 @@ export function ClipToolbar({
 
   return (
     <div
-      className={`clip-toolbar ${disabled
-        ? "clip-toolbar--disabled"
-        : ""
-        }`}
+      className={`clip-toolbar ${disabled ? 'clip-toolbar--disabled' : ''}`}
       onDoubleClick={handleDoubleClick}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}

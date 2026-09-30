@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 
-import { render, act, fireEvent } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { StackedWaveform } from "./StackedWaveform";
-import type { WaveformData } from "../types";
-import type { Clip as ClipData } from "../utils/clips";
+import {render, act, fireEvent} from '@testing-library/react';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import {StackedWaveform} from './StackedWaveform';
+import type {WaveformData} from '../types';
+import type {Clip as ClipData} from '../utils/clips';
 
 class FakeResizeObserver {
   constructor(_cb: () => void) {}
@@ -21,7 +21,7 @@ const waveform: WaveformData = {
 
 // 6 × 20s clips; each clip (20s > 10s row target) becomes its own row, and in
 // jsdom clientHeight is 0 → rowsPerPage 1 → each row is one page.
-const clips: ClipData[] = Array.from({ length: 6 }, (_, i) => ({
+const clips: ClipData[] = Array.from({length: 6}, (_, i) => ({
   start: i * 20,
   end: (i + 1) * 20,
   vStart: i * 20,
@@ -30,9 +30,8 @@ const clips: ClipData[] = Array.from({ length: 6 }, (_, i) => ({
 
 function setup(initialTime = 0) {
   const scrollTo = vi.fn();
-  (
-    HTMLElement.prototype as unknown as { scrollTo: typeof scrollTo }
-  ).scrollTo = scrollTo;
+  (HTMLElement.prototype as unknown as {scrollTo: typeof scrollTo}).scrollTo =
+    scrollTo;
 
   const onSeek = vi.fn();
   const props: React.ComponentProps<typeof StackedWaveform> = {
@@ -52,19 +51,19 @@ function setup(initialTime = 0) {
 
   const view = render(<StackedWaveform {...props} />);
   const scroller = view.container.querySelector(
-    ".stacked-waveform",
+    '.stacked-waveform',
   ) as HTMLDivElement;
-  Object.defineProperty(scroller, "clientWidth", { value: 800 });
+  Object.defineProperty(scroller, 'clientWidth', {value: 800});
 
   const rerender = (partial: Partial<typeof props>) => {
     Object.assign(props, partial);
     view.rerender(<StackedWaveform {...props} />);
   };
-  return { scrollTo, rerender, scroller, onSeek };
+  return {scrollTo, rerender, scroller, onSeek};
 }
 
 beforeEach(() => {
-  (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver =
+  (globalThis as unknown as {ResizeObserver: unknown}).ResizeObserver =
     FakeResizeObserver;
   vi.useFakeTimers();
 });
@@ -72,25 +71,25 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("stacked waveform paged auto-advance", () => {
-  it("scrolls to the target page when skipping while paused", async () => {
-    const { scrollTo, rerender } = setup(0);
+describe('stacked waveform paged auto-advance', () => {
+  it('scrolls to the target page when skipping while paused', async () => {
+    const {scrollTo, rerender} = setup(0);
     scrollTo.mockClear();
 
-    rerender({ currentTime: 45 });
+    rerender({currentTime: 45});
     await act(async () => {
       await vi.advanceTimersByTimeAsync(0);
     });
 
-    expect(scrollTo).toHaveBeenCalledWith({ left: 1600, behavior: "smooth" });
+    expect(scrollTo).toHaveBeenCalledWith({left: 1600, behavior: 'smooth'});
   });
 
-  it("scrolls to the next page when the live clock crosses a page end", async () => {
-    const { scrollTo, rerender } = setup(0);
-    rerender({ playing: true });
+  it('scrolls to the next page when the live clock crosses a page end', async () => {
+    const {scrollTo, rerender} = setup(0);
+    rerender({playing: true});
     scrollTo.mockClear();
 
-    rerender({ currentTime: 25 });
+    rerender({currentTime: 25});
     await act(async () => {
       await vi.advanceTimersByTimeAsync(48);
     });
@@ -99,37 +98,37 @@ describe("stacked waveform paged auto-advance", () => {
     expect(scrollTo.mock.lastCall?.[0].left).toBe(800);
   });
 
-  it("never skips ahead to the last page through between-page gaps", async () => {
-    const { scrollTo, rerender } = setup(0);
-    rerender({ playing: true });
+  it('never skips ahead to the last page through between-page gaps', async () => {
+    const {scrollTo, rerender} = setup(0);
+    rerender({playing: true});
     scrollTo.mockClear();
 
-    rerender({ currentTime: 21 });
+    rerender({currentTime: 21});
     await act(async () => {
       await vi.advanceTimersByTimeAsync(48);
     });
     expect(scrollTo.mock.lastCall?.[0].left).toBe(800);
 
-    rerender({ currentTime: 41 });
+    rerender({currentTime: 41});
     await act(async () => {
       await vi.advanceTimersByTimeAsync(48);
     });
     expect(scrollTo.mock.lastCall?.[0].left).toBe(1600);
 
-    rerender({ currentTime: 61 });
+    rerender({currentTime: 61});
     await act(async () => {
       await vi.advanceTimersByTimeAsync(48);
     });
     expect(scrollTo.mock.lastCall?.[0].left).toBe(2400);
   });
 
-  it("does not chase the playhead while the user manually browses an earlier page", async () => {
-    const { scrollTo, rerender, scroller } = setup(0);
-    rerender({ playing: true });
+  it('does not chase the playhead while the user manually browses an earlier page', async () => {
+    const {scrollTo, rerender, scroller} = setup(0);
+    rerender({playing: true});
     scrollTo.mockClear();
 
     // Auto-advance to page 1 (t=21 crosses page 0's end at 20).
-    rerender({ currentTime: 21 });
+    rerender({currentTime: 21});
     await act(async () => {
       await vi.advanceTimersByTimeAsync(48);
     });
@@ -146,22 +145,22 @@ describe("stacked waveform paged auto-advance", () => {
     // Cross into page 2 while browsing page 0 — advance must be suppressed
     // (allow the drag window to lapse so override, not userScrolling, is what
     // blocks the follow).
-    rerender({ currentTime: 41 });
+    rerender({currentTime: 41});
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1600);
     });
     expect(scrollTo).not.toHaveBeenCalled();
   });
 
-  it("resumes advancing once the user catches up to the playhead page", async () => {
-    const { scrollTo, rerender, scroller } = setup(0);
-    rerender({ playing: true });
+  it('resumes advancing once the user catches up to the playhead page', async () => {
+    const {scrollTo, rerender, scroller} = setup(0);
+    rerender({playing: true});
     scrollTo.mockClear();
 
     // Manual browse to page 0 while the playhead is on page 1.
     scroller.scrollLeft = 0;
     fireEvent.scroll(scroller);
-    rerender({ currentTime: 21 });
+    rerender({currentTime: 21});
     // Split the expiry/flush: the 1500ms drag window lapses and the follow loop
     // restarts, then a separate advance lets the new loop's ticks actually run.
     await act(async () => {
@@ -176,7 +175,7 @@ describe("stacked waveform paged auto-advance", () => {
     // User scrolls to page 1 where the playhead is now -> in sync, override clears.
     scroller.scrollLeft = 800;
     fireEvent.scroll(scroller);
-    rerender({ currentTime: 21 });
+    rerender({currentTime: 21});
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1600);
     });
@@ -186,7 +185,7 @@ describe("stacked waveform paged auto-advance", () => {
     scrollTo.mockClear();
 
     // Crossing page 1's end advances again.
-    rerender({ currentTime: 41 });
+    rerender({currentTime: 41});
     await act(async () => {
       await vi.advanceTimersByTimeAsync(48);
     });
@@ -194,12 +193,12 @@ describe("stacked waveform paged auto-advance", () => {
   });
 
   it("does not snap back to the playing clip's page once the user scrolls away", async () => {
-    const { scrollTo, rerender, scroller } = setup(0);
+    const {scrollTo, rerender, scroller} = setup(0);
 
     // Click clip 0's rect to start its (repeating) clip playback.
-    const firstClip = scroller.querySelector(".waveform-clip")!;
+    const firstClip = scroller.querySelector('.waveform-clip')!;
     fireEvent.click(firstClip);
-    rerender({ playing: true, activeClip: 0, currentTime: 0 });
+    rerender({playing: true, activeClip: 0, currentTime: 0});
     await act(async () => {
       await vi.advanceTimersByTimeAsync(0);
     });
@@ -215,8 +214,8 @@ describe("stacked waveform paged auto-advance", () => {
     scrollTo.mockClear();
 
     // The clip's clock wraps when it repeats: currentTime jumps back to ~0.
-    rerender({ currentTime: 20 });
-    rerender({ currentTime: 0.5 });
+    rerender({currentTime: 20});
+    rerender({currentTime: 0.5});
     await act(async () => {
       await vi.advanceTimersByTimeAsync(0);
     });
@@ -224,16 +223,16 @@ describe("stacked waveform paged auto-advance", () => {
     expect(scrollTo).not.toHaveBeenCalled();
   });
 
-  it("does not seek when clicking a row background while a clip is playing", () => {
-    const { scroller, rerender, onSeek } = setup(0);
+  it('does not seek when clicking a row background while a clip is playing', () => {
+    const {scroller, rerender, onSeek} = setup(0);
 
     // Start clip 0's repeating playback by clicking its rect.
-    const firstClip = scroller.querySelector(".waveform-clip")!;
+    const firstClip = scroller.querySelector('.waveform-clip')!;
     fireEvent.click(firstClip);
-    rerender({ playing: true, activeClip: 0, currentTime: 0 });
+    rerender({playing: true, activeClip: 0, currentTime: 0});
 
     // Click the row background (silence) — must not seek while the clip plays.
-    fireEvent.click(scroller.querySelector(".stacked-waveform__row")!);
+    fireEvent.click(scroller.querySelector('.stacked-waveform__row')!);
 
     expect(onSeek).not.toHaveBeenCalled();
   });

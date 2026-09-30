@@ -1,4 +1,4 @@
-import type { Clip } from "./clips";
+import type {Clip} from './clips';
 
 const MIN_WINDOW_SECS = 4;
 
@@ -17,10 +17,7 @@ export function getBaseWindowSecs(width: number): number {
   return 8;
 }
 
-export function getWindowSecs(
-  width: number,
-  clips: Clip[] = [],
-): number {
+export function getWindowSecs(width: number, clips: Clip[] = []): number {
   const baseWindowSecs = getBaseWindowSecs(width);
 
   if (width <= 0 || clips.length === 0) {
@@ -31,8 +28,8 @@ export function getWindowSecs(
    * Ignore invalid/zero-length clips.
    */
   const durations = clips
-    .map((clip) => clip.vEnd - clip.vStart)
-    .filter((duration) => duration > 0)
+    .map(clip => clip.vEnd - clip.vStart)
+    .filter(duration => duration > 0)
     .sort((a, b) => a - b);
 
   if (durations.length === 0) {
@@ -65,16 +62,9 @@ export function getWindowSecs(
    *       D * width / TARGET_CLIP_WIDTH_PX
    */
   const densityWindowSecs =
-    (Math.max(0.1, medianDuration) * width) /
-    TARGET_CLIP_WIDTH_PX;
+    (Math.max(0.1, medianDuration) * width) / TARGET_CLIP_WIDTH_PX;
 
-  return Math.max(
-    MIN_WINDOW_SECS,
-    Math.min(
-      baseWindowSecs,
-      densityWindowSecs,
-    ),
-  );
+  return Math.max(MIN_WINDOW_SECS, Math.min(baseWindowSecs, densityWindowSecs));
 }
 
 export function clampWindowAnchor(anchor: number, maxStart: number): number {

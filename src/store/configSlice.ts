@@ -18,14 +18,14 @@
  * Changes persist to localStorage immediately.
  */
 
-import { createSlice } from "@reduxjs/toolkit";
-import type { PayloadAction } from "@reduxjs/toolkit";
-import type { WaveformView } from "../types";
-import type { ThemeId } from "../themes";
-import { DEFAULT_THEME, THEME_IDS } from "../themes";
-import { isLocale, type LocaleId } from "../i18n/translations";
+import {createSlice} from '@reduxjs/toolkit';
+import type {PayloadAction} from '@reduxjs/toolkit';
+import type {WaveformView} from '../types';
+import type {ThemeId} from '../themes';
+import {DEFAULT_THEME, THEME_IDS} from '../themes';
+import {isLocale, type LocaleId} from '../i18n/translations';
 
-const STORAGE_KEY = "Listeenoop_config";
+const STORAGE_KEY = 'Listeenoop_config';
 
 interface ConfigState {
   skipSeconds: number;
@@ -41,23 +41,23 @@ interface ConfigState {
 
 export const DEFAULT_CONFIG: ConfigState = {
   skipSeconds: 10,
-  waveformView: "horizontal",
+  waveformView: 'horizontal',
   blockMs: 12,
   silenceRatio: 0.01,
   minClipLength: 0.3,
   repetitions: 3,
   showAdvancedControls: false,
   theme: DEFAULT_THEME,
-  language: "en",
+  language: 'en',
 };
 
 /** Valid numeric ranges for each configurable value (drives the Settings UI). */
 export const CONFIG_RANGES = {
-  skipSeconds: { min: 1, max: 60 },
-  blockMs: { min: 2, max: 64 },
-  silenceRatio: { min: 0.005, max: 0.1 },
-  minClipLength: { min: 0.2, max: 1 },
-  repetitions: { min: 1, max: 20 },
+  skipSeconds: {min: 1, max: 60},
+  blockMs: {min: 2, max: 64},
+  silenceRatio: {min: 0.005, max: 0.1},
+  minClipLength: {min: 0.2, max: 1},
+  repetitions: {min: 1, max: 20},
 } as const;
 
 function loadConfig(): ConfigState {
@@ -72,11 +72,14 @@ function loadConfig(): ConfigState {
         repetitions: Number.isFinite(parsed.repetitions)
           ? Math.min(
               CONFIG_RANGES.repetitions.max,
-              Math.max(CONFIG_RANGES.repetitions.min, Math.round(parsed.repetitions)),
+              Math.max(
+                CONFIG_RANGES.repetitions.min,
+                Math.round(parsed.repetitions),
+              ),
             )
           : DEFAULT_CONFIG.repetitions,
         showAdvancedControls:
-          typeof parsed.showAdvancedControls === "boolean"
+          typeof parsed.showAdvancedControls === 'boolean'
             ? parsed.showAdvancedControls
             : DEFAULT_CONFIG.showAdvancedControls,
         language: isLocale(parsed.language)
@@ -85,7 +88,7 @@ function loadConfig(): ConfigState {
       };
     }
   } catch {}
-  return { ...DEFAULT_CONFIG };
+  return {...DEFAULT_CONFIG};
 }
 
 function saveConfig(config: ConfigState) {
@@ -95,16 +98,16 @@ function saveConfig(config: ConfigState) {
 const initialState: ConfigState = loadConfig();
 
 export const configSlice = createSlice({
-  name: "config",
+  name: 'config',
   initialState,
   reducers: {
     updateConfig(state, action: PayloadAction<Partial<ConfigState>>) {
-      const next = { ...state, ...action.payload };
+      const next = {...state, ...action.payload};
       saveConfig(next);
       return next;
     },
   },
 });
 
-export const { updateConfig } = configSlice.actions;
+export const {updateConfig} = configSlice.actions;
 export default configSlice.reducer;

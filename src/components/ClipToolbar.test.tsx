@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render } from "@testing-library/react";
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
-import { configureStore } from "@reduxjs/toolkit";
-import { Provider } from "react-redux";
-import configReducer, { updateConfig } from "../store/configSlice";
-import playerReducer from "../store/playerSlice";
-import analysisReducer from "../store/analysisSlice";
-import { ClipToolbar } from "./ClipToolbar";
+import {cleanup, fireEvent, render} from '@testing-library/react';
+import {afterEach, beforeAll, describe, expect, it} from 'vitest';
+import {configureStore} from '@reduxjs/toolkit';
+import {Provider} from 'react-redux';
+import configReducer, {updateConfig} from '../store/configSlice';
+import playerReducer from '../store/playerSlice';
+import analysisReducer from '../store/analysisSlice';
+import {ClipToolbar} from './ClipToolbar';
 
 afterEach(cleanup);
 
@@ -32,7 +32,7 @@ function makeStore() {
 }
 
 function renderToolbar(store: ReturnType<typeof makeStore>) {
-  store.dispatch(updateConfig({ showAdvancedControls: true }));
+  store.dispatch(updateConfig({showAdvancedControls: true}));
   return render(
     <Provider store={store}>
       <ClipToolbar
@@ -46,49 +46,49 @@ function renderToolbar(store: ReturnType<typeof makeStore>) {
   );
 }
 
-describe("ClipToolbar", () => {
-  it("renders the merge and repeat controls", () => {
+describe('ClipToolbar', () => {
+  it('renders the merge and repeat controls', () => {
     const store = makeStore();
-    const { container } = renderToolbar(store);
-    expect(container.querySelector(".clip-merge")).not.toBeNull();
-    expect(container.querySelector(".clip-reps")).not.toBeNull();
+    const {container} = renderToolbar(store);
+    expect(container.querySelector('.clip-merge')).not.toBeNull();
+    expect(container.querySelector('.clip-reps')).not.toBeNull();
   });
 
-  it("collapses the toolbar when double-clicking its background", () => {
+  it('collapses the toolbar when double-clicking its background', () => {
     const store = makeStore();
     renderToolbar(store);
 
-    const bar = document.querySelector(".clip-toolbar")!;
+    const bar = document.querySelector('.clip-toolbar')!;
     fireEvent.doubleClick(bar);
     expect(store.getState().config.showAdvancedControls).toBe(false);
   });
 
-  it("does not collapse when double-clicking an interactive control", () => {
+  it('does not collapse when double-clicking an interactive control', () => {
     const store = makeStore();
     renderToolbar(store);
 
-    const button = document.querySelector(".clip-reps__stepper button")!;
+    const button = document.querySelector('.clip-reps__stepper button')!;
     fireEvent.doubleClick(button);
     expect(store.getState().config.showAdvancedControls).toBe(true);
   });
 
-  it("hides the toolbar on a swipe up", () => {
+  it('hides the toolbar on a swipe up', () => {
     const store = makeStore();
     renderToolbar(store);
 
-    const bar = document.querySelector(".clip-toolbar")!;
-    fireEvent.pointerDown(bar, { clientX: 100, clientY: 40 });
-    fireEvent.pointerUp(bar, { clientX: 100, clientY: 0 });
+    const bar = document.querySelector('.clip-toolbar')!;
+    fireEvent.pointerDown(bar, {clientX: 100, clientY: 40});
+    fireEvent.pointerUp(bar, {clientX: 100, clientY: 0});
     expect(store.getState().config.showAdvancedControls).toBe(false);
   });
 
-  it("does not hide the toolbar on a swipe down", () => {
+  it('does not hide the toolbar on a swipe down', () => {
     const store = makeStore();
     renderToolbar(store);
 
-    const bar = document.querySelector(".clip-toolbar")!;
-    fireEvent.pointerDown(bar, { clientX: 100, clientY: 0 });
-    fireEvent.pointerUp(bar, { clientX: 100, clientY: 40 });
+    const bar = document.querySelector('.clip-toolbar')!;
+    fireEvent.pointerDown(bar, {clientX: 100, clientY: 0});
+    fireEvent.pointerUp(bar, {clientX: 100, clientY: 40});
     expect(store.getState().config.showAdvancedControls).toBe(true);
   });
 });

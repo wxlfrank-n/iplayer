@@ -5,10 +5,10 @@
  * the typed hooks in `store/hooks.ts`.
  */
 
-import { configureStore } from "@reduxjs/toolkit";
-import configReducer from "./configSlice";
-import playerReducer from "./playerSlice";
-import analysisReducer from "./analysisSlice";
+import {configureStore} from '@reduxjs/toolkit';
+import configReducer from './configSlice';
+import playerReducer from './playerSlice';
+import analysisReducer from './analysisSlice';
 
 export const store = configureStore({
   reducer: {
@@ -16,13 +16,13 @@ export const store = configureStore({
     player: playerReducer,
     analysis: analysisReducer,
   },
-  middleware: (getDefaultMiddleware) =>
+  middleware: getDefaultMiddleware =>
     getDefaultMiddleware({
       serializableCheck: {
         // The decoded waveform holds a Float32Array of sample amplitudes; it
         // lives only in memory and is never serialized/persisted.
-        ignoredPaths: ["analysis.waveform"],
-        ignoredActionPaths: ["payload.data"],
+        ignoredPaths: ['analysis.waveform'],
+        ignoredActionPaths: ['payload.data'],
       },
     }),
 });

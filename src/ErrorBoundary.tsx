@@ -6,8 +6,8 @@
  * Also logs to console and localStorage for debugging.
  */
 
-import { Component, type ReactNode } from "react";
-import { t } from "./i18n";
+import {Component, type ReactNode} from 'react';
+import {t} from './i18n';
 
 interface State {
   error: Error | null;
@@ -15,15 +15,15 @@ interface State {
 
 // Catches render/child errors, shows the message on screen so mobile browsers
 // (which may not expose devtools) can display what actually failed.
-export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
-  state: State = { error: null };
+export class ErrorBoundary extends Component<{children: ReactNode}, State> {
+  state: State = {error: null};
 
   static getDerivedStateFromError(error: Error): State {
-    return { error };
+    return {error};
   }
 
   componentDidCatch(error: Error, info: unknown) {
-    console.error("ErrorBoundary caught:", error, info);
+    console.error('ErrorBoundary caught:', error, info);
   }
 
   render() {
@@ -32,14 +32,14 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
         <div
           style={{
             padding: 24,
-            fontFamily: "monospace",
+            fontFamily: 'monospace',
             fontSize: 12,
-            whiteSpace: "pre-wrap",
+            whiteSpace: 'pre-wrap',
           }}
         >
-          <h3>{t("errorBoundary.crashed")}</h3>
+          <h3>{t('errorBoundary.crashed')}</h3>
           <p>{String(this.state.error)}</p>
-          <p style={{ color: "#888" }}>{this.state.error.stack}</p>
+          <p style={{color: '#888'}}>{this.state.error.stack}</p>
         </div>
       );
     }

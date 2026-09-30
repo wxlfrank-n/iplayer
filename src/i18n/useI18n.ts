@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext } from "react";
+import {createContext, useCallback, useContext} from 'react';
 import {
   dictionaryFor,
   isLocale,
@@ -8,15 +8,15 @@ import {
   type Messages,
   type TranslationKey,
   type TranslationParams,
-} from "./translations";
+} from './translations';
 
-export type { Messages, TranslationKey, TranslationParams, LocaleId };
+export type {Messages, TranslationKey, TranslationParams, LocaleId};
 
 export const I18nContext = createContext<Messages>(en);
 
 export type T = (key: TranslationKey, params?: TranslationParams) => string;
 
-let currentLocale: LocaleId = "en";
+let currentLocale: LocaleId = 'en';
 
 export function getLocale(): LocaleId {
   return currentLocale;
@@ -24,7 +24,7 @@ export function getLocale(): LocaleId {
 
 /** Switches the module-level locale used by the non-React `t()` helper. */
 export function setLocale(locale: string): void {
-  currentLocale = isLocale(locale) ? locale : "en";
+  currentLocale = isLocale(locale) ? locale : 'en';
 }
 
 /** Reactive translation function for function components. */

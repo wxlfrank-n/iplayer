@@ -4,14 +4,14 @@
  * Supports drag-and-drop and file input for adding new tracks.
  */
 
-import { useRef, useCallback } from "react";
-import { TrackList } from "./TrackList";
-import { useAppSelector } from "../store/hooks";
-import { selectTracks, selectCurrentTrackIndex } from "../store/selectors";
-import { useFocusTrap } from "../hooks/useFocusTrap";
-import { useT } from "../i18n";
-import CloseIcon from "../assets/icons/close.svg?react";
-import "./Playlist.css";
+import {useRef, useCallback} from 'react';
+import {TrackList} from './TrackList';
+import {useAppSelector} from '../store/hooks';
+import {selectTracks, selectCurrentTrackIndex} from '../store/selectors';
+import {useFocusTrap} from '../hooks/useFocusTrap';
+import {useT} from '../i18n';
+import CloseIcon from '../assets/icons/close.svg?react';
+import './Playlist.css';
 
 interface PlaylistProps {
   onSelectTrack: (index: number) => void;
@@ -40,14 +40,16 @@ export function Playlist({
         className="playlist-panel"
         ref={trapRef}
         tabIndex={-1}
-        onClick={(e) => e.stopPropagation()}
+        onClick={e => e.stopPropagation()}
       >
         <div className="playlist-header">
-          <h2 id="playlist-title">{t("playlist.title", { count: tracks.length })}</h2>
+          <h2 id="playlist-title">
+            {t('playlist.title', {count: tracks.length})}
+          </h2>
           <div className="playlist-header__actions">
             <button
               className="add-btn"
-              aria-label={t("playlist.addTracks")}
+              aria-label={t('playlist.addTracks')}
               onClick={() => fileInputRef.current?.click()}
             >
               +
@@ -55,8 +57,8 @@ export function Playlist({
             <button
               className="playlist-close"
               onClick={handleClose}
-              aria-label={t("playlist.close")}
-              title={t("common.close")}
+              aria-label={t('playlist.close')}
+              title={t('common.close')}
             >
               <CloseIcon width={18} height={18} />
             </button>
@@ -67,11 +69,11 @@ export function Playlist({
           type="file"
           accept=".mp3,audio/mpeg"
           multiple
-          onChange={(e) => {
+          onChange={e => {
             if (e.target.files) onAddFiles(e.target.files);
-            e.target.value = "";
+            e.target.value = '';
           }}
-          style={{ display: "none" }}
+          style={{display: 'none'}}
         />
         <TrackList
           tracks={tracks}

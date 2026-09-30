@@ -24,29 +24,29 @@
  * - Auto-save config to localStorage
  */
 
-import "./App.css";
+import './App.css';
 
-import { useRef, useCallback, useState, useEffect, useMemo } from "react";
-import { useAudioPlayer } from "./hooks/useAudioPlayer";
-import { useConfig } from "./hooks/useConfig";
-import { useWaveform } from "./hooks/useWaveform";
-import { useAddFiles } from "./hooks/useAddFiles";
-import { splitBySilence, type ClipData } from "./utils/clips";
-import { useAppDispatch, useAppSelector } from "./store/hooks";
-import { selectCurrentTrack } from "./store/selectors";
-import { setClips, setActiveClip } from "./store/analysisSlice";
-import { NowPlaying } from "./components/NowPlaying";
-import { PlayerActions } from "./components/PlayerActions";
-import { PlayerControls } from "./components/PlayerControls";
-import { Playlist } from "./components/Playlist";
-import { ProgressBar } from "./components/ProgressBar";
-import { Settings } from "./components/Settings";
-import { EmptyState } from "./components/EmptyState";
-import { useT } from "./i18n";
+import {useRef, useCallback, useState, useEffect, useMemo} from 'react';
+import {useAudioPlayer} from './hooks/useAudioPlayer';
+import {useConfig} from './hooks/useConfig';
+import {useWaveform} from './hooks/useWaveform';
+import {useAddFiles} from './hooks/useAddFiles';
+import {splitBySilence, type ClipData} from './utils/clips';
+import {useAppDispatch, useAppSelector} from './store/hooks';
+import {selectCurrentTrack} from './store/selectors';
+import {setClips, setActiveClip} from './store/analysisSlice';
+import {NowPlaying} from './components/NowPlaying';
+import {PlayerActions} from './components/PlayerActions';
+import {PlayerControls} from './components/PlayerControls';
+import {Playlist} from './components/Playlist';
+import {ProgressBar} from './components/ProgressBar';
+import {Settings} from './components/Settings';
+import {EmptyState} from './components/EmptyState';
+import {useT} from './i18n';
 
 export default function App() {
   // Load user configuration from localStorage
-  const { config } = useConfig();
+  const {config} = useConfig();
   const dispatch = useAppDispatch();
   const t = useT();
 
@@ -73,7 +73,7 @@ export default function App() {
   // Temporary notification message (auto-hides after 4s)
   const [notice, setNotice] = useState<{
     msg: string;
-    type: "info" | "error";
+    type: 'info' | 'error';
   } | null>(null);
   const noticeTimerRef = useRef<number | undefined>(undefined);
 
@@ -86,7 +86,7 @@ export default function App() {
     if (!showPlaylist) {
       lastFocusRef.current = (document.activeElement as HTMLElement) ?? null;
     }
-    setShowPlaylist((v) => !v);
+    setShowPlaylist(v => !v);
   }, [showPlaylist]);
   const openSettings = useCallback(() => {
     lastFocusRef.current = (document.activeElement as HTMLElement) ?? null;
@@ -110,7 +110,7 @@ export default function App() {
   // Clips detected from the current audio's silence gaps, recomputed only
   // when the waveform (i.e. the loaded track) changes, then published to the
   // analysis slice so every component can read them.
-  const clipData:ClipData = useMemo(
+  const clipData: ClipData = useMemo(
     () =>
       splitBySilence(
         waveform.data?.data ?? null,
@@ -121,7 +121,12 @@ export default function App() {
           minClipLength: config.minClipLength,
         },
       ),
-    [waveform.status, config.blockMs, config.silenceRatio, config.minClipLength],
+    [
+      waveform.status,
+      config.blockMs,
+      config.silenceRatio,
+      config.minClipLength,
+    ],
   );
   useEffect(() => {
     dispatch(setClips(clipData));
@@ -133,8 +138,8 @@ export default function App() {
   }, [currentTrack?.url, dispatch]);
 
   const showNotice = useCallback(
-    (msg: string, type: "info" | "error" = "info") => {
-      setNotice({ msg, type });
+    (msg: string, type: 'info' | 'error' = 'info') => {
+      setNotice({msg, type});
       window.clearTimeout(noticeTimerRef.current);
       noticeTimerRef.current = window.setTimeout(() => setNotice(null), 4000);
     },
@@ -143,15 +148,14 @@ export default function App() {
 
   // Adding files (file picker + drag-and-drop) with a skip notice for
   // non-MP3 files.
-  const { handleFiles, isOver, drop } = useAddFiles(
+  const {handleFiles, isOver, drop} = useAddFiles(
     addTracks,
     useCallback(
       (skipped: number) =>
         showNotice(
-          t(
-            skipped > 1 ? "app.skippedNonMp3Plural" : "app.skippedNonMp3",
-            { count: skipped },
-          ),
+          t(skipped > 1 ? 'app.skippedNonMp3Plural' : 'app.skippedNonMp3', {
+            count: skipped,
+          }),
         ),
       [showNotice, t],
     ),
@@ -159,8 +163,8 @@ export default function App() {
 
   return (
     <div
-      className={`app ${isOver ? "drag-over" : ""}`}
-      ref={(node) => {
+      className={`app ${isOver ? 'drag-over' : ''}`}
+      ref={node => {
         if (node) drop(node);
       }}
     >
@@ -176,7 +180,7 @@ export default function App() {
             <div className="player-card">
               <NowPlaying />
               <ProgressBar
-                key={currentTrack?.url ?? "none"}
+                key={currentTrack?.url ?? 'none'}
                 onSeek={seek}
                 onPlayRange={playRange}
                 onStopPlayback={togglePlay}

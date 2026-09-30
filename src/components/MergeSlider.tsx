@@ -13,11 +13,11 @@
  *   is smooth: the thumb follows the pointer while the effective merge gap snaps
  *   to the nearest detected gap boundary (read from the store).
  */
-import { useEffect, useRef, useState } from "react";
-import { useAppSelector } from "../store/hooks";
-import { selectGaps } from "../store/selectors";
-import { useT } from "../i18n";
-import "./MergeSlider.css";
+import {useEffect, useRef, useState} from 'react';
+import {useAppSelector} from '../store/hooks';
+import {selectGaps} from '../store/selectors';
+import {useT} from '../i18n';
+import './MergeSlider.css';
 
 interface MergeSliderProps {
   /** Snapped merge gap (seconds) used for merging clips. */
@@ -80,8 +80,8 @@ export function MergeSlider({
     if (!el) return;
     const update = () => {
       const tw =
-        parseFloat(getComputedStyle(el).getPropertyValue("--thumb-w")) || 10;
-      setSliderMetrics({ width: el.clientWidth, thumbW: tw });
+        parseFloat(getComputedStyle(el).getPropertyValue('--thumb-w')) || 10;
+      setSliderMetrics({width: el.clientWidth, thumbW: tw});
     };
     update();
     const ro = new ResizeObserver(update);
@@ -103,7 +103,7 @@ export function MergeSlider({
     const i = gapValues.indexOf(value);
     const next =
       gapValues[
-      i >= 0 && i < gapValues.length - 1 ? i + 1 : gapValues.length - 1
+        i >= 0 && i < gapValues.length - 1 ? i + 1 : gapValues.length - 1
       ];
     if (next !== undefined) {
       setSliderValue(next);
@@ -132,8 +132,8 @@ export function MergeSlider({
       <div className="clip-merge__stepper">
         <button
           type="button"
-          aria-label={t("merge.increaseGap")}
-          title={t("merge.increaseHint")}
+          aria-label={t('merge.increaseGap')}
+          title={t('merge.increaseHint')}
           disabled={disabled || value >= gapValues[gapValues.length - 1]}
           onClick={stepToNext}
         >
@@ -142,10 +142,10 @@ export function MergeSlider({
         <div className="clip-merge__slider" ref={sliderWrapRef}>
           <span
             className="clip-merge__bubble"
-            style={{ left: `${bubbleLeft}px` }}
-            title={t("merge.bubbleTitle")}
+            style={{left: `${bubbleLeft}px`}}
+            title={t('merge.bubbleTitle')}
           >
-            {t(clipCount === 1 ? "merge.clipCount" : "merge.clipCountPlural", {
+            {t(clipCount === 1 ? 'merge.clipCount' : 'merge.clipCountPlural', {
               count: clipCount,
             })}
           </span>
@@ -156,14 +156,14 @@ export function MergeSlider({
             step={0.005}
             value={sliderValue}
             disabled={disabled}
-            title={t("merge.rangeTitle", { gap: sliderValue.toFixed(2) })}
+            title={t('merge.rangeTitle', {gap: sliderValue.toFixed(2)})}
             onChange={onSliderChange}
           />
         </div>
         <button
           type="button"
-          aria-label={t("merge.decreaseGap")}
-          title={t("merge.decreaseHint")}
+          aria-label={t('merge.decreaseGap')}
+          title={t('merge.decreaseHint')}
           disabled={disabled || value <= gapValues[0]}
           onClick={stepToPrev}
         >

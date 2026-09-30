@@ -7,10 +7,10 @@
  * of truth that all components read.
  */
 
-import { createSlice } from "@reduxjs/toolkit";
-import type { PayloadAction } from "@reduxjs/toolkit";
-import type { Track } from "../types";
-import { DEFAULT_TRACKS } from "../defaultTracks";
+import {createSlice} from '@reduxjs/toolkit';
+import type {PayloadAction} from '@reduxjs/toolkit';
+import type {Track} from '../types';
+import {DEFAULT_TRACKS} from '../defaultTracks';
 
 export interface PlayerState {
   tracks: Track[];
@@ -20,10 +20,10 @@ export interface PlayerState {
   duration: number;
 }
 
-const defaultTracks: Track[] = DEFAULT_TRACKS.map((t) => ({
+const defaultTracks: Track[] = DEFAULT_TRACKS.map(t => ({
   id: t.filename,
   title: t.title,
-  artist: "Unknown Artist",
+  artist: 'Unknown Artist',
   duration: 0,
   url: `${import.meta.env.VITE_BASE_URL}music/${t.filename}`,
   file: undefined,
@@ -38,7 +38,7 @@ const initialState: PlayerState = {
 };
 
 export const playerSlice = createSlice({
-  name: "player",
+  name: 'player',
   initialState,
   reducers: {
     setTracks(state, action: PayloadAction<Track[]>) {

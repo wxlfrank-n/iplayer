@@ -8,8 +8,8 @@
  * trigger a second full decode of the file.
  */
 
-import { useState, useEffect, useRef } from "react";
-import { decodeAudioBuffer } from "../utils/audio";
+import {useState, useEffect, useRef} from 'react';
+import {decodeAudioBuffer} from '../utils/audio';
 
 /**
  * Audio metadata information.
@@ -45,7 +45,7 @@ export function useAudioMeta(url: string | null) {
       try {
         // Reuse the same fetch + decodeAudioData that the waveform and playback
         // use, so the metadata never triggers a second full decode of the file.
-        const { buffer, byteLength } = await decodeAudioBuffer(currentUrl!);
+        const {buffer, byteLength} = await decodeAudioBuffer(currentUrl!);
         if (cancelled) return;
 
         const bitrate =

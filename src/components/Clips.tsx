@@ -16,23 +16,19 @@
  * StackedWaveform can perform scrolling/paging.
  */
 
-import { memo, type ReactNode } from "react";
+import {memo, type ReactNode} from 'react';
 
-import type { Clip as ClipData } from "../utils/clips";
-import type { WaveWindow } from "../types";
+import type {Clip as ClipData} from '../utils/clips';
+import type {WaveWindow} from '../types';
 
-import { Clip } from "./Clip";
+import {Clip} from './Clip';
 
 interface ClipsProps {
   clips: ClipData[];
 
   window: WaveWindow;
 
-  onPlayRange: (
-    start: number,
-    end: number,
-    repetitions: number,
-  ) => void;
+  onPlayRange: (start: number, end: number, repetitions: number) => void;
 
   repetitions: number;
 
@@ -44,10 +40,7 @@ interface ClipsProps {
 
   onActivate: (idx: number) => void;
 
-  onSwipe?: (
-    idx: number,
-    direction: "up" | "down",
-  ) => void;
+  onSwipe?: (idx: number, direction: 'up' | 'down') => void;
 
   /**
    * Maps a clip's local position in `clips` to its global
@@ -59,81 +52,63 @@ interface ClipsProps {
    *
    * Default: local array index.
    */
-  getIdx?: (
-    clip: ClipData,
-    indexInArray: number,
-  ) => number;
+  getIdx?: (clip: ClipData, indexInArray: number) => number;
 
   /**
    * Optional content rendered inside each Clip.
    */
-  renderLabel?: (
-    id: number,
-    clip: ClipData,
-    indexInArray: number,
-  ) => ReactNode;
+  renderLabel?: (id: number, clip: ClipData, indexInArray: number) => ReactNode;
 }
 
-export const Clips = memo(function Clips({
-  clips,
-  window,
-  onPlayRange,
-  repetitions,
-  playing,
-  onStopPlayback,
-  activeClip,
-  onActivate,
-  onSwipe,
-  getIdx,
-  renderLabel,
-}: ClipsProps) {
-  const {
-    windowStartSec,
-    windowLen,
-  } = window;
+export const Clips = memo(
+  ({
+    clips,
+    window,
+    onPlayRange,
+    repetitions,
+    playing,
+    onStopPlayback,
+    activeClip,
+    onActivate,
+    onSwipe,
+    getIdx,
+    renderLabel,
+  }: ClipsProps) => {
+    const {windowStartSec, windowLen} = window;
 
-  const windowEndSec =
-    windowStartSec + windowLen;
+    const windowEndSec = windowStartSec + windowLen;
 
-  return (
-    <>
-      {clips.map((clip, indexInArray) => {
-        /*
-         * Skip clips completely outside the rendered
-         * waveform window.
-         */
-        if (
-          clip.vEnd <= windowStartSec ||
-          clip.vStart >= windowEndSec
-        ) {
-          return null;
-        }
+    return (
+      <>
+        {clips.map((clip, indexInArray) => {
+          /*
+           * Skip clips completely outside the rendered
+           * waveform window.
+           */
+          if (clip.vEnd <= windowStartSec || clip.vStart >= windowEndSec) {
+            return null;
+          }
 
-        const id = getIdx
-          ? getIdx(clip, indexInArray)
-          : indexInArray;
+          const id = getIdx ? getIdx(clip, indexInArray) : indexInArray;
 
-        return (
-          <Clip
-            key={id}
-            clip={clip}
-            window={window}
-            id={id}
-            active={id === activeClip}
-            label={renderLabel?.(
-              id,
-              clip,
-              indexInArray,
-            )}
-            onPlayRange={onPlayRange}
-            repetitions={repetitions}
-            playing={playing}
-            onStopPlayback={onStopPlayback}
-            onActivate={onActivate}
-            onSwipe={onSwipe}
-          />
-        );
-      })}
-    </>
-  );
-});
+          return (
+            <Clip
+              key={id}
+              clip={clip}
+              window={window}
+              id={id}
+              active={id === activeClip}
+              label={renderLabel?.(id, clip, indexInArray)}
+              onPlayRange={onPlayRange}
+              repetitions={repetitions}
+              playing={playing}
+              onStopPlayback={onStopPlayback}
+              onActivate={onActivate}
+              onSwipe={onSwipe}
+            />
+          );
+        })}
+      </>
+    );
+  },
+);

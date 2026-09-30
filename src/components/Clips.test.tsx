@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render } from "@testing-library/react";
-import { beforeAll, describe, expect, it, vi } from "vitest";
-import { Clips } from "./Clips";
-import type { WaveWindow } from "../types";
-import type { Clip as ClipData } from "../utils/clips";
+import {fireEvent, render} from '@testing-library/react';
+import {beforeAll, describe, expect, it, vi} from 'vitest';
+import {Clips} from './Clips';
+import type {WaveWindow} from '../types';
+import type {Clip as ClipData} from '../utils/clips';
 
 const windowConfig: WaveWindow = {
   windowStartSec: 0,
@@ -14,7 +14,9 @@ const windowConfig: WaveWindow = {
   vbH: 200,
 };
 
-const renderClips = (overrides: Partial<React.ComponentProps<typeof Clips>> = {}) => {
+const renderClips = (
+  overrides: Partial<React.ComponentProps<typeof Clips>> = {},
+) => {
   const props: React.ComponentProps<typeof Clips> = {
     clips: [],
     window: windowConfig,
@@ -28,7 +30,7 @@ const renderClips = (overrides: Partial<React.ComponentProps<typeof Clips>> = {}
     ...overrides,
   };
   const view = render(<Clips {...props} />);
-  return { ...view, props };
+  return {...view, props};
 };
 
 beforeAll(() => {
@@ -37,22 +39,22 @@ beforeAll(() => {
   HTMLElement.prototype.hasPointerCapture = vi.fn(() => false);
 });
 
-describe("Clips list", () => {
-  it("renders only clips intersecting the window, preserving array indices", () => {
+describe('Clips list', () => {
+  it('renders only clips intersecting the window, preserving array indices', () => {
     const clips: ClipData[] = [
-      { start: 1, end: 3, vStart: 1, vEnd: 3 },
-      { start: 50, end: 52, vStart: 50, vEnd: 52 },
-      { start: 4, end: 6, vStart: 4, vEnd: 6 },
+      {start: 1, end: 3, vStart: 1, vEnd: 3},
+      {start: 50, end: 52, vStart: 50, vEnd: 52},
+      {start: 4, end: 6, vStart: 4, vEnd: 6},
     ];
     const getIdx = vi.fn((c: ClipData, i: number) => (c.start === 4 ? 42 : i));
     const renderLabel = vi.fn((id: number) => <span data-label={id}>l</span>);
-    const { container } = renderClips({ clips, getIdx, renderLabel });
+    const {container} = renderClips({clips, getIdx, renderLabel});
 
-    const rects = container.querySelectorAll(".waveform-clip");
+    const rects = container.querySelectorAll('.waveform-clip');
     // Clips at array indices 0 and 2 are visible; index 1 is outside the window.
     expect(rects).toHaveLength(2);
-    expect((rects[0] as HTMLElement).style.left).toBe("10%");
-    expect((rects[0] as HTMLElement).style.width).toBe("20%");
+    expect((rects[0] as HTMLElement).style.left).toBe('10%');
+    expect((rects[0] as HTMLElement).style.width).toBe('20%');
     // getIdx/renderLabel run only for visible clips, with original positions.
     expect(getIdx).toHaveBeenCalledWith(clips[0], 0);
     expect(getIdx).toHaveBeenCalledWith(clips[2], 2);
@@ -61,13 +63,13 @@ describe("Clips list", () => {
     expect(container.querySelector('[data-label="42"]')).not.toBeNull();
   });
 
-  it("plays a different visible clip while another is playing", () => {
+  it('plays a different visible clip while another is playing', () => {
     const onStopPlayback = vi.fn();
     const onPlayRange = vi.fn();
     const onActivate = vi.fn();
-    const clipA: ClipData = { start: 1, end: 3, vStart: 1, vEnd: 3 };
-    const clipB: ClipData = { start: 4, end: 6, vStart: 4, vEnd: 6 };
-    const { container } = renderClips({
+    const clipA: ClipData = {start: 1, end: 3, vStart: 1, vEnd: 3};
+    const clipB: ClipData = {start: 4, end: 6, vStart: 4, vEnd: 6};
+    const {container} = renderClips({
       clips: [clipA, clipB],
       playing: true,
       activeClip: 0,
@@ -76,18 +78,18 @@ describe("Clips list", () => {
       onActivate,
     });
 
-    fireEvent.click(container.querySelectorAll(".waveform-clip")[1]);
+    fireEvent.click(container.querySelectorAll('.waveform-clip')[1]);
 
     expect(onStopPlayback).not.toHaveBeenCalled();
     expect(onActivate).toHaveBeenCalledWith(1);
     expect(onPlayRange).toHaveBeenCalledWith(4, 6, 3);
   });
 
-  it("stops playback when the active clip itself is clicked", () => {
+  it('stops playback when the active clip itself is clicked', () => {
     const onStopPlayback = vi.fn();
     const onPlayRange = vi.fn();
-    const clipA: ClipData = { start: 1, end: 3, vStart: 1, vEnd: 3 };
-    const { container } = renderClips({
+    const clipA: ClipData = {start: 1, end: 3, vStart: 1, vEnd: 3};
+    const {container} = renderClips({
       clips: [clipA],
       playing: true,
       activeClip: 0,
@@ -95,7 +97,7 @@ describe("Clips list", () => {
       onPlayRange,
     });
 
-    fireEvent.click(container.querySelector(".waveform-clip")!);
+    fireEvent.click(container.querySelector('.waveform-clip')!);
 
     expect(onStopPlayback).toHaveBeenCalledTimes(1);
     expect(onPlayRange).not.toHaveBeenCalled();

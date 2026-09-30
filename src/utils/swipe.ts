@@ -1,10 +1,10 @@
-import { mergeClipsByGap, type Clip } from "./clips";
+import {mergeClipsByGap, type Clip} from './clips';
 
 const groupContaining = (groups: Clip[], target: Clip) => {
   const targetChildren = target.children ?? [target];
-  return groups.findIndex((group) => {
+  return groups.findIndex(group => {
     const groupChildren = group.children ?? [group];
-    return targetChildren.some((child) => groupChildren.includes(child));
+    return targetChildren.some(child => groupChildren.includes(child));
   });
 };
 
@@ -29,7 +29,7 @@ export function getClipSplitResult(
   // recover the original clips contained by its range.
   const children = clip.children?.length
     ? clip.children
-    : clips.filter((child) => child.start >= clip.start && child.end <= clip.end);
+    : clips.filter(child => child.start >= clip.start && child.end <= clip.end);
 
   if (children.length < 2) return null;
 
@@ -49,7 +49,9 @@ export function getClipSplitResult(
   const nextClips = mergeClipsByGap(clips, mergeGap);
   const activeClip = groupContaining(nextClips, children[0]);
 
-  return nextClips.length > 0 ? { mergeGap, activeClip: activeClip == -1 ? 0 : activeClip } : null;
+  return nextClips.length > 0
+    ? {mergeGap, activeClip: activeClip == -1 ? 0 : activeClip}
+    : null;
 }
 
 export interface ClipMergeResult {
@@ -83,9 +85,10 @@ export function getClipMergeResult(
   if (!neighbor) return null;
   const mergeGap = Math.min(previousGap, nextGap);
 
-  const children = [...(clip.children ?? [clip]), ...(neighbor.children ?? [neighbor])].sort(
-    (a, b) => a.start - b.start,
-  );
+  const children = [
+    ...(clip.children ?? [clip]),
+    ...(neighbor.children ?? [neighbor]),
+  ].sort((a, b) => a.start - b.start);
   const from = Math.min(idx, neighborIdx);
   const to = Math.max(idx, neighborIdx);
   const merged: Clip = {
@@ -97,7 +100,11 @@ export function getClipMergeResult(
   };
 
   return {
-    clips: [...displayClips.slice(0, from), merged, ...displayClips.slice(to + 1)],
+    clips: [
+      ...displayClips.slice(0, from),
+      merged,
+      ...displayClips.slice(to + 1),
+    ],
     activeClip: from,
     mergeGap,
   };

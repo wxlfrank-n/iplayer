@@ -1,4 +1,4 @@
-import { clampWindowAnchor } from "../utils/rowWaveform";
+import {clampWindowAnchor} from '../utils/rowWaveform';
 
 export const HS_FOLLOW_FRAC = 0.6;
 export const HS_PAN_DECIDE_PX = 8;
@@ -10,19 +10,19 @@ export const BARS_TAIL_SEC = 0;
 export const WAVE_BUFFER_WINDOWS = 3;
 export const WAVE_BUFFER_MARGIN_WINDOWS = 0.4;
 
-export type FollowEpoch = { anchor: number; time: number; align: boolean };
+export type FollowEpoch = {anchor: number; time: number; align: boolean};
 export type PlaybackContext =
-  | { type: "idle" }
-  | { type: "normal" }
-  | { type: "clip"; start: number; end: number };
+  | {type: 'idle'}
+  | {type: 'normal'}
+  | {type: 'clip'; start: number; end: number};
 export type ViewportContext =
-  | { type: "manual" }
+  | {type: 'manual'}
   | {
       /** Automatically follows playback. During normal forward playback, the viewport scrolls right after the playhead crosses the 60% threshold. */
-      type: "follow";
+      type: 'follow';
       epoch: FollowEpoch;
     }
-  | { type: "cursor-hold"; epoch: FollowEpoch; holdUntil: number }
+  | {type: 'cursor-hold'; epoch: FollowEpoch; holdUntil: number}
   | {
       /**
        * Clip playback follow.
@@ -32,7 +32,7 @@ export type ViewportContext =
        * position) until the clip's end scrolls into view. When the clip is
        * fully visible, or the user took over, it freezes.
        */
-      type: "clip-follow";
+      type: 'clip-follow';
       start: number;
       end: number;
       autoFollow: boolean;
@@ -46,7 +46,11 @@ export type ViewportContext =
       preserveView: boolean;
     };
 
-export function makeFollowEpoch(anchor: number, windowLength: number, time: number): FollowEpoch {
+export function makeFollowEpoch(
+  anchor: number,
+  windowLength: number,
+  time: number,
+): FollowEpoch {
   return {
     anchor,
     time,
@@ -61,7 +65,12 @@ export function makeFollowEpoch(anchor: number, windowLength: number, time: numb
  *   position (glide: anchor + elapsed time).
  * - Otherwise snap the playhead to the 60% slot and glide from there.
  */
-export function resolveFollow(epoch: FollowEpoch, time: number, windowLength: number, maxStart: number): number {
+export function resolveFollow(
+  epoch: FollowEpoch,
+  time: number,
+  windowLength: number,
+  maxStart: number,
+): number {
   const target = epoch.align
     ? time - HS_FOLLOW_FRAC * windowLength
     : epoch.anchor + (time - epoch.time);
@@ -73,18 +82,26 @@ export function resolveFollow(epoch: FollowEpoch, time: number, windowLength: nu
  * A clip already in view stays where it is; a left-hidden clip jumps to its
  * start; a right-hidden clip keeps the view and keeps following.
  */
-export function getClipPlaybackViewport(start: number, end: number, currentAnchor: number, windowLength: number, maxStart: number): { anchor: number; autoFollow: boolean } {
-  const isFullyVisible = (anchor: number) => start >= anchor && end <= anchor + windowLength;
-  if (isFullyVisible(currentAnchor)) return { anchor: currentAnchor, autoFollow: false };
+export function getClipPlaybackViewport(
+  start: number,
+  end: number,
+  currentAnchor: number,
+  windowLength: number,
+  maxStart: number,
+): {anchor: number; autoFollow: boolean} {
+  const isFullyVisible = (anchor: number) =>
+    start >= anchor && end <= anchor + windowLength;
+  if (isFullyVisible(currentAnchor))
+    return {anchor: currentAnchor, autoFollow: false};
   if (start < currentAnchor) {
     const anchor = clampWindowAnchor(start, maxStart);
-    return { anchor, autoFollow: !isFullyVisible(anchor) };
+    return {anchor, autoFollow: !isFullyVisible(anchor)};
   }
-  return { anchor: currentAnchor, autoFollow: true };
+  return {anchor: currentAnchor, autoFollow: true};
 }
 
 export function resolveClipFollow(
-  context: Extract<ViewportContext, { type: "clip-follow" }>,
+  context: Extract<ViewportContext, {type: 'clip-follow'}>,
   anchor: number,
   time: number,
   windowLength: number,
@@ -103,15 +120,24 @@ export function resolveClipFollow(
   );
 }
 
-export function resolveViewportAnchor(context: ViewportContext, anchor: number, time: number, windowLength: number, maxStart: number, now: number): number {
+export function resolveViewportAnchor(
+  context: ViewportContext,
+  anchor: number,
+  time: number,
+  windowLength: number,
+  maxStart: number,
+  now: number,
+): number {
   switch (context.type) {
-    case "manual":
+    case 'manual':
       return anchor;
-    case "follow":
+    case 'follow':
       return resolveFollow(context.epoch, time, windowLength, maxStart);
-    case "cursor-hold":
-      return now < context.holdUntil ? anchor : resolveFollow(context.epoch, time, windowLength, maxStart);
-    case "clip-follow":
+    case 'cursor-hold':
+      return now < context.holdUntil
+        ? anchor
+        : resolveFollow(context.epoch, time, windowLength, maxStart);
+    case 'clip-follow':
       return resolveClipFollow(context, anchor, time, windowLength, maxStart);
   }
 }

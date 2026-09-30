@@ -1,23 +1,23 @@
 // @vitest-environment jsdom
 
-import { act, fireEvent, render } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { RowWaveform } from "./RowWaveform";
-import type { WaveformData } from "../hooks/useWaveform";
-import type { Clip as ClipData } from "../utils/clips";
-import { getWindowSecs } from "../utils/rowWaveform";
+import {act, fireEvent, render} from '@testing-library/react';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import {RowWaveform} from './RowWaveform';
+import type {WaveformData} from '../hooks/useWaveform';
+import type {Clip as ClipData} from '../utils/clips';
+import {getWindowSecs} from '../utils/rowWaveform';
 
-vi.mock("./ClipLabel", () => ({
+vi.mock('./ClipLabel', () => ({
   ClipLabel: () => null,
 }));
-vi.mock("./DancingLines", () => ({
+vi.mock('./DancingLines', () => ({
   DancingLines: () => null,
 }));
-vi.mock("./WaveformCursor", () => ({
+vi.mock('./WaveformCursor', () => ({
   WaveformCursor: () => null,
 }));
-vi.mock("./Waveform", () => ({
-  WaveformCanvas: ({ window }: { window: { windowStartSec: number } }) => (
+vi.mock('./Waveform', () => ({
+  WaveformCanvas: ({window}: {window: {windowStartSec: number}}) => (
     <div data-window-start={window.windowStartSec} />
   ),
 }));
@@ -36,19 +36,23 @@ const waveform: WaveformData = {
 
 // Clip 1 (10-20s) and a far clip (90-100s, standing in for "clip 20").
 const clips: ClipData[] = [
-  { start: 10, end: 20, vStart: 10, vEnd: 20 },
-  { start: 90, end: 100, vStart: 90, vEnd: 100 },
+  {start: 10, end: 20, vStart: 10, vEnd: 20},
+  {start: 90, end: 100, vStart: 90, vEnd: 100},
 ];
 
-function renderRow({ initialTime = 10, playing = false, clips: useClips = clips } = {}) {
+function renderRow({
+  initialTime = 10,
+  playing = false,
+  clips: useClips = clips,
+} = {}) {
   const props = {
     currentTime: initialTime,
     playing,
   };
   const onSeek = vi.fn();
   let scrolling = false;
-  const setScrolling: React.Dispatch<React.SetStateAction<boolean>> = (v) => {
-    scrolling = typeof v === "function" ? v(scrolling) : v;
+  const setScrolling: React.Dispatch<React.SetStateAction<boolean>> = v => {
+    scrolling = typeof v === 'function' ? v(scrolling) : v;
   };
   const view = render(
     <RowWaveform
@@ -64,21 +68,23 @@ function renderRow({ initialTime = 10, playing = false, clips: useClips = clips 
       playing={props.playing}
       scrolling={scrolling}
       setScrolling={setScrolling}
-      scrollTimeoutRef={{ current: undefined }}
+      scrollTimeoutRef={{current: undefined}}
     />,
   );
-  const row = view.container.querySelector(".row-waveform") as HTMLDivElement;
-  Object.defineProperty(row, "clientWidth", { value: 600 });
-  const inner = row.querySelector(".row-waveform__inner") as HTMLElement;
-  Object.defineProperty(inner, "clientWidth", { value: 600 });
+  const row = view.container.querySelector('.row-waveform') as HTMLDivElement;
+  Object.defineProperty(row, 'clientWidth', {value: 600});
+  const inner = row.querySelector('.row-waveform__inner') as HTMLElement;
+  Object.defineProperty(inner, 'clientWidth', {value: 600});
   // The rendered buffer is translated by -(viewportAnchor - bufferStart)*pxPerSec;
   // recover the live viewport anchor from the track transform.
   const windowStart = () => {
     const buffer = Number(
-      row.querySelector("[data-window-start]")?.getAttribute("data-window-start") ?? 0,
+      row
+        .querySelector('[data-window-start]')
+        ?.getAttribute('data-window-start') ?? 0,
     );
-    const track = row.querySelector(".row-waveform__track") as HTMLElement;
-    const transform = track?.style.transform ?? "";
+    const track = row.querySelector('.row-waveform__track') as HTMLElement;
+    const transform = track?.style.transform ?? '';
     const m = transform.match(/translate3d\((-?[0-9.]+)px/);
     const px = m ? Number(m[1]) : 0;
     const win = getWindowSecs(row.clientWidth || window.innerWidth, useClips);
@@ -102,7 +108,7 @@ function renderRow({ initialTime = 10, playing = false, clips: useClips = clips 
         playing={props.playing}
         scrolling={scrolling}
         setScrolling={setScrolling}
-        scrollTimeoutRef={{ current: undefined }}
+        scrollTimeoutRef={{current: undefined}}
       />,
     );
   };
@@ -114,7 +120,7 @@ function renderRow({ initialTime = 10, playing = false, clips: useClips = clips 
   return {
     view,
     row,
-    track: row.querySelector(".row-waveform__track") as HTMLElement,
+    track: row.querySelector('.row-waveform__track') as HTMLElement,
     windowStart,
     rerender,
     onSeek,
@@ -129,39 +135,40 @@ const flushRaf = () => {
 };
 
 beforeEach(() => {
-  Object.defineProperty(window, "innerWidth", {
+  Object.defineProperty(window, 'innerWidth', {
     configurable: true,
     value: 1024,
   });
-  (globalThis as unknown as { ResizeObserver: typeof ResizeObserver }).ResizeObserver =
-    FakeResizeObserver as unknown as typeof ResizeObserver;
+  (
+    globalThis as unknown as {ResizeObserver: typeof ResizeObserver}
+  ).ResizeObserver = FakeResizeObserver as unknown as typeof ResizeObserver;
   rafQueue = [];
-  vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
+  vi.spyOn(window, 'requestAnimationFrame').mockImplementation(cb => {
     rafQueue.push(cb);
     return rafQueue.length;
   });
-  vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => {});
+  vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
 });
 afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("RowWaveform clip play follow", () => {
-  it("does not yank the window back to the playing clip after the user pans away", () => {
-    const { row, track, windowStart, rerender } = renderRow();
+describe('RowWaveform clip play follow', () => {
+  it('does not yank the window back to the playing clip after the user pans away', () => {
+    const {row, track, windowStart, rerender} = renderRow();
 
     // Play clip 1 by clicking its rect (10-20s). Window is anchored at 0 here,
     // so the follow arm registers the clip's end as the follow target.
-    const firstClip = row.querySelector(".waveform-clip")!;
+    const firstClip = row.querySelector('.waveform-clip')!;
     fireEvent.click(firstClip);
-    rerender({ playing: true });
+    rerender({playing: true});
     act(() => {
       // The clip (10-20s) lies outside the 8s window, so clicking it first
       // jumps the window to the clip start (t=10); then pan right to ~40s
       // (2250px at 75px/s from anchor 10).
       fireEvent.pointerDown(track, {
         pointerId: 1,
-        pointerType: "mouse",
+        pointerType: 'mouse',
         clientX: 2250,
         clientY: 50,
         button: 0,
@@ -171,32 +178,32 @@ describe("RowWaveform clip play follow", () => {
         clientX: 0,
         clientY: 50,
       });
-      fireEvent.pointerUp(window, { pointerId: 1, clientX: 0, clientY: 50 });
+      fireEvent.pointerUp(window, {pointerId: 1, clientX: 0, clientY: 50});
     });
     act(() => flushRaf());
     expect(windowStart()).toBe(40);
 
     // The clip's clock wraps when it repeats: currentTime jumps 19 -> 10.5,
     // which must NOT scroll the view back toward the clip.
-    rerender({ currentTime: 19 });
-    rerender({ currentTime: 10.5 });
+    rerender({currentTime: 19});
+    rerender({currentTime: 10.5});
     act(() => {
-      fireEvent.pointerMove(window, { clientX: 0, clientY: 50 });
+      fireEvent.pointerMove(window, {clientX: 0, clientY: 50});
     });
 
     expect(windowStart()).toBe(40);
   });
 
-  it("does not yank the window back to the clip start when clicking a long clip in its middle", () => {
+  it('does not yank the window back to the clip start when clicking a long clip in its middle', () => {
     // One 30s clip: the 8s window can only ever show a slice of it.
-    const longClips: ClipData[] = [{ start: 0, end: 30, vStart: 0, vEnd: 30 }];
-    const { row, track, windowStart, rerender } = renderRow({ clips: longClips });
+    const longClips: ClipData[] = [{start: 0, end: 30, vStart: 0, vEnd: 30}];
+    const {row, track, windowStart, rerender} = renderRow({clips: longClips});
 
     // Pan the window to anchor 5 (viewing the clip's middle slice, 5-13s).
     act(() => {
       fireEvent.pointerDown(track, {
         pointerId: 2,
-        pointerType: "mouse",
+        pointerType: 'mouse',
         clientX: 375,
         clientY: 50,
         button: 0,
@@ -206,7 +213,7 @@ describe("RowWaveform clip play follow", () => {
         clientX: 0,
         clientY: 50,
       });
-      fireEvent.pointerUp(window, { pointerId: 2, clientX: 0, clientY: 50 });
+      fireEvent.pointerUp(window, {pointerId: 2, clientX: 0, clientY: 50});
     });
     act(() => flushRaf());
     expect(windowStart()).toBe(5);
@@ -217,44 +224,44 @@ describe("RowWaveform clip play follow", () => {
 
     // Clicking the visible slice must not scroll the window back to the
     // clip's start (t=0) — play it where the user is looking at it.
-    const clip = row.querySelector(".waveform-clip")!;
+    const clip = row.querySelector('.waveform-clip')!;
     fireEvent.click(clip);
-    rerender({ playing: true });
+    rerender({playing: true});
 
     expect(windowStart()).toBe(5);
   });
 
-  it("releases the pan on a clip tap so later mouse moves do not scroll", () => {
-    const { row, windowStart } = renderRow();
+  it('releases the pan on a clip tap so later mouse moves do not scroll', () => {
+    const {row, windowStart} = renderRow();
 
     // A tap on a clip: the clip's pointerup handler stopPropagation's (it
     // starts clip playback), which must not leave the row pan armed. With a
     // bubble-phase release on window the follow-up mouse move — no button —
     // would drag the window to the right.
-    const clip = row.querySelector(".waveform-clip")!;
+    const clip = row.querySelector('.waveform-clip')!;
     act(() => {
       fireEvent.pointerDown(clip, {
         pointerId: 9,
-        pointerType: "mouse",
+        pointerType: 'mouse',
         clientX: 300,
         clientY: 50,
         button: 0,
       });
-      fireEvent.pointerUp(clip, { pointerId: 9, clientX: 300, clientY: 50 });
+      fireEvent.pointerUp(clip, {pointerId: 9, clientX: 300, clientY: 50});
     });
     act(() => {
-      fireEvent.pointerMove(window, { clientX: 600, clientY: 50 });
+      fireEvent.pointerMove(window, {clientX: 600, clientY: 50});
     });
 
     expect(windowStart()).toBe(0);
   });
 
-  it("does not recenter the window when a short clip starts playing inside the view", () => {
+  it('does not recenter the window when a short clip starts playing inside the view', () => {
     // A short clip the user is already looking at (window anchored at 4).
     const shortClips: ClipData[] = [
-      { start: 6.63, end: 7.49, vStart: 6.63, vEnd: 7.49 },
+      {start: 6.63, end: 7.49, vStart: 6.63, vEnd: 7.49},
     ];
-    const { row, track, windowStart, rerender } = renderRow({
+    const {row, track, windowStart, rerender} = renderRow({
       clips: shortClips,
       initialTime: 0,
     });
@@ -262,7 +269,7 @@ describe("RowWaveform clip play follow", () => {
     act(() => {
       fireEvent.pointerDown(track, {
         pointerId: 3,
-        pointerType: "mouse",
+        pointerType: 'mouse',
         clientX: 300,
         clientY: 50,
         button: 0,
@@ -272,7 +279,7 @@ describe("RowWaveform clip play follow", () => {
         clientX: 0,
         clientY: 50,
       });
-      fireEvent.pointerUp(window, { pointerId: 3, clientX: 0, clientY: 50 });
+      fireEvent.pointerUp(window, {pointerId: 3, clientX: 0, clientY: 50});
     });
     act(() => flushRaf());
     // The 0.86s clip densifies the window to getWindowSecs(600, shortClips) =
@@ -286,31 +293,31 @@ describe("RowWaveform clip play follow", () => {
 
     // Click the clip; the playhead seeks from 0 to 6.63 and plays. The window
     // must stay where it is — the clip is already in view.
-    const clip = row.querySelector(".waveform-clip")!;
+    const clip = row.querySelector('.waveform-clip')!;
     fireEvent.click(clip);
-    rerender({ playing: true, currentTime: 6.63 });
+    rerender({playing: true, currentTime: 6.63});
 
     expect(windowStart()).toBeCloseTo(panStart, 3);
   });
 
-  it("does not seek when clicking silence while a clip is playing", () => {
-    const { row, rerender, onSeek } = renderRow();
+  it('does not seek when clicking silence while a clip is playing', () => {
+    const {row, rerender, onSeek} = renderRow();
 
     // Start clip playback, then click the empty track background ("silence").
-    const firstClip = row.querySelector(".waveform-clip")!;
+    const firstClip = row.querySelector('.waveform-clip')!;
     fireEvent.click(firstClip);
-    rerender({ playing: true });
-    fireEvent.click(row.querySelector(".row-waveform__inner")!);
+    rerender({playing: true});
+    fireEvent.click(row.querySelector('.row-waveform__inner')!);
 
     expect(onSeek).not.toHaveBeenCalled();
   });
 
-  it("does not move the window when clicking the track to set the cursor", () => {
-    const { row, windowStart, rerender, onSeek } = renderRow({ initialTime: 0 });
+  it('does not move the window when clicking the track to set the cursor', () => {
+    const {row, windowStart, rerender, onSeek} = renderRow({initialTime: 0});
 
     // Click the empty track at 85% across the 8s window (seek target 6.8).
-    const inner = row.querySelector(".row-waveform__inner") as HTMLElement;
-    Object.defineProperty(inner, "getBoundingClientRect", {
+    const inner = row.querySelector('.row-waveform__inner') as HTMLElement;
+    Object.defineProperty(inner, 'getBoundingClientRect', {
       value: () => ({
         left: 0,
         top: 0,
@@ -320,72 +327,72 @@ describe("RowWaveform clip play follow", () => {
         height: 200,
       }),
     });
-    fireEvent.click(inner, { clientX: 510, clientY: 50 });
+    fireEvent.click(inner, {clientX: 510, clientY: 50});
     expect(onSeek).toHaveBeenCalledWith(6.8);
 
     // The seek lands inside the window; even with playback running the window
     // must not re-center on the playhead afterwards.
-    rerender({ playing: true, currentTime: 6.8 });
+    rerender({playing: true, currentTime: 6.8});
     act(() => flushRaf());
 
     expect(windowStart()).toBe(0);
   });
 
-  it("auto-scrolls to keep the playhead in view while playing", () => {
-    const { windowStart, rerender } = renderRow({ playing: true, initialTime: 0 });
+  it('auto-scrolls to keep the playhead in view while playing', () => {
+    const {windowStart, rerender} = renderRow({playing: true, initialTime: 0});
 
     // No hovering needed — the row keeps the playhead in view on its own.
     for (let t = 0.5; t <= 8; t += 0.5) {
-      rerender({ currentTime: t });
+      rerender({currentTime: t});
       act(() => flushRaf());
     }
     // follow target at t=8 is 8 - 0.6*8 = 3.2.
     expect(windowStart()).toBeCloseTo(3.2);
   });
 
-  it("auto-scrolls while a long clip is playing near the window edge", () => {
+  it('auto-scrolls while a long clip is playing near the window edge', () => {
     // One 30s clip starting at the window's left edge (anchor 0). Clicking it
     // arms the follow end; while the playhead is in view the row must glide.
-    const longClips: ClipData[] = [{ start: 0, end: 30, vStart: 0, vEnd: 30 }];
-    const { row, windowStart, rerender } = renderRow({
+    const longClips: ClipData[] = [{start: 0, end: 30, vStart: 0, vEnd: 30}];
+    const {row, windowStart, rerender} = renderRow({
       clips: longClips,
       initialTime: 0,
     });
 
-    const clip = row.querySelector(".waveform-clip")!;
+    const clip = row.querySelector('.waveform-clip')!;
     fireEvent.click(clip);
-    rerender({ playing: true });
+    rerender({playing: true});
 
     for (let t = 0.5; t <= 6; t += 0.5) {
-      rerender({ currentTime: t });
+      rerender({currentTime: t});
       act(() => flushRaf());
     }
     // The playhead stays put on screen; the window slides with it (t - 0).
     expect(windowStart()).toBe(6);
   });
 
-  it("resumes auto-scrolling after a clip ends when the view never moved", () => {
+  it('resumes auto-scrolling after a clip ends when the view never moved', () => {
     // A short clip fully inside the (panned) view. After it finishes, the
     // resumed playback must keep following the playhead.
     const shortClips: ClipData[] = [
-      { start: 6.63, end: 7.49, vStart: 6.63, vEnd: 7.49 },
+      {start: 6.63, end: 7.49, vStart: 6.63, vEnd: 7.49},
     ];
-    const { row, windowStart, rerender } = renderRow({
+    const {row, windowStart, rerender} = renderRow({
       clips: shortClips,
       initialTime: 0,
     });
 
     // Play the clip; its range runs inside the view.
-    const clip = row.querySelector(".waveform-clip")!;
+    const clip = row.querySelector('.waveform-clip')!;
     fireEvent.click(clip);
-    rerender({ playing: true, currentTime: 6.63 });
+    rerender({playing: true, currentTime: 6.63});
     // The clip range finishes (player pauses and reports its end time).
-    rerender({ playing: false, currentTime: 7.49 });
+    rerender({playing: false, currentTime: 7.49});
     // Resume normal playback just past the clip end.
-    rerender({ playing: true, currentTime: 7.5 });
+    rerender({playing: true, currentTime: 7.5});
 
     for (let t = 7.6; t <= 8; t += 0.2) {
-      rerender({ currentTime: t });
+      rerender({currentTime: t});
       act(() => flushRaf());
     }
     // The 0.86s clip densifies the window to getWindowSecs(600, shortClips) =
@@ -397,15 +404,15 @@ describe("RowWaveform clip play follow", () => {
     expect(windowStart()).toBeCloseTo(armedStart + (8 - 7.5));
   });
 
-  it("does not jump the window when playback starts with a cursor inside it", () => {
+  it('does not jump the window when playback starts with a cursor inside it', () => {
     // A narrow screen gives an 8s window; a cursor placed at t=6 sits inside
     // a window that starts at 0. Starting playback must not re-anchor the
     // window to the 60% slot, which would jump it to 6 - 0.6*8 = 1.2.
-    Object.defineProperty(window, "innerWidth", {
+    Object.defineProperty(window, 'innerWidth', {
       configurable: true,
       value: 799,
     });
-    const { windowStart, rerender } = renderRow({ playing: true, initialTime: 6 });
+    const {windowStart, rerender} = renderRow({playing: true, initialTime: 6});
 
     // Playback starts with the cursor already in view: the window stays put.
     act(() => flushRaf());
@@ -413,7 +420,7 @@ describe("RowWaveform clip play follow", () => {
 
     // As the playhead advances, the window glides from the same on-screen
     // slot instead of snapping the playhead to the 60% position.
-    rerender({ currentTime: 7 });
+    rerender({currentTime: 7});
     act(() => flushRaf());
     expect(windowStart()).toBeCloseTo(7 - 6);
   });

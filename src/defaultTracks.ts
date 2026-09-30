@@ -5,4 +5,4 @@
  * Format: Array of { filename, title } objects that are converted to Track objects
  * in useAudioPlayer.ts by constructing the full URL path.
  */
-export const DEFAULT_TRACKS = [{ filename: "01A.mp3", title: "01A" }] as const;
+export const DEFAULT_TRACKS = [{filename: '01A.mp3', title: '01A'}] as const;

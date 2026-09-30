@@ -1,4 +1,4 @@
-import { memo, useId } from "react";
+import {memo, useId} from 'react';
 
 interface ListeningLoopIconProps {
   size?: number | string;
@@ -7,16 +7,16 @@ interface ListeningLoopIconProps {
 }
 
 export const ListeningLoopIcon = memo(
-  function ListeningLoopIcon({
+  ({
     size = 150,
     className,
-    title = "Listening loop",
-  }: ListeningLoopIconProps) {
+    title = 'Listening loop',
+  }: ListeningLoopIconProps) => {
     /*
      * Unique IDs are important if several icons are rendered
      * on the same page. Otherwise SVG gradient IDs collide.
      */
-    const id = useId().replace(/:/g, "");
+    const id = useId().replace(/:/g, '');
 
     const bgGradient = `${id}-bg`;
     const loopGradient = `${id}-loop`;
@@ -41,14 +41,8 @@ export const ListeningLoopIcon = memo(
             y2="150"
             gradientUnits="userSpaceOnUse"
           >
-            <stop
-              offset="0"
-              stopColor="var(--bg-secondary)"
-            />
-            <stop
-              offset="1"
-              stopColor="var(--bg-primary)"
-            />
+            <stop offset="0" stopColor="var(--bg-secondary)" />
+            <stop offset="1" stopColor="var(--bg-primary)" />
           </linearGradient>
 
           {/* Brand / accent loop */}
@@ -60,18 +54,9 @@ export const ListeningLoopIcon = memo(
             y2="57"
             gradientUnits="userSpaceOnUse"
           >
-            <stop
-              offset="0"
-              stopColor="var(--accent-dim)"
-            />
-            <stop
-              offset="0.5"
-              stopColor="var(--accent)"
-            />
-            <stop
-              offset="1"
-              stopColor="var(--accent)"
-            />
+            <stop offset="0" stopColor="var(--accent-dim)" />
+            <stop offset="0.5" stopColor="var(--accent)" />
+            <stop offset="1" stopColor="var(--accent)" />
           </linearGradient>
 
           {/* Waveform */}
@@ -83,14 +68,8 @@ export const ListeningLoopIcon = memo(
             y2="133"
             gradientUnits="userSpaceOnUse"
           >
-            <stop
-              offset="0"
-              stopColor="var(--text-primary)"
-            />
-            <stop
-              offset="1"
-              stopColor="var(--text-secondary)"
-            />
+            <stop offset="0" stopColor="var(--text-primary)" />
+            <stop offset="1" stopColor="var(--text-secondary)" />
           </linearGradient>
         </defs>
 

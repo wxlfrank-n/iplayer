@@ -11,9 +11,9 @@
  * swipe up = split, swipe down = merge.
  */
 
-import { memo } from "react";
-import { useT } from "../i18n";
-import "./ClipLabel.css";
+import {memo} from 'react';
+import {useT} from '../i18n';
+import './ClipLabel.css';
 
 interface ClipLabelProps {
   index: number;
@@ -25,57 +25,57 @@ interface ClipLabelProps {
   onMerge?: () => void;
 }
 
-export const ClipLabel = memo(function ClipLabel({
-  index,
-  duration,
-  active,
-  canSplit,
-  canMerge,
-  onSplit,
-  onMerge,
-}: ClipLabelProps) {
-  const t = useT();
-  return (
-    <span
-      className={`stacked-clip-label ${
-        active ? "stacked-clip-label--active" : ""
-      }`}
-    >
-      {index + 1}
+export const ClipLabel = memo(
+  ({
+    index,
+    duration,
+    active,
+    canSplit,
+    canMerge,
+    onSplit,
+    onMerge,
+  }: ClipLabelProps) => {
+    const t = useT();
+    return (
+      <span
+        className={`stacked-clip-label ${
+          active ? 'stacked-clip-label--active' : ''
+        }`}
+      >
+        {index + 1}
 
-      <span className="stacked-clip-dur">
-        {duration.toFixed(1)}s
+        <span className="stacked-clip-dur">{duration.toFixed(1)}s</span>
+
+        {active && canSplit && onSplit && (
+          <button
+            type="button"
+            className="stacked-clip-action stacked-clip-action--split"
+            title={t('clipLabel.split')}
+            aria-label={t('clipLabel.split')}
+            onClick={e => {
+              e.stopPropagation();
+              onSplit();
+            }}
+          >
+            <span className="split-icon">✂️</span>
+          </button>
+        )}
+
+        {active && canMerge && onMerge && (
+          <button
+            type="button"
+            className="stacked-clip-action stacked-clip-action--merge"
+            title={t('clipLabel.merge')}
+            aria-label={t('clipLabel.merge')}
+            onClick={e => {
+              e.stopPropagation();
+              onMerge();
+            }}
+          >
+            <span className="merge-icon">🔗</span>
+          </button>
+        )}
       </span>
-
-      {active && canSplit && onSplit && (
-        <button
-          type="button"
-          className="stacked-clip-action stacked-clip-action--split"
-          title={t("clipLabel.split")}
-          aria-label={t("clipLabel.split")}
-          onClick={(e) => {
-            e.stopPropagation();
-            onSplit();
-          }}
-        >
-          <span className="split-icon">✂️</span>
-        </button>
-      )}
-
-      {active && canMerge && onMerge && (
-        <button
-          type="button"
-          className="stacked-clip-action stacked-clip-action--merge"
-          title={t("clipLabel.merge")}
-          aria-label={t("clipLabel.merge")}
-          onClick={(e) => {
-            e.stopPropagation();
-            onMerge();
-          }}
-        >
-          <span className="merge-icon">🔗</span>
-        </button>
-      )}
-    </span>
-  );
-});
+    );
+  },
+);

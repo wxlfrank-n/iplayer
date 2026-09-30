@@ -7,10 +7,10 @@
  * its own cadence without churning playback state.
  */
 
-import { createSlice } from "@reduxjs/toolkit";
-import type { PayloadAction } from "@reduxjs/toolkit";
-import type { WaveformData, WaveformStatus } from "../types";
-import type { Clip } from "../utils/clips";
+import {createSlice} from '@reduxjs/toolkit';
+import type {PayloadAction} from '@reduxjs/toolkit';
+import type {WaveformData, WaveformStatus} from '../types';
+import type {Clip} from '../utils/clips';
 
 export interface AnalysisState {
   waveform: WaveformData | null;
@@ -23,7 +23,7 @@ export interface AnalysisState {
 
 const initialState: AnalysisState = {
   waveform: null,
-  waveformStatus: "idle",
+  waveformStatus: 'idle',
   clips: [],
   gaps: [],
   minGap: 0,
@@ -31,7 +31,7 @@ const initialState: AnalysisState = {
 };
 
 export const analysisSlice = createSlice({
-  name: "analysis",
+  name: 'analysis',
   initialState,
   reducers: {
     setWaveform(state, action: PayloadAction<WaveformData | null>) {
@@ -40,7 +40,10 @@ export const analysisSlice = createSlice({
     setWaveformStatus(state, action: PayloadAction<WaveformStatus>) {
       state.waveformStatus = action.payload;
     },
-    setClips(state, action: PayloadAction<{clips: Clip[], gaps: number[], minGap: number}>) {
+    setClips(
+      state,
+      action: PayloadAction<{clips: Clip[]; gaps: number[]; minGap: number}>,
+    ) {
       state.clips = action.payload.clips;
       state.gaps = action.payload.gaps;
       state.minGap = action.payload.minGap;
@@ -51,6 +54,6 @@ export const analysisSlice = createSlice({
   },
 });
 
-export const { setWaveform, setWaveformStatus, setClips, setActiveClip } =
+export const {setWaveform, setWaveformStatus, setClips, setActiveClip} =
   analysisSlice.actions;
 export default analysisSlice.reducer;

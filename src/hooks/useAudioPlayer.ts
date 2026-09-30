@@ -1,16 +1,16 @@
-﻿import { useRef, useCallback, useEffect } from "react";
-import type { Track } from "../types";
-import { decodeAudioBuffer, initializeAudioContext } from "../utils/audio";
-import { audioBufferToWavBlob } from "../utils/wav";
-import { store } from "../store/store";
-import { useAppDispatch, useAppSelector } from "../store/hooks";
+﻿import {useRef, useCallback, useEffect} from 'react';
+import type {Track} from '../types';
+import {decodeAudioBuffer, initializeAudioContext} from '../utils/audio';
+import {audioBufferToWavBlob} from '../utils/wav';
+import {store} from '../store/store';
+import {useAppDispatch, useAppSelector} from '../store/hooks';
 import {
   setTracks,
   setCurrentTrackIndex,
   setIsPlaying,
   setCurrentTime,
   setDuration,
-} from "../store/playerSlice";
+} from '../store/playerSlice';
 
 // iOS devices (including Chrome on iPhone, which uses the WebKit engine)
 // cannot route an <audio> element through the Web Audio graph reliably:
@@ -20,7 +20,7 @@ import {
 // the speakers (the dancing-lines canvas simply has no live data).
 const isIOS =
   /iP(hone|ad|od)/.test(navigator.userAgent) ||
-  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
 // When playback starts after a seek, the browser may begin slightly past the
 // requested position (preroll/seek settling), skipping the very beginning.
@@ -30,21 +30,21 @@ function snatchToStart(audio: HTMLAudioElement, time: number) {
     if (Math.abs(audio.currentTime - time) > 0.08) {
       audio.currentTime = time;
     }
-    audio.removeEventListener("playing", onPlaying);
+    audio.removeEventListener('playing', onPlaying);
   };
-  audio.addEventListener("playing", onPlaying);
+  audio.addEventListener('playing', onPlaying);
 }
 
 export function useAudioPlayer(skipSeconds: number) {
   const dispatch = useAppDispatch();
   // Live playback state, kept in Redux so every component shares it.
-  const state = useAppSelector((s) => s.player);
+  const state = useAppSelector(s => s.player);
 
   // Fresh read of player state for imperative callbacks (event handlers, rAF).
   const getPlayer = () => store.getState().player;
 
   const audioRef = useRef<HTMLAudioElement>(new Audio());
-  const nextRef = useRef<() => void>(() => { });
+  const nextRef = useRef<() => void>(() => {});
   const expectedRawUrlRef = useRef<string | null>(null);
   const trackLoadIdRef = useRef(0);
   const wavBlobCacheRef = useRef<Map<string, string>>(new Map());
@@ -81,8 +81,8 @@ export function useAudioPlayer(skipSeconds: number) {
       // Return existing analyser if already created
       if (analyserRef.current) {
         // Resume context if needed (e.g., after pause)
-        if (resume && analyserRef.current.ctx.state === "suspended") {
-          analyserRef.current.ctx.resume().catch(() => { });
+        if (resume && analyserRef.current.ctx.state === 'suspended') {
+          analyserRef.current.ctx.resume().catch(() => {});
         }
         return analyserRef.current.analyser;
       }
@@ -101,16 +101,16 @@ export function useAudioPlayer(skipSeconds: number) {
         analyser.connect(ctx.destination);
 
         // Cache for later use
-        analyserRef.current = { ctx, analyser };
+        analyserRef.current = {ctx, analyser};
 
         // Resume context if suspended (required by autoplay policy)
-        if (resume && ctx.state === "suspended") {
-          ctx.resume().catch(() => { });
+        if (resume && ctx.state === 'suspended') {
+          ctx.resume().catch(() => {});
         }
 
         return analyser;
       } catch (err) {
-        console.debug("Failed to create analyser:", err);
+        console.debug('Failed to create analyser:', err);
         return null; // Graceful fallback if Web Audio not supported
       }
     },
@@ -134,7 +134,7 @@ export function useAudioPlayer(skipSeconds: number) {
     const cached = cache.get(url);
     if (cached) return cached;
 
-    const { buffer } = await decodeAudioBuffer(url);
+    const {buffer} = await decodeAudioBuffer(url);
     const blob = audioBufferToWavBlob(buffer);
     const objectUrl = URL.createObjectURL(blob);
     cache.set(url, objectUrl);
@@ -166,27 +166,33 @@ export function useAudioPlayer(skipSeconds: number) {
       try {
         const playableUrl = await getPlayableUrl(url);
         // Only update if this is still the expected URL
-        if (trackLoadIdRef.current === loadId && expectedRawUrlRef.current === url) {
+        if (
+          trackLoadIdRef.current === loadId &&
+          expectedRawUrlRef.current === url
+        ) {
           audio.src = playableUrl;
           audio.load();
           audio
             .play()
             .then(() => dispatch(setIsPlaying(true)))
-            .catch((err) => {
-              console.debug("Start track play failed:", err);
+            .catch(err => {
+              console.debug('Start track play failed:', err);
             });
         }
       } catch (error) {
-        console.error("Failed to decode audio for playback:", error);
+        console.error('Failed to decode audio for playback:', error);
         // Fallback to raw URL if decoding fails
-        if (trackLoadIdRef.current === loadId && expectedRawUrlRef.current === url) {
+        if (
+          trackLoadIdRef.current === loadId &&
+          expectedRawUrlRef.current === url
+        ) {
           audio.src = url;
           audio.load();
           audio
             .play()
             .then(() => dispatch(setIsPlaying(true)))
-            .catch((err) => {
-              console.debug("Fallback play failed:", err);
+            .catch(err => {
+              console.debug('Fallback play failed:', err);
             });
         }
       }
@@ -227,28 +233,28 @@ export function useAudioPlayer(skipSeconds: number) {
       // While a clip/sector is looping, the range owns the element's `ended`
       // event — a clip ending exactly at the file end must not jump to the
       // next track mid-loop.
-      if (audioRef.current.dataset.clipLoopActive === "1") return;
+      if (audioRef.current.dataset.clipLoopActive === '1') return;
       nextRef.current();
     };
     const onError = () => {
       dispatch(setIsPlaying(false));
-      console.error("Audio error", audio.error);
+      console.error('Audio error', audio.error);
     };
 
-    audio.addEventListener("timeupdate", onTimeUpdate);
-    audio.addEventListener("loadedmetadata", onLoadedMetadata);
-    audio.addEventListener("play", onPlay);
-    audio.addEventListener("pause", onPause);
-    audio.addEventListener("ended", onEnded);
-    audio.addEventListener("error", onError);
+    audio.addEventListener('timeupdate', onTimeUpdate);
+    audio.addEventListener('loadedmetadata', onLoadedMetadata);
+    audio.addEventListener('play', onPlay);
+    audio.addEventListener('pause', onPause);
+    audio.addEventListener('ended', onEnded);
+    audio.addEventListener('error', onError);
 
     return () => {
-      audio.removeEventListener("timeupdate", onTimeUpdate);
-      audio.removeEventListener("loadedmetadata", onLoadedMetadata);
-      audio.removeEventListener("play", onPlay);
-      audio.removeEventListener("pause", onPause);
-      audio.removeEventListener("ended", onEnded);
-      audio.removeEventListener("error", onError);
+      audio.removeEventListener('timeupdate', onTimeUpdate);
+      audio.removeEventListener('loadedmetadata', onLoadedMetadata);
+      audio.removeEventListener('play', onPlay);
+      audio.removeEventListener('pause', onPause);
+      audio.removeEventListener('ended', onEnded);
+      audio.removeEventListener('error', onError);
     };
   }, [dispatch]);
 
@@ -258,14 +264,14 @@ export function useAudioPlayer(skipSeconds: number) {
     if (track && !audio.src) {
       expectedRawUrlRef.current = track.url;
       getPlayableUrl(track.url)
-        .then((playableUrl) => {
+        .then(playableUrl => {
           if (expectedRawUrlRef.current === track.url && !audio.src) {
             audio.src = playableUrl;
             audio.load();
           }
         })
-        .catch((error) => {
-          console.error("Failed to decode initial audio:", error);
+        .catch(error => {
+          console.error('Failed to decode initial audio:', error);
           if (expectedRawUrlRef.current === track.url && !audio.src) {
             audio.src = track.url;
             audio.load();
@@ -281,8 +287,8 @@ export function useAudioPlayer(skipSeconds: number) {
     audioRef.current
       .play()
       .then(() => dispatch(setIsPlaying(true)))
-      .catch((err) => {
-        console.debug("Play failed (may retry):", err);
+      .catch(err => {
+        console.debug('Play failed (may retry):', err);
       });
   }, [dispatch, getAnalyser]);
 
@@ -302,10 +308,10 @@ export function useAudioPlayer(skipSeconds: number) {
     }
     const audio = audioRef.current;
     if (rangeEndedRef.current) {
-      audio.removeEventListener("ended", rangeEndedRef.current);
+      audio.removeEventListener('ended', rangeEndedRef.current);
       rangeEndedRef.current = null;
     }
-    audio.dataset.clipLoopActive = "0";
+    audio.dataset.clipLoopActive = '0';
     suppressRangePauseRef.current = false;
   }, []);
 
@@ -332,8 +338,8 @@ export function useAudioPlayer(skipSeconds: number) {
     audio
       .play()
       .then(() => dispatch(setIsPlaying(true)))
-      .catch((err) => {
-        console.debug("Toggle play failed (may retry):", err);
+      .catch(err => {
+        console.debug('Toggle play failed (may retry):', err);
       });
   }, [dispatch, getAnalyser, stopRangeMonitoring]);
 
@@ -356,7 +362,7 @@ export function useAudioPlayer(skipSeconds: number) {
       const audio = audioRef.current;
       if (audio.paused) snatchToStart(audio, time);
       audio.currentTime = time;
-      console.debug("Seek to:", time);
+      console.debug('Seek to:', time);
       dispatch(setCurrentTime(time));
     },
     [dispatch],
@@ -365,17 +371,17 @@ export function useAudioPlayer(skipSeconds: number) {
   const addTracks = useCallback(
     (files: FileList, playAfter: boolean = false) => {
       const all = Array.from(files);
-      const mp3Files = all.filter((f) => f.name.toLowerCase().endsWith(".mp3"));
+      const mp3Files = all.filter(f => f.name.toLowerCase().endsWith('.mp3'));
       const skipped = all.length - mp3Files.length;
-      const newTracks: Track[] = mp3Files.map((file) => ({
+      const newTracks: Track[] = mp3Files.map(file => ({
         id: crypto.randomUUID(),
-        title: file.name.replace(/\.[^/.]+$/, ""),
-        artist: "Unknown Artist",
+        title: file.name.replace(/\.[^/.]+$/, ''),
+        artist: 'Unknown Artist',
         duration: 0,
         url: URL.createObjectURL(file),
         file,
       }));
-      if (newTracks.length === 0) return { added: 0, skipped };
+      if (newTracks.length === 0) return {added: 0, skipped};
 
       const s = getPlayer();
       const startIndex = s.tracks.length;
@@ -391,7 +397,7 @@ export function useAudioPlayer(skipSeconds: number) {
         }
       }
 
-      return { added: newTracks.length, skipped };
+      return {added: newTracks.length, skipped};
     },
     [dispatch, startTrack],
   );
@@ -409,7 +415,7 @@ export function useAudioPlayer(skipSeconds: number) {
           expectedRawUrlRef.current = null;
           newIndex = -1;
           audio.pause();
-          audio.src = "";
+          audio.src = '';
         } else {
           newIndex = Math.min(index, newTracks.length - 1);
           const track = newTracks[newIndex];
@@ -475,8 +481,7 @@ export function useAudioPlayer(skipSeconds: number) {
       onComplete?: () => void,
       onRepeat?: () => void,
     ) => {
-      const audio =
-        audioRef.current;
+      const audio = audioRef.current;
 
       getAnalyser();
 
@@ -485,11 +490,9 @@ export function useAudioPlayer(skipSeconds: number) {
        */
       stopRangeMonitoring();
 
-      audio.dataset.clipLoopActive =
-        "1";
+      audio.dataset.clipLoopActive = '1';
 
-      const runId =
-        ++rangeRunIdRef.current;
+      const runId = ++rangeRunIdRef.current;
 
       let count = 0;
 
@@ -499,8 +502,7 @@ export function useAudioPlayer(skipSeconds: number) {
        */
       let seeking = true;
 
-      let seekRequestTs =
-        performance.now();
+      let seekRequestTs = performance.now();
 
       let recoveryAttempts = 0;
 
@@ -511,23 +513,17 @@ export function useAudioPlayer(skipSeconds: number) {
           return;
         }
 
-        window.clearTimeout(
-          resumeTimer,
-        );
+        window.clearTimeout(resumeTimer);
 
         resumeTimer = 0;
       };
 
       const stopLoop = () => {
-        if (
-          !rangeRafRef.current
-        ) {
+        if (!rangeRafRef.current) {
           return;
         }
 
-        cancelAnimationFrame(
-          rangeRafRef.current,
-        );
+        cancelAnimationFrame(rangeRafRef.current);
 
         rangeRafRef.current = 0;
       };
@@ -537,20 +533,13 @@ export function useAudioPlayer(skipSeconds: number) {
 
         stopLoop();
 
-        if (
-          rangeEndedRef.current
-        ) {
-          audio.removeEventListener(
-            "ended",
-            rangeEndedRef.current,
-          );
+        if (rangeEndedRef.current) {
+          audio.removeEventListener('ended', rangeEndedRef.current);
 
-          rangeEndedRef.current =
-            null;
+          rangeEndedRef.current = null;
         }
 
-        audio.dataset.clipLoopActive =
-          "0";
+        audio.dataset.clipLoopActive = '0';
       };
 
       const abortLoop = () => {
@@ -558,15 +547,9 @@ export function useAudioPlayer(skipSeconds: number) {
 
         audio.pause();
 
-        dispatch(
-          setIsPlaying(false),
-        );
+        dispatch(setIsPlaying(false));
 
-        dispatch(
-          setCurrentTime(
-            audio.currentTime,
-          ),
-        );
+        dispatch(setCurrentTime(audio.currentTime));
 
         onComplete?.();
       };
@@ -581,10 +564,7 @@ export function useAudioPlayer(skipSeconds: number) {
        * Pause first, then normalize to the exact range end.
        */
       const finishLoop = () => {
-        if (
-          runId !==
-          rangeRunIdRef.current
-        ) {
+        if (runId !== rangeRunIdRef.current) {
           return;
         }
 
@@ -607,22 +587,14 @@ export function useAudioPlayer(skipSeconds: number) {
          * getCurrentTime() must also return `end`, not an
          * overshot value.
          */
-        if (
-          Math.abs(
-            audio.currentTime -
-            end,
-          ) > 0.001
-        ) {
-          audio.currentTime =
-            end;
+        if (Math.abs(audio.currentTime - end) > 0.001) {
+          audio.currentTime = end;
         }
 
         /*
          * Freeze React's logical time at exactly end.
          */
-        dispatch(
-          setCurrentTime(end),
-        );
+        dispatch(setCurrentTime(end));
 
         /*
          * The waveform completion callback runs before
@@ -631,9 +603,7 @@ export function useAudioPlayer(skipSeconds: number) {
          */
         onComplete?.();
 
-        dispatch(
-          setIsPlaying(false),
-        );
+        dispatch(setIsPlaying(false));
       };
 
       /**
@@ -645,20 +615,14 @@ export function useAudioPlayer(skipSeconds: number) {
        * repeat=true:
        *   repetition restart
        */
-      const resetToStart = (
-        repeat: boolean,
-      ) => {
-        if (
-          runId !==
-          rangeRunIdRef.current
-        ) {
+      const resetToStart = (repeat: boolean) => {
+        if (runId !== rangeRunIdRef.current) {
           return;
         }
 
         seeking = true;
 
-        seekRequestTs =
-          performance.now();
+        seekRequestTs = performance.now();
 
         cancelResume();
 
@@ -667,17 +631,13 @@ export function useAudioPlayer(skipSeconds: number) {
          *
          * It is NOT a user pause.
          */
-        suppressRangePauseRef.current =
-          true;
+        suppressRangePauseRef.current = true;
 
         audio.pause();
 
-        audio.currentTime =
-          start;
+        audio.currentTime = start;
 
-        dispatch(
-          setCurrentTime(start),
-        );
+        dispatch(setCurrentTime(start));
 
         /*
          * Authoritative repetition event.
@@ -691,69 +651,43 @@ export function useAudioPlayer(skipSeconds: number) {
         /*
          * Give the seek a short time to settle.
          */
-        resumeTimer =
-          window.setTimeout(
-            () => {
-              suppressRangePauseRef.current =
-                false;
+        resumeTimer = window.setTimeout(() => {
+          suppressRangePauseRef.current = false;
 
-              if (
-                runId !==
-                rangeRunIdRef.current
-              ) {
+          if (runId !== rangeRunIdRef.current) {
+            return;
+          }
+
+          resumeTimer = 0;
+
+          snatchToStart(audio, start);
+
+          audio
+            .play()
+            .then(() => {
+              if (runId !== rangeRunIdRef.current) {
                 return;
               }
 
-              resumeTimer = 0;
-
-              snatchToStart(
-                audio,
-                start,
-              );
-
-              audio
-                .play()
-                .then(() => {
-                  if (
-                    runId !==
-                    rangeRunIdRef.current
-                  ) {
-                    return;
-                  }
-
-                  dispatch(
-                    setIsPlaying(
-                      true,
-                    ),
-                  );
-                })
-                .catch(() => { });
-            },
-            50,
-          );
+              dispatch(setIsPlaying(true));
+            })
+            .catch(() => {});
+        }, 50);
       };
 
       const tick = () => {
-        if (
-          !rangeRafRef.current
-        ) {
+        if (!rangeRafRef.current) {
           return;
         }
 
-        if (
-          runId !==
-          rangeRunIdRef.current
-        ) {
+        if (runId !== rangeRunIdRef.current) {
           return;
         }
 
-        const t =
-          audio.currentTime;
+        const t = audio.currentTime;
 
         if (seeking) {
-          const nearStart =
-            t >= start - 0.05 &&
-            t <= start + 0.15;
+          const nearStart = t >= start - 0.05 && t <= start + 0.15;
 
           if (nearStart) {
             seeking = false;
@@ -762,50 +696,33 @@ export function useAudioPlayer(skipSeconds: number) {
              * A successful seek resets recovery state.
              */
             recoveryAttempts = 0;
-          } else if (
-            performance.now() -
-            seekRequestTs >
-            3000
-          ) {
+          } else if (performance.now() - seekRequestTs > 3000) {
             /*
              * iOS occasionally ignores the first seek.
              */
-            if (
-              recoveryAttempts < 1
-            ) {
+            if (recoveryAttempts < 1) {
               recoveryAttempts++;
 
-              suppressRangePauseRef.current =
-                true;
+              suppressRangePauseRef.current = true;
 
               audio.pause();
 
-              audio.currentTime =
-                start;
+              audio.currentTime = start;
 
-              seekRequestTs =
-                performance.now();
+              seekRequestTs = performance.now();
 
-              suppressRangePauseRef.current =
-                false;
+              suppressRangePauseRef.current = false;
 
               audio
                 .play()
                 .then(() => {
-                  if (
-                    runId !==
-                    rangeRunIdRef.current
-                  ) {
+                  if (runId !== rangeRunIdRef.current) {
                     return;
                   }
 
-                  dispatch(
-                    setIsPlaying(
-                      true,
-                    ),
-                  );
+                  dispatch(setIsPlaying(true));
                 })
-                .catch(() => { });
+                .catch(() => {});
             } else {
               abortLoop();
 
@@ -822,10 +739,7 @@ export function useAudioPlayer(skipSeconds: number) {
             /*
              * Last repetition.
              */
-            if (
-              count >=
-              repetitions
-            ) {
+            if (count >= repetitions) {
               finishLoop();
 
               return;
@@ -834,13 +748,8 @@ export function useAudioPlayer(skipSeconds: number) {
             /*
              * Another repetition remains.
              */
-            resetToStart(
-              true,
-            );
-          } else if (
-            t <
-            start - 0.05
-          ) {
+            resetToStart(true);
+          } else if (t < start - 0.05) {
             /*
              * Unexpected backwards movement.
              */
@@ -850,10 +759,7 @@ export function useAudioPlayer(skipSeconds: number) {
           }
         }
 
-        rangeRafRef.current =
-          requestAnimationFrame(
-            tick,
-          );
+        rangeRafRef.current = requestAnimationFrame(tick);
       };
 
       /**
@@ -861,16 +767,11 @@ export function useAudioPlayer(skipSeconds: number) {
        * media-file end.
        */
       const onEnded = () => {
-        if (
-          !rangeRafRef.current
-        ) {
+        if (!rangeRafRef.current) {
           return;
         }
 
-        if (
-          runId !==
-          rangeRunIdRef.current
-        ) {
+        if (runId !== rangeRunIdRef.current) {
           return;
         }
 
@@ -884,47 +785,29 @@ export function useAudioPlayer(skipSeconds: number) {
 
         count++;
 
-        if (
-          count >=
-          repetitions
-        ) {
+        if (count >= repetitions) {
           finishLoop();
 
           return;
         }
 
-        resetToStart(
-          true,
-        );
+        resetToStart(true);
       };
 
-      rangeEndedRef.current =
-        onEnded;
+      rangeEndedRef.current = onEnded;
 
-      audio.addEventListener(
-        "ended",
-        onEnded,
-      );
+      audio.addEventListener('ended', onEnded);
 
       /*
        * Initial playback.
        *
        * This is not a repetition.
        */
-      resetToStart(
-        false,
-      );
+      resetToStart(false);
 
-      rangeRafRef.current =
-        requestAnimationFrame(
-          tick,
-        );
+      rangeRafRef.current = requestAnimationFrame(tick);
     },
-    [
-      dispatch,
-      getAnalyser,
-      stopRangeMonitoring,
-    ],
+    [dispatch, getAnalyser, stopRangeMonitoring],
   );
   return {
     state,

@@ -1,6 +1,6 @@
-import { useEffect, useId, useRef, useState } from "react";
-import { LOCALE_IDS, type LocaleId } from "../i18n";
-import "./LanguageSelect.css";
+import {useEffect, useId, useRef, useState} from 'react';
+import {LOCALE_IDS, type LocaleId} from '../i18n';
+import './LanguageSelect.css';
 
 /**
  * Custom language dropdown (button + listbox).
@@ -11,8 +11,8 @@ import "./LanguageSelect.css";
  */
 
 const OPTION_LABELS: Record<LocaleId, string> = {
-  en: "English",
-  zh: "中文",
+  en: 'English',
+  zh: '中文',
 };
 
 interface LanguageSelectProps {
@@ -21,7 +21,7 @@ interface LanguageSelectProps {
   label: string;
 }
 
-export function LanguageSelect({ value, onChange, label }: LanguageSelectProps) {
+export function LanguageSelect({value, onChange, label}: LanguageSelectProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const listboxId = useId();
@@ -44,13 +44,13 @@ export function LanguageSelect({ value, onChange, label }: LanguageSelectProps) 
       if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
     };
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === 'Escape') setOpen(false);
     };
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
     return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
     };
   }, [open]);
 
@@ -61,38 +61,40 @@ export function LanguageSelect({ value, onChange, label }: LanguageSelectProps) 
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
     if (!open) {
-      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault();
         openList();
       }
       return;
     }
     switch (e.key) {
-      case "ArrowDown":
+      case 'ArrowDown':
         e.preventDefault();
-        setActiveIndex((i) => (i + 1) % LOCALE_IDS.length);
+        setActiveIndex(i => (i + 1) % LOCALE_IDS.length);
         break;
-      case "ArrowUp":
+      case 'ArrowUp':
         e.preventDefault();
-        setActiveIndex((i) => (i - 1 + LOCALE_IDS.length) % LOCALE_IDS.length);
+        setActiveIndex(i => (i - 1 + LOCALE_IDS.length) % LOCALE_IDS.length);
         break;
-      case "Home":
+      case 'Home':
         e.preventDefault();
         setActiveIndex(0);
         break;
-      case "End":
+      case 'End':
         e.preventDefault();
         setActiveIndex(LOCALE_IDS.length - 1);
         break;
-      case "Enter":
-      case " ":
+      case 'Enter':
+      case ' ':
         e.preventDefault();
         select(LOCALE_IDS[activeIndex]);
         break;
     }
   };
 
-  const activeDescendant = open ? `${listboxId}-${LOCALE_IDS[activeIndex]}` : undefined;
+  const activeDescendant = open
+    ? `${listboxId}-${LOCALE_IDS[activeIndex]}`
+    : undefined;
 
   return (
     <div className="language-select" ref={rootRef}>
@@ -109,7 +111,7 @@ export function LanguageSelect({ value, onChange, label }: LanguageSelectProps) 
       >
         <span className="language-select__value">{OPTION_LABELS[value]}</span>
         <svg
-          className={`language-select__chevron${open ? " language-select__chevron--open" : ""}`}
+          className={`language-select__chevron${open ? ' language-select__chevron--open' : ''}`}
           viewBox="0 0 16 16"
           width="14"
           height="14"
@@ -140,8 +142,8 @@ export function LanguageSelect({ value, onChange, label }: LanguageSelectProps) 
               role="option"
               aria-selected={id === value}
               className={`language-select__option ${
-                i === activeIndex ? "language-select__option--active" : ""
-              } ${id === value ? "language-select__option--selected" : ""}`}
+                i === activeIndex ? 'language-select__option--active' : ''
+              } ${id === value ? 'language-select__option--selected' : ''}`}
               onPointerEnter={() => setActiveIndex(i)}
               onClick={() => select(id)}
             >

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import {describe, expect, it} from 'vitest';
 import {
   getClipGaps,
   expandClip,
@@ -6,7 +6,7 @@ import {
   mergeClipsByGap,
   splitBySilence,
   type Clip,
-} from "./clips";
+} from './clips';
 
 const mk = (start: number, end: number): Clip => ({
   start,
@@ -15,14 +15,14 @@ const mk = (start: number, end: number): Clip => ({
   vEnd: end,
 });
 
-const bounds = (clips: Clip[]) => clips.map((c) => [c.start, c.end]);
+const bounds = (clips: Clip[]) => clips.map(c => [c.start, c.end]);
 
-describe("splitBySilence", () => {
+describe('splitBySilence', () => {
   const opts = {
-      blockMs: 640,
-      silenceRatio: 0.01,
-      minClipLength: 0.3,
-    };
+    blockMs: 640,
+    silenceRatio: 0.01,
+    minClipLength: 0.3,
+  };
 
   // Builds a buffer of 64-sample blocks (the block size in samples at the
   // chosen sample rates: 640ms at 100Hz, 40ms at 1600Hz). Each block is a
@@ -35,7 +35,7 @@ describe("splitBySilence", () => {
     return data;
   };
 
-  it("returns an empty ClipData when there is no data or a non-positive sample rate", () => {
+  it('returns an empty ClipData when there is no data or a non-positive sample rate', () => {
     expect(splitBySilence(null, 44100, opts)).toEqual({
       clips: [],
       gaps: [],
@@ -53,7 +53,7 @@ describe("splitBySilence", () => {
     });
   });
 
-  it("detects a continuous run of sound as a single clip spanning the buffer", () => {
+  it('detects a continuous run of sound as a single clip spanning the buffer', () => {
     const [clip] = splitBySilence(buildData([1, 1, 1]), 100, opts).clips;
     expect(clip.start).toBe(0);
     expect(clip.end).toBeCloseTo(1.92, 5);
@@ -61,8 +61,8 @@ describe("splitBySilence", () => {
     expect(clip.vEnd).toBeCloseTo(1.92, 5);
   });
 
-  it("splits around a silent block and expands vStart/vEnd into the gap", () => {
-    const { clips } = splitBySilence(buildData([1, 0, 1, 1]), 100, opts);
+  it('splits around a silent block and expands vStart/vEnd into the gap', () => {
+    const {clips} = splitBySilence(buildData([1, 0, 1, 1]), 100, opts);
     expect(clips).toHaveLength(2);
     expect(bounds(clips)).toEqual([
       [0, 0.64],
@@ -76,14 +76,14 @@ describe("splitBySilence", () => {
     expect(clips[1].vEnd).toBeCloseTo(2.56, 5);
   });
 
-  it("trims leading and trailing silence and expands into it by 25% of each gap", () => {
+  it('trims leading and trailing silence and expands into it by 25% of each gap', () => {
     const [clip] = splitBySilence(buildData([0, 1, 0]), 100, opts).clips;
     expect(bounds([clip])).toEqual([[0.64, 1.28]]);
     expect(clip.vStart).toBeCloseTo(0.48, 5);
     expect(clip.vEnd).toBeCloseTo(1.44, 5);
   });
 
-  it("honors the configured minClipLength when merging short runs", () => {
+  it('honors the configured minClipLength when merging short runs', () => {
     // At 1600 Hz a 40ms block is 64 samples = 0.04s; [1,1,0,1,1] gives runs
     // [0, 0.08] and [0.12, 0.2] separated by a 0.04s gap.
     const splitWith = (minClipLength: number) =>
@@ -109,9 +109,9 @@ describe("splitBySilence", () => {
   });
 });
 
-describe("expandClip", () => {
-  it("expands clip bounds into neighboring silence by 25% of each gap", () => {
-    const clip = { start: 0.6, end: 1.0, vStart: 0.6, vEnd: 1.0 };
+describe('expandClip', () => {
+  it('expands clip bounds into neighboring silence by 25% of each gap', () => {
+    const clip = {start: 0.6, end: 1.0, vStart: 0.6, vEnd: 1.0};
 
     expandClip(clip, 0.2, 1.8, 0.25, 2.0);
 
@@ -119,8 +119,8 @@ describe("expandClip", () => {
     expect(clip.vEnd).toBeCloseTo(1.2, 5);
   });
 
-  it("leaves a clip unchanged when there is no surrounding silence to absorb", () => {
-    const clip = { start: 0.5, end: 1.0, vStart: 0.5, vEnd: 1.0 };
+  it('leaves a clip unchanged when there is no surrounding silence to absorb', () => {
+    const clip = {start: 0.5, end: 1.0, vStart: 0.5, vEnd: 1.0};
 
     expandClip(clip, 0.5, 1.0, 0.25, 2.0);
 
@@ -128,8 +128,8 @@ describe("expandClip", () => {
     expect(clip.vEnd).toBe(1.0);
   });
 
-  it("expands by 25% of each gap even with very large surrounding silence", () => {
-    const clip = { start: 1.0, end: 2.0, vStart: 1.0, vEnd: 2.0 };
+  it('expands by 25% of each gap even with very large surrounding silence', () => {
+    const clip = {start: 1.0, end: 2.0, vStart: 1.0, vEnd: 2.0};
 
     expandClip(clip, 0.0, 100.0, 0.25, 100.0);
 
@@ -138,8 +138,8 @@ describe("expandClip", () => {
   });
 });
 
-describe("findMinMergeGap", () => {
-  it("returns an empty ClipData for an empty input", () => {
+describe('findMinMergeGap', () => {
+  it('returns an empty ClipData for an empty input', () => {
     expect(findMinMergeGap([], [], 0.3)).toEqual({
       clips: [],
       gaps: [],
@@ -147,7 +147,7 @@ describe("findMinMergeGap", () => {
     });
   });
 
-  it("does not merge when every clip already meets minClipLength", () => {
+  it('does not merge when every clip already meets minClipLength', () => {
     const clips = [mk(0, 1), mk(1.5, 2)];
     const result = findMinMergeGap(clips, getClipGaps(clips), 0.3);
     expect(result.minGap).toBe(0);
@@ -158,7 +158,7 @@ describe("findMinMergeGap", () => {
     ]);
   });
 
-  it("finds the smallest gap that makes every merged clip long enough", () => {
+  it('finds the smallest gap that makes every merged clip long enough', () => {
     // A (0, 1) --0.15-- B (1.15, 1.2) --0.02-- C (1.22, 1.23) --0.4-- D (1.63, 2)
     // Merging at 0.02 leaves B+C at only 0.08 (< 0.3); 0.15 is the first
     // threshold at which every group meets the minimum.
@@ -174,7 +174,7 @@ describe("findMinMergeGap", () => {
     ]);
   });
 
-  it("prefers the smallest gap when it already satisfies the minimum", () => {
+  it('prefers the smallest gap when it already satisfies the minimum', () => {
     // A (0, 1) --0.02-- B (1.02, 1.08) --0.04-- C (1.12, 2)
     // Merging A+B across 0.02 yields a 1.08s group, so 0.02 suffices.
     const clips = [mk(0, 1), mk(1.02, 1.08), mk(1.12, 2)];
@@ -183,7 +183,7 @@ describe("findMinMergeGap", () => {
     expect(result.clips).toBe(clips);
   });
 
-  it("keeps the raw clips when no single gap reaches the minimum", () => {
+  it('keeps the raw clips when no single gap reaches the minimum', () => {
     // Even merging both clips cannot reach 0.3 worth of audio.
     const clips = [mk(0, 0.1), mk(0.3, 0.4)];
     const result = findMinMergeGap(clips, getClipGaps(clips), 0.5);
@@ -191,7 +191,7 @@ describe("findMinMergeGap", () => {
     expect(result.minGap).toBe(0);
   });
 
-  it("keeps the raw clips when there are no mergeable gaps", () => {
+  it('keeps the raw clips when there are no mergeable gaps', () => {
     // A single short clip has no gaps to merge across...
     const single = [mk(0, 0.2)];
     const singleResult = findMinMergeGap(single, [], 0.3);
@@ -205,18 +205,18 @@ describe("findMinMergeGap", () => {
   });
 });
 
-describe("mergeClipsByGap", () => {
-  it("returns [] for an empty input", () => {
+describe('mergeClipsByGap', () => {
+  it('returns [] for an empty input', () => {
     expect(mergeClipsByGap([], 0.5)).toEqual([]);
   });
 
-  it("returns a single clip unchanged with no children", () => {
+  it('returns a single clip unchanged with no children', () => {
     const clip = mk(0, 1);
     expect(mergeClipsByGap([clip], 0.5)).toEqual([clip]);
     expect(mergeClipsByGap([clip], 0.5)[0].children).toBeUndefined();
   });
 
-  it("merges consecutive clips whose gap is within minGap into a parent", () => {
+  it('merges consecutive clips whose gap is within minGap into a parent', () => {
     const a = mk(0, 1);
     const b = mk(1.2, 2);
     const [parent] = mergeClipsByGap([a, b], 0.5);
@@ -229,21 +229,21 @@ describe("mergeClipsByGap", () => {
     });
   });
 
-  it("merges when the gap exactly equals minGap", () => {
+  it('merges when the gap exactly equals minGap', () => {
     const a = mk(0, 1);
     const b = mk(1.5, 2);
     expect(mergeClipsByGap([a, b], 0.5)).toEqual([
-      { start: 0, end: 2, vStart: 0, vEnd: 2, children: [a, b] },
+      {start: 0, end: 2, vStart: 0, vEnd: 2, children: [a, b]},
     ]);
   });
 
-  it("keeps clips separate when the gap exceeds minGap", () => {
+  it('keeps clips separate when the gap exceeds minGap', () => {
     const a = mk(0, 1);
     const b = mk(10, 11);
     expect(mergeClipsByGap([a, b], 0.5)).toEqual([a, b]);
   });
 
-  it("preserves the original clip references for unmerged clips", () => {
+  it('preserves the original clip references for unmerged clips', () => {
     const a = mk(0, 1);
     const b = mk(1.2, 2);
     const c = mk(10, 11);
@@ -252,12 +252,12 @@ describe("mergeClipsByGap", () => {
     expect(result[1]).toBe(c);
   });
 
-  it("produces a single parent spanning everything when all gaps merge", () => {
+  it('produces a single parent spanning everything when all gaps merge', () => {
     const clips = [mk(0, 1), mk(1.1, 2), mk(2.1, 3), mk(3.2, 4)];
     expect(bounds(mergeClipsByGap(clips, 1))).toEqual([[0, 4]]);
   });
 
-  it("groups several merged runs separated by large gaps", () => {
+  it('groups several merged runs separated by large gaps', () => {
     const a = mk(0, 1);
     const b = mk(1.1, 2);
     const c = mk(2.1, 3);
@@ -272,7 +272,7 @@ describe("mergeClipsByGap", () => {
     expect(result[1].children).toEqual([d, e]);
   });
 
-  it("keeps vStart/vEnd of the parent as the outer span of its children", () => {
+  it('keeps vStart/vEnd of the parent as the outer span of its children', () => {
     const a = mk(0, 1);
     const b = mk(1.2, 2);
     const c = mk(2.4, 3.5);
@@ -282,18 +282,18 @@ describe("mergeClipsByGap", () => {
   });
 });
 
-describe("getClipGaps", () => {
-  it("returns [] for a single clip", () => {
+describe('getClipGaps', () => {
+  it('returns [] for a single clip', () => {
     expect(getClipGaps([mk(0, 1)])).toEqual([]);
   });
 
-  it("returns distinct positive gaps above 0.01, ascending", () => {
+  it('returns distinct positive gaps above 0.01, ascending', () => {
     // gaps: 0.5, 0.5, 3 -> deduped and sorted
     const clips = [mk(0, 1), mk(1.5, 2), mk(2.5, 3), mk(6, 7)];
     expect(getClipGaps(clips)).toEqual([0.5, 3]);
   });
 
-  it("skips gaps of 0.01 or less but keeps larger ones", () => {
+  it('skips gaps of 0.01 or less but keeps larger ones', () => {
     // first gap is 0.005 (skipped), second gap is 1 (kept)
     const clips = [mk(0, 1), mk(1.005, 2), mk(3, 4)];
     expect(getClipGaps(clips)).toEqual([1]);

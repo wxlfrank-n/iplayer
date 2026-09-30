@@ -5,13 +5,13 @@
  * read them; this hook owns the decode side effect and reports status.
  */
 
-import { useEffect, useRef } from "react";
-import { decodeAudioBuffer } from "../utils/audio";
-import { useAppDispatch, useAppSelector } from "../store/hooks";
-import { setWaveform, setWaveformStatus } from "../store/analysisSlice";
-import type { WaveformData, WaveformStatus } from "../types";
+import {useEffect, useRef} from 'react';
+import {decodeAudioBuffer} from '../utils/audio';
+import {useAppDispatch, useAppSelector} from '../store/hooks';
+import {setWaveform, setWaveformStatus} from '../store/analysisSlice';
+import type {WaveformData, WaveformStatus} from '../types';
 
-export type { WaveformData, WaveformStatus } from "../types";
+export type {WaveformData, WaveformStatus} from '../types';
 
 // Raw decoded audio as mixed-to-mono Float32 samples plus a status flag so the
 // UI can tell "still decoding" apart from "not (yet) available".
@@ -20,8 +20,8 @@ export function useWaveform(url: string | null): {
   status: WaveformStatus;
 } {
   const dispatch = useAppDispatch();
-  const waveform = useAppSelector((s) => s.analysis.waveform);
-  const status = useAppSelector((s) => s.analysis.waveformStatus);
+  const waveform = useAppSelector(s => s.analysis.waveform);
+  const status = useAppSelector(s => s.analysis.waveformStatus);
   const urlRef = useRef(url);
 
   // Keep ref in sync with latest url value
@@ -34,16 +34,16 @@ export function useWaveform(url: string | null): {
     const currentUrl = urlRef.current;
     if (!currentUrl) {
       dispatch(setWaveform(null));
-      dispatch(setWaveformStatus("idle"));
+      dispatch(setWaveformStatus('idle'));
       return;
     }
-    dispatch(setWaveformStatus("loading"));
+    dispatch(setWaveformStatus('loading'));
 
     let cancelled = false;
 
     async function load() {
       try {
-        const { buffer: audioBuffer } = await decodeAudioBuffer(currentUrl!);
+        const {buffer: audioBuffer} = await decodeAudioBuffer(currentUrl!);
 
         const channelCount = audioBuffer.numberOfChannels;
         const length = audioBuffer.getChannelData(0).length;
@@ -56,13 +56,17 @@ export function useWaveform(url: string | null): {
 
         if (cancelled) return;
         dispatch(
-          setWaveform({ data: mono, sampleRate: audioBuffer.sampleRate, duration: mono.length / audioBuffer.sampleRate }),
+          setWaveform({
+            data: mono,
+            sampleRate: audioBuffer.sampleRate,
+            duration: mono.length / audioBuffer.sampleRate,
+          }),
         );
-        dispatch(setWaveformStatus("ready"));
+        dispatch(setWaveformStatus('ready'));
       } catch {
         if (cancelled) return;
         dispatch(setWaveform(null));
-        dispatch(setWaveformStatus("error"));
+        dispatch(setWaveformStatus('error'));
       }
     }
 
@@ -73,5 +77,5 @@ export function useWaveform(url: string | null): {
     };
   }, [url, dispatch]);
 
-  return { data: status === "ready" ? waveform : null, status };
+  return {data: status === 'ready' ? waveform : null, status};
 }

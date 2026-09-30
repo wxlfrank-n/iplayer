@@ -41,9 +41,9 @@ export function initializeAudioContext(): AudioContext {
     // the standard one first and falling back to webkit for older browsers.
     const Ctor =
       window.AudioContext ??
-      (window as unknown as { webkitAudioContext?: typeof AudioContext })
+      (window as unknown as {webkitAudioContext?: typeof AudioContext})
         .webkitAudioContext;
-    if (!Ctor) throw new Error("AudioContext not supported");
+    if (!Ctor) throw new Error('AudioContext not supported');
     sharedAudioContext = new Ctor();
   }
   return sharedAudioContext;
@@ -86,23 +86,23 @@ export function decodeAudioBuffer(url: string): Promise<DecodedAudio> {
         // Try standard AudioContext first, fall back to webkit for older browsers
         const Ctor =
           window.AudioContext ??
-          (window as unknown as { webkitAudioContext?: typeof AudioContext })
+          (window as unknown as {webkitAudioContext?: typeof AudioContext})
             .webkitAudioContext;
-        if (!Ctor) throw new Error("AudioContext not supported");
+        if (!Ctor) throw new Error('AudioContext not supported');
         audioContext = new Ctor();
         isTemporary = true;
       } catch (err) {
         // Can't create context - likely no user gesture or unsupported browser
-        console.debug("Failed to create temporary AudioContext:", err);
+        console.debug('Failed to create temporary AudioContext:', err);
         throw new Error(
-          "AudioContext not initialized. Please click play to start audio.",
+          'AudioContext not initialized. Please click play to start audio.',
         );
       }
     }
 
     try {
       const buffer = await audioContext.decodeAudioData(arrayBuffer);
-      return { buffer, byteLength: arrayBuffer.byteLength };
+      return {buffer, byteLength: arrayBuffer.byteLength};
     } finally {
       // Only close if we created a temporary context (keep shared context alive)
       if (isTemporary) {

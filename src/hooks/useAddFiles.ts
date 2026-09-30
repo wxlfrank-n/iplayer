@@ -8,9 +8,9 @@
  * drag state.
  */
 
-import { useCallback } from "react";
-import { useDrop } from "react-dnd";
-import { NativeTypes } from "react-dnd-html5-backend";
+import {useCallback} from 'react';
+import {useDrop} from 'react-dnd';
+import {NativeTypes} from 'react-dnd-html5-backend';
 
 interface AddTracksResult {
   added: number;
@@ -18,30 +18,27 @@ interface AddTracksResult {
 }
 
 export function useAddFiles(
-  addTracks: (
-    files: FileList,
-    playAfter?: boolean,
-  ) => AddTracksResult,
+  addTracks: (files: FileList, playAfter?: boolean) => AddTracksResult,
   onSkipped?: (skipped: number) => void,
 ) {
   const handleFiles = useCallback(
     (files: FileList, playAfter: boolean = true) => {
-      const { skipped } = addTracks(files, playAfter);
+      const {skipped} = addTracks(files, playAfter);
       if (skipped > 0) onSkipped?.(skipped);
     },
     [addTracks, onSkipped],
   );
 
-  const [{ isOver }, drop] = useDrop(
+  const [{isOver}, drop] = useDrop(
     () => ({
       accept: [NativeTypes.FILE],
-      drop: (item: { files?: FileList }) => {
+      drop: (item: {files?: FileList}) => {
         if (item.files && item.files.length > 0) handleFiles(item.files);
       },
-      collect: (monitor) => ({ isOver: monitor.isOver() }),
+      collect: monitor => ({isOver: monitor.isOver()}),
     }),
     [handleFiles],
   );
 
-  return { handleFiles, isOver, drop };
+  return {handleFiles, isOver, drop};
 }
