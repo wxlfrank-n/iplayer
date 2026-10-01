@@ -33,11 +33,20 @@
   cursor: pointer;
 }
 
-.clip-reps__stepper button:hover,
-.clip-reps__stepper button:active {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: var(--bg-hover);
+.clip-reps__stepper button:active:not(:disabled) {
+  animation: clip-reps-stepper-press 0.3s ease-out;
+}
+
+/*
+ * Press flash (replaces the former :hover accent): flat at rest, the accent
+ * look flashes while the button is held.
+ */
+@keyframes clip-reps-stepper-press {
+  from {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--bg-hover);
+  }
 }
 
 .clip-reps__value {

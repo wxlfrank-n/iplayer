@@ -58,10 +58,20 @@
   height: 26px;
 }
 
-.stacked-clip-action:hover {
-  background: rgba(var(--accent-rgb), 0.16);
-  color: var(--accent);
-  transform: translateX(-50%) scale(1.12);
+/*
+ * Press flash (replaces the former :hover state): flat at rest, the old tint
+ * and scale flash while the button is held.
+ */
+@keyframes clip-action-press {
+  from {
+    background: rgba(var(--accent-rgb), 0.16);
+    color: var(--accent);
+    transform: translateX(-50%) scale(1.12);
+  }
+}
+
+.stacked-clip-action:active {
+  animation: clip-action-press 0.3s ease-out;
 }
 
 .stacked-clip-action--split {

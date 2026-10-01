@@ -53,10 +53,19 @@
     background 0.15s;
 }
 
-.playlist-close:hover,
 .playlist-close:active {
-  color: var(--text-primary);
-  background: var(--bg-hover);
+  animation: playlist-close-press 0.3s ease-out;
+}
+
+/*
+ * Press flash (replaces the former :hover tint): flat at rest, the highlight
+ * flashes while the button is held.
+ */
+@keyframes playlist-close-press {
+  from {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
 }
 
 .add-btn {
@@ -69,7 +78,12 @@
   transition: background 0.15s;
 }
 
-.add-btn:hover,
 .add-btn:active {
-  background: var(--bg-hover);
+  animation: playlist-add-press 0.3s ease-out;
+}
+
+@keyframes playlist-add-press {
+  from {
+    background: var(--bg-hover);
+  }
 }

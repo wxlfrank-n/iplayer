@@ -9,14 +9,26 @@
     box-shadow 0.2s ease;
 }
 
-.waveform-clip:hover {
-  background: rgba(var(--accent-rgb), 0.5);
-  box-shadow: 0 0 6px rgba(var(--accent-rgb), 0.65),
-    0 0 14px rgba(var(--accent-rgb), 0.35);
-}
-
 .waveform-clip--active {
   background: rgba(var(--accent-rgb), 0.65);
-  box-shadow: 0 0 6px rgba(var(--accent-rgb), 0.7),
+  box-shadow:
+    0 0 6px rgba(var(--accent-rgb), 0.7),
     0 0 16px rgba(var(--accent-rgb), 0.4);
+}
+
+/*
+ * Press flash (replaces the former :hover highlight): flat at rest, the old
+ * highlight flashes while the clip is pressed.
+ */
+@keyframes clip-press {
+  from {
+    background: rgba(var(--accent-rgb), 0.5);
+    box-shadow:
+      0 0 6px rgba(var(--accent-rgb), 0.65),
+      0 0 14px rgba(var(--accent-rgb), 0.35);
+  }
+}
+
+.waveform-clip:not(.waveform-clip--active):active {
+  animation: clip-press 0.3s ease-out;
 }

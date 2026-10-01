@@ -28,10 +28,19 @@
     border-color 0.15s;
 }
 
-.player-actions__button:hover,
 .player-actions__button:active {
-  background: var(--bg-hover);
-  color: var(--text-primary);
+  animation: player-actions-button-press 0.3s ease-out;
+}
+
+/*
+ * Idle shimmer (replaces the former :hover fill): the kebab button brightens
+ * on its own so it never disappears into the panel.
+ */
+@keyframes player-actions-button-press {
+  from {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
 }
 
 .player-actions__button:focus-visible {
@@ -99,9 +108,22 @@
   }
 }
 
-.player-actions__item:hover,
 .player-actions__item--active {
   background: var(--bg-hover);
+}
+
+/*
+ * Press flash (replaces the former :hover row tint): flat at rest, the row
+ * tint flashes while the item is pressed.
+ */
+@keyframes player-actions-item-press {
+  from {
+    background: var(--bg-hover);
+  }
+}
+
+.player-actions__item:not(.player-actions__item--active):active {
+  animation: player-actions-item-press 0.3s ease-out;
 }
 
 .player-actions__item svg {

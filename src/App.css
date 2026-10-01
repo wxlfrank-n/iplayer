@@ -58,7 +58,7 @@
 
 body {
   font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
     Cantarell, sans-serif;
   background: var(--bg-primary);
   color: var(--text-primary);
@@ -153,16 +153,23 @@ body {
   display: block;
 }
 
-.control-btn:hover:not(:disabled) {
-  background: var(--bg-hover);
-  color: var(--accent);
-  box-shadow:
-    0 0 12px rgba(var(--accent-rgb), 0.55),
-    0 0 30px rgba(var(--accent-rgb), 0.3);
+/*
+ * Press flash (replaces the former :hover rule): flat at rest, a quick accent
+ * burst while the button is held.
+ */
+@keyframes control-btn-press {
+  from {
+    background: var(--bg-hover);
+    color: var(--accent);
+    box-shadow:
+      0 0 12px rgba(var(--accent-rgb), 0.55),
+      0 0 30px rgba(var(--accent-rgb), 0.3);
+  }
 }
 
 .control-btn:active:not(:disabled) {
   transform: scale(0.92);
+  animation: control-btn-press 0.35s ease-out;
 }
 
 .control-btn:disabled {
@@ -228,11 +235,10 @@ body {
       max(16px, env(safe-area-inset-bottom));
     justify-content: space-between;
   }
-
 }
 @media (hover: none) {
-  /* Touch has no cursor hover: taps rely on the :active states, which mirror
-     the normal :hover effect (defined next to the :hover rules below). */
+  /* Touch has no cursor hover: taps rely on the :active press animations,
+     which mirror the same feedback the pointer gets. */
   button {
     -webkit-tap-highlight-color: transparent;
   }

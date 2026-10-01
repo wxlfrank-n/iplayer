@@ -22,8 +22,18 @@
     border-color 0.15s;
 }
 
-.language-select__button:hover {
-  background: var(--bg-hover);
+/*
+ * Press flash (replaces the former :hover fill): flat at rest, the hover
+ * surface flashes while the trigger is held.
+ */
+@keyframes language-select-button-press {
+  from {
+    background: var(--bg-hover);
+  }
+}
+
+.language-select__button:active {
+  animation: language-select-button-press 0.3s ease-out;
 }
 
 .language-select__button:focus-visible {

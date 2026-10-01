@@ -29,8 +29,26 @@
   transition: background 0.15s;
 }
 
-.track-item:hover {
-  background: var(--bg-secondary);
+.track-item:not(.track-item--active):active {
+  animation: track-item-press 0.3s ease-out;
+}
+
+/*
+ * Press flashes (replace the former :hover states): flat at rest, the row tint
+ * and the remove button's warning colour flash while pressed. The remove button
+ * stays visible so it can be pressed without a pointer first.
+ */
+@keyframes track-item-press {
+  from {
+    background: var(--bg-secondary);
+  }
+}
+
+@keyframes track-remove-press {
+  from {
+    background: rgba(248, 81, 73, 0.1);
+    color: var(--danger);
+  }
 }
 
 .track-item--active {
@@ -82,19 +100,9 @@
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 4px;
-  opacity: 0;
-  transition:
-    opacity 0.15s,
-    color 0.15s,
-    background 0.15s;
+  opacity: 0.6;
 }
 
-.track-item:hover .track-item__remove {
-  opacity: 1;
-}
-
-.track-item__remove:hover,
 .track-item__remove:active {
-  color: var(--danger);
-  background: rgba(248, 81, 73, 0.1);
+  animation: track-remove-press 0.3s ease-out;
 }

@@ -57,7 +57,7 @@
 }
 
 .now-playing__artist::before {
-  content: "—  ";
+  content: '—  ';
   opacity: 0.6;
 }
 
@@ -85,10 +85,17 @@
     transform 180ms ease;
 }
 
-.app-logo:hover {
-  transform: scale(1.04);
-  filter:
-    drop-shadow(
-      0 3px 8px rgba(var(--accent-rgb), 0.25)
-    );
+/*
+ * Press pulse (replaces the former :hover emphasis): flat at rest, the mark
+ * lifts briefly while clicked.
+ */
+@keyframes app-logo-press {
+  from {
+    transform: scale(1.04);
+    filter: drop-shadow(0 3px 8px rgba(var(--accent-rgb), 0.25));
+  }
+}
+
+.app-logo:active {
+  animation: app-logo-press 0.3s ease-out;
 }

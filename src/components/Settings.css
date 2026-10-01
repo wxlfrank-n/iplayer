@@ -46,10 +46,56 @@
     background 0.15s;
 }
 
-.settings-close:hover,
 .settings-close:active {
-  color: var(--text-primary);
-  background: var(--bg-hover);
+  animation: settings-close-press 0.3s ease-out;
+}
+
+/*
+ * Press flashes (replace the former :hover states): flat at rest, each
+ * control highlights briefly while it is pressed.
+ */
+@keyframes settings-close-press {
+  from {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+}
+
+@keyframes settings-tab-press {
+  from {
+    color: var(--text-primary);
+  }
+}
+
+@keyframes settings-surface-press {
+  from {
+    background: var(--bg-hover);
+  }
+}
+
+@keyframes settings-reset-press {
+  from {
+    border-color: var(--accent-dim);
+    color: var(--text-primary);
+    background: var(--bg-hover);
+  }
+}
+
+.settings-tab:not(.settings-tab--active):active {
+  animation: settings-tab-press 0.3s ease-out;
+}
+
+.settings-chip:not(.settings-chip--active):active {
+  animation: settings-surface-press 0.3s ease-out;
+}
+
+.theme-card:active {
+  transform: scale(0.98);
+  animation: settings-surface-press 0.3s ease-out;
+}
+
+.settings-reset:active {
+  animation: settings-reset-press 0.3s ease-out;
 }
 
 .settings-body {
@@ -84,11 +130,9 @@
   padding: 11px 12px;
   cursor: pointer;
   position: relative;
-  transition: color 0.15s, background 0.15s;
-}
-
-.settings-tab:hover {
-  color: var(--text-primary);
+  transition:
+    color 0.15s,
+    background 0.15s;
 }
 
 .settings-tab:focus-visible {
@@ -102,7 +146,7 @@
 }
 
 .settings-tab--active::after {
-  content: "";
+  content: '';
   position: absolute;
   left: 12px;
   right: 12px;
@@ -155,11 +199,6 @@
     background 0.15s,
     color 0.15s,
     border-color 0.15s;
-}
-
-.settings-chip:hover,
-.settings-chip:active {
-  background: var(--bg-hover);
 }
 
 .settings-chip--active {
@@ -240,7 +279,9 @@
   border-radius: 999px;
   background: var(--bg-tertiary);
   border: 1px solid var(--border);
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .settings-switch input:checked + .settings-switch__track {
@@ -264,7 +305,10 @@
   transition: transform 0.15s ease;
 }
 
-.settings-switch input:checked + .settings-switch__track .settings-switch__knob {
+.settings-switch
+  input:checked
+  + .settings-switch__track
+  .settings-switch__knob {
   transform: translateX(18px);
 }
 
@@ -317,14 +361,6 @@
     border-color 0.15s,
     background 0.15s,
     transform 0.1s;
-}
-
-.theme-card:hover {
-  background: var(--bg-hover);
-}
-
-.theme-card:active {
-  transform: scale(0.98);
 }
 
 .theme-card--active {
@@ -416,13 +452,6 @@
     color 0.15s,
     border-color 0.15s,
     background 0.15s;
-}
-
-.settings-reset:hover,
-.settings-reset:active {
-  color: var(--text-primary);
-  border-color: var(--accent-dim);
-  background: var(--bg-hover);
 }
 
 .settings-footer-note {

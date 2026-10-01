@@ -206,33 +206,44 @@
 
 
 /* =========================================================
- * HOVER
+* PRESS (replaces the former HOVER state)
  * ========================================================= */
 
-.waveform-view-flip:not(
-  .waveform-view-flip--flipping
-):hover
-.waveform-view-flip__corner {
-  transform:
-    translate(-1px, 1px)
-    scale(1.04);
+@keyframes flip-corner-press {
+  from {
+    transform:
+      translate(-1px, 1px)
+      scale(1.04);
 
-  filter:
-    drop-shadow(
-      -4px 5px 5px
-      rgba(0, 0, 0, 0.27)
-    )
-    brightness(1.07);
+    filter:
+      drop-shadow(
+        -4px 5px 5px
+          rgba(0, 0, 0, 0.27)
+      )
+      brightness(1.07);
+  }
 }
 
+@keyframes flip-icon-press {
+  from {
+    transform:
+      translate(-2px, 2px)
+      scale(1.08);
+  }
+}
 
 .waveform-view-flip:not(
   .waveform-view-flip--flipping
-):hover
+):active
+.waveform-view-flip__corner {
+  animation: flip-corner-press 0.3s ease-out;
+}
+
+.waveform-view-flip:not(
+  .waveform-view-flip--flipping
+):active
 .waveform-view-flip__icon {
-  transform:
-    translate(-2px, 2px)
-    scale(1.08);
+  animation: flip-icon-press 0.3s ease-out;
 }
 
 

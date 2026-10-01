@@ -24,25 +24,6 @@
   animation: control-pulse 1.6s ease-in-out infinite;
 }
 
-.control-btn--playing:hover:not(:disabled) {
-  background: var(--accent);
-  color: #fff;
-  transform: scale(1.05);
-  box-shadow:
-    0 0 20px rgba(var(--accent-rgb), 0.9),
-    0 0 50px rgba(var(--accent-rgb), 0.5);
-}
-
-.control-btn--paused:hover:not(:disabled) {
-  background: var(--accent);
-  color: #fff;
-  transform: scale(1.05);
-}
-
-.control-btn--play:active:not(:disabled) {
-  transform: scale(0.95);
-}
-
 @keyframes control-pulse {
   0%,
   100% {
@@ -53,6 +34,28 @@
       0 0 18px rgba(var(--accent-rgb), 0.7),
       0 2px 8px rgba(var(--accent-rgb), 0.4);
   }
+}
+
+/*
+ * Press flash (replaces the former :hover emphasis): flat at rest, a burst of
+ * the old highlight while the button is held.
+ */
+@keyframes control-btn-press {
+  from {
+    transform: scale(1.05);
+    box-shadow:
+      0 0 20px rgba(var(--accent-rgb), 0.9),
+      0 0 50px rgba(var(--accent-rgb), 0.5);
+  }
+}
+
+.control-btn--playing:active:not(:disabled),
+.control-btn--paused:active:not(:disabled) {
+  animation: control-btn-press 0.35s ease-out;
+}
+
+.control-btn--play:active:not(:disabled) {
+  transform: scale(0.95);
 }
 
 .control-btn--play:disabled {

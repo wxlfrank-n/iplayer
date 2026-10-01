@@ -64,11 +64,17 @@
     transform 0.1s;
 }
 
-.empty-state__add:hover,
-.empty-state__add:active {
-  background: var(--accent);
-}
-
 .empty-state__add:active {
   transform: scale(0.97);
+  animation: empty-state-add-press 0.3s ease-out;
+}
+
+/*
+ * Press flash (replaces the former :hover fill): flat at rest, the accent fill
+ * flashes while the button is held.
+ */
+@keyframes empty-state-add-press {
+  from {
+    background: var(--accent);
+  }
 }
