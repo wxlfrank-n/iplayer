@@ -256,7 +256,15 @@ export function useRowWaveformScroll({
             return;
           const visibleStart = Math.max(start, anchor);
           const visibleEnd = Math.min(end, anchor + win);
-          if (visibleEnd <= visibleStart) return;
+          const labelWidthSec =
+            ((label.firstChild as HTMLElement)?.getBoundingClientRect().width ||
+              0) / pxPerSec; // Convert to seconds
+          if (
+            visibleEnd <= visibleStart ||
+            visibleStart + labelWidthSec > end ||
+            start + labelWidthSec > visibleEnd
+          )
+            return;
           const labelTime = (visibleStart + visibleEnd) / 2;
           label.style.left = `${((labelTime - start) / (end - start)) * 100}%`;
         });
