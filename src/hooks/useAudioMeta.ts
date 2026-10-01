@@ -63,7 +63,9 @@ export function useAudioMeta(url: string | null) {
       }
     }
 
-    extract();
+    extract().catch(() => {
+      if (!cancelled) setMeta(null);
+    });
 
     return () => {
       cancelled = true;

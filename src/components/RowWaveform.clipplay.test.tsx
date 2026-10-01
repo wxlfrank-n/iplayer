@@ -23,7 +23,7 @@ vi.mock('./Waveform', () => ({
 }));
 
 class FakeResizeObserver {
-  constructor(_callback: ResizeObserverCallback) {}
+  constructor() {}
   observe() {}
   disconnect() {}
 }
@@ -157,15 +157,14 @@ describe('RowWaveform clip play follow', () => {
   it('does not yank the window back to the playing clip after the user pans away', () => {
     const {row, track, windowStart, rerender} = renderRow();
 
-    // Play clip 1 by clicking its rect (10-20s). Window is anchored at 0 here,
-    // so the follow arm registers the clip's end as the follow target.
+    // Play clip 1 by clicking its rect (10-20s). The clip lies entirely to
+    // the right of the 8s window, so arming keeps the current anchor (0) and
+    // arms 80% following instead of jumping to the clip.
     const firstClip = row.querySelector('.waveform-clip')!;
     fireEvent.click(firstClip);
     rerender({playing: true});
     act(() => {
-      // The clip (10-20s) lies outside the 8s window, so clicking it first
-      // jumps the window to the clip start (t=10); then pan right to ~40s
-      // (2250px at 75px/s from anchor 10).
+      // Pan right to ~30s (2250px at 75px/s from anchor 0).
       fireEvent.pointerDown(track, {
         pointerId: 1,
         pointerType: 'mouse',
@@ -181,7 +180,7 @@ describe('RowWaveform clip play follow', () => {
       fireEvent.pointerUp(window, {pointerId: 1, clientX: 0, clientY: 50});
     });
     act(() => flushRaf());
-    expect(windowStart()).toBe(40);
+    expect(windowStart()).toBeCloseTo(30, 3);
 
     // The clip's clock wraps when it repeats: currentTime jumps 19 -> 10.5,
     // which must NOT scroll the view back toward the clip.
@@ -191,10 +190,10 @@ describe('RowWaveform clip play follow', () => {
       fireEvent.pointerMove(window, {clientX: 0, clientY: 50});
     });
 
-    expect(windowStart()).toBe(40);
+    expect(windowStart()).toBeCloseTo(30, 3);
   });
 
-  it('does not yank the window back to the clip start when clicking a long clip in its middle', () => {
+  it("snaps the window to a long clip's start when clicking it in the middle", () => {
     // One 30s clip: the 8s window can only ever show a slice of it.
     const longClips: ClipData[] = [{start: 0, end: 30, vStart: 0, vEnd: 30}];
     const {row, track, windowStart, rerender} = renderRow({clips: longClips});
@@ -222,13 +221,13 @@ describe('RowWaveform clip play follow', () => {
     // real click below is not suppressed.
     fireEvent.click(row);
 
-    // Clicking the visible slice must not scroll the window back to the
-    // clip's start (t=0) — play it where the user is looking at it.
+    // The clip's left edge lies left of the window, so arming snaps back to
+    // the clip start (0) and arms 80% following.
     const clip = row.querySelector('.waveform-clip')!;
     fireEvent.click(clip);
     rerender({playing: true});
 
-    expect(windowStart()).toBe(5);
+    expect(windowStart()).toBeCloseTo(0, 3);
   });
 
   it('releases the pan on a clip tap so later mouse moves do not scroll', () => {
@@ -312,7 +311,7 @@ describe('RowWaveform clip play follow', () => {
     expect(onSeek).not.toHaveBeenCalled();
   });
 
-  it('does not move the window when clicking the track to set the cursor', () => {
+  it('does not move the window when clicking the track, and follows once playback resumes', () => {
     const {row, windowStart, rerender, onSeek} = renderRow({initialTime: 0});
 
     // Click the empty track at 85% across the 8s window (seek target 6.8).
@@ -330,12 +329,17 @@ describe('RowWaveform clip play follow', () => {
     fireEvent.click(inner, {clientX: 510, clientY: 50});
     expect(onSeek).toHaveBeenCalledWith(6.8);
 
-    // The seek lands inside the window; even with playback running the window
-    // must not re-center on the playhead afterwards.
+    // While paused, the click's cursor-hold keeps the viewport stationary:
+    // the seek lands inside the window and must not re-center it.
+    act(() => flushRaf());
+    expect(windowStart()).toBe(0);
+
+    // Resuming playback re-arms normal following. The playhead (6.8) is past
+    // the 80% slot (6.4), so the window follows to 6.8 - 0.8*8 = 0.4.
     rerender({playing: true, currentTime: 6.8});
     act(() => flushRaf());
 
-    expect(windowStart()).toBe(0);
+    expect(windowStart()).toBeCloseTo(0.4, 3);
   });
 
   it('auto-scrolls to keep the playhead in view while playing', () => {
@@ -346,13 +350,14 @@ describe('RowWaveform clip play follow', () => {
       rerender({currentTime: t});
       act(() => flushRaf());
     }
-    // follow target at t=8 is 8 - 0.6*8 = 3.2.
-    expect(windowStart()).toBeCloseTo(3.2);
+    // follow target at t=8 is 8 - 0.8*8 = 1.6 (the 80% follow slot).
+    expect(windowStart()).toBeCloseTo(1.6, 3);
   });
 
   it('auto-scrolls while a long clip is playing near the window edge', () => {
     // One 30s clip starting at the window's left edge (anchor 0). Clicking it
-    // arms the follow end; while the playhead is in view the row must glide.
+    // arms 80% following; the window stays put until the playhead reaches the
+    // right edge (threshold = 0 + 8 - 0.1 = 7.9s), then glides with it.
     const longClips: ClipData[] = [{start: 0, end: 30, vStart: 0, vEnd: 30}];
     const {row, windowStart, rerender} = renderRow({
       clips: longClips,
@@ -363,12 +368,13 @@ describe('RowWaveform clip play follow', () => {
     fireEvent.click(clip);
     rerender({playing: true});
 
-    for (let t = 0.5; t <= 6; t += 0.5) {
+    for (let t = 0.5; t <= 9; t += 0.5) {
       rerender({currentTime: t});
       act(() => flushRaf());
     }
-    // The playhead stays put on screen; the window slides with it (t - 0).
-    expect(windowStart()).toBe(6);
+    // At t=9 the playhead has passed the 7.9s threshold; the window slides
+    // with it so the playhead stays 0.1s inside the right edge (9 - 8 + 0.1).
+    expect(windowStart()).toBeCloseTo(1.1, 3);
   });
 
   it('resumes auto-scrolling after a clip ends when the view never moved', () => {
@@ -396,12 +402,9 @@ describe('RowWaveform clip play follow', () => {
       act(() => flushRaf());
     }
     // The 0.86s clip densifies the window to getWindowSecs(600, shortClips) =
-    // 6.45s, so when clicked the window snaps to the clip start (it lies
-    // entirely to the right). Resuming playback at 7.5 keeps that on-screen
-    // fraction: the window glides with the playhead instead of yanking it to
-    // the 60% slot. At t=8 the anchor is 6.63 + (8 - 7.5).
-    const armedStart = 6.63;
-    expect(windowStart()).toBeCloseTo(armedStart + (8 - 7.5));
+    // 6.45s. Pausing resets the follow context; resuming keeps the same
+    // obeyed 80% follow slot, so at t=8 the anchor is 8 - 0.8*6.45 = 2.84.
+    expect(windowStart()).toBeCloseTo(2.84, 3);
   });
 
   it('does not jump the window when playback starts with a cursor inside it', () => {
@@ -419,9 +422,9 @@ describe('RowWaveform clip play follow', () => {
     expect(windowStart()).toBe(0);
 
     // As the playhead advances, the window glides from the same on-screen
-    // slot instead of snapping the playhead to the 60% position.
+    // slot once the playhead passes the 80% threshold (6.4s).
     rerender({currentTime: 7});
     act(() => flushRaf());
-    expect(windowStart()).toBeCloseTo(7 - 6);
+    expect(windowStart()).toBeCloseTo(0.6, 3);
   });
 });

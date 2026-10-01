@@ -50,7 +50,7 @@ export function getClipSplitResult(
   const activeClip = groupContaining(nextClips, children[0]);
 
   return nextClips.length > 0
-    ? {mergeGap, activeClip: activeClip == -1 ? 0 : activeClip}
+    ? {mergeGap, activeClip: activeClip === -1 ? 0 : activeClip}
     : null;
 }
 

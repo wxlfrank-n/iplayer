@@ -207,7 +207,9 @@ export function useAudioPlayer(skipSeconds: number) {
       const nextIndex = (s.currentTrackIndex + 1) % s.tracks.length;
       const track = s.tracks[nextIndex];
       if (!track) return;
-      startTrack(audioRef.current, track.url);
+      startTrack(audioRef.current, track.url).catch(err => {
+        console.error('Failed to start next track:', err);
+      });
       dispatch(setCurrentTrackIndex(nextIndex));
       dispatch(setCurrentTime(0));
       dispatch(setDuration(0));
@@ -419,7 +421,11 @@ export function useAudioPlayer(skipSeconds: number) {
         } else {
           newIndex = Math.min(index, newTracks.length - 1);
           const track = newTracks[newIndex];
-          if (track) startTrack(audio, track.url);
+          if (track) {
+            startTrack(audio, track.url).catch(err => {
+              console.error('Failed to start track after removal:', err);
+            });
+          }
         }
       } else if (index < s.currentTrackIndex) {
         newIndex = s.currentTrackIndex - 1;
@@ -436,7 +442,9 @@ export function useAudioPlayer(skipSeconds: number) {
       const s = getPlayer();
       const track = s.tracks[index];
       if (!track) return;
-      startTrack(audioRef.current, track.url);
+      startTrack(audioRef.current, track.url).catch(err => {
+        console.error('Failed to start track:', err);
+      });
       dispatch(setCurrentTrackIndex(index));
       dispatch(setCurrentTime(0));
       dispatch(setDuration(0));

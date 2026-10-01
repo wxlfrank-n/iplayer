@@ -912,7 +912,7 @@ export const StackedWaveform = memo(
                             active={id === activeClip}
                             canSplit={
                               !playing &&
-                              clip.children?.length != null &&
+                              !!clip.children &&
                               clip.children.length > 1
                             }
                             canMerge={

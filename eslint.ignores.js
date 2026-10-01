@@ -1,4 +1,5 @@
 export default [
     "iplayer/**",
-    "docs/**"
+    "docs/**",
+    "eslint*",
 ]

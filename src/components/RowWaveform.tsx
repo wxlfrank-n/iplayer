@@ -188,9 +188,7 @@ export const RowWaveform = memo(
                       duration={c.vEnd - c.vStart}
                       active={id === activeClip}
                       canSplit={
-                        !playing &&
-                        c.children?.length != null &&
-                        c.children.length > 1
+                        !playing && !!c.children && c.children.length > 1
                       }
                       canMerge={
                         !playing && (id > 0 || id < displayClips.length - 1)

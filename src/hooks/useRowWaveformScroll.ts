@@ -361,7 +361,10 @@ export function useRowWaveformScroll({
       }
       return;
     }
-    if (wasPlaying && !playing && playbackContextRef.current.type !== 'clip') {
+    if (wasPlaying && !playing) {
+      if (playbackContextRef.current.type === 'clip') {
+        setViewportFollow();
+      }
       playbackContextRef.current = {type: 'idle'};
     }
   }, [playing, setViewportFollow]);
@@ -644,6 +647,7 @@ export function useRowWaveformScroll({
     renderedBufferAnchor,
     hsAnchor: windowSecs,
     hsWinLenRef,
+    hsMaxStartRef,
     bufferLengthRef,
     bufferAnchorRef,
     viewportAnchorRef,

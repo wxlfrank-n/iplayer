@@ -17,7 +17,7 @@ export const WaveformCursor = memo(
     cursorRef: forwardCursorRef,
   }: WaveformCursorProps) => {
     const elRef = useRef<HTMLDivElement>(null);
-    const externallyPositioned = forwardCursorRef != null;
+    const externallyPositioned = !!forwardCursorRef;
     const [initialPct] = useState(() => getPlayedPct() * 100);
     const prevPctRef = useRef(initialPct);
     const prevTimeLabelRef = useRef(formatTime(getCurrentTime()));

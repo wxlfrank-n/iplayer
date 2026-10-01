@@ -130,6 +130,19 @@ function createHarness(options?: {
   };
 }
 
+/*
+ * The hook learns its window length/max-start from the measured element width
+ * (applyWidth), which never runs in this DOM-less harness. Initialize the
+ * refs the way a 10s window over a 100s waveform would, then place the anchor.
+ */
+function armWindow(h: ReturnType<typeof createHarness>, anchor: number) {
+  act(() => {
+    h.result.current.hsWinLenRef.current = 10;
+    h.result.current.hsMaxStartRef.current = 90;
+    h.result.current.viewportAnchorRef.current = anchor;
+  });
+}
+
 describe('useRowWaveformScroll clip playback', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -156,9 +169,7 @@ describe('useRowWaveformScroll clip playback', () => {
   it('does not move the viewport when the whole clip is visible', () => {
     const h = createHarness();
 
-    act(() => {
-      h.result.current.viewportAnchorRef.current = 10;
-    });
+    armWindow(h, 10);
 
     act(() => {
       h.result.current.playClip(12, 18, 3);
@@ -184,19 +195,21 @@ describe('useRowWaveformScroll clip playback', () => {
   it('moves to clip.start when a clip is left-hidden', () => {
     const h = createHarness();
 
-    act(() => {
-      h.result.current.viewportAnchorRef.current = 15;
-    });
-
     /*
      * viewport = 15..25
      * clip     = 10..18
+     */
+    armWindow(h, 15);
+
+    /*
+     * Left side is hidden. Arming moves to clip.start minus the small
+     * CLIP_PLAY_MARGIN (9.9), which is exactly the left-hidden arm.
      */
     act(() => {
       h.result.current.playClip(10, 18, 2);
     });
 
-    expect(h.result.current.viewportAnchorRef.current).toBe(10);
+    expect(h.result.current.viewportAnchorRef.current).toBeCloseTo(9.9, 3);
   });
 
   /*
@@ -208,16 +221,14 @@ describe('useRowWaveformScroll clip playback', () => {
   it('does not jump immediately when a clip is right-hidden', () => {
     const h = createHarness();
 
-    act(() => {
-      h.result.current.viewportAnchorRef.current = 10;
-    });
-
     /*
      * viewport = 10..20
      * clip     = 16..24
      *
      * Right side is hidden.
      */
+    armWindow(h, 10);
+
     act(() => {
       h.result.current.playClip(16, 24, 2);
     });
@@ -234,10 +245,6 @@ describe('useRowWaveformScroll clip playback', () => {
   it('starts a long clip at clip.start', () => {
     const h = createHarness();
 
-    act(() => {
-      h.result.current.viewportAnchorRef.current = 15;
-    });
-
     /*
      * window = 10
      *
@@ -247,11 +254,13 @@ describe('useRowWaveformScroll clip playback', () => {
      * Clip is both left-hidden and
      * right-hidden.
      */
+    armWindow(h, 15);
+
     act(() => {
       h.result.current.playClip(10, 30, 3);
     });
 
-    expect(h.result.current.viewportAnchorRef.current).toBe(10);
+    expect(h.result.current.viewportAnchorRef.current).toBeCloseTo(9.9, 3);
   });
 
   /*
@@ -266,9 +275,7 @@ describe('useRowWaveformScroll clip playback', () => {
   it('resets a long clip viewport to clip.start on every repetition', () => {
     const h = createHarness();
 
-    act(() => {
-      h.result.current.viewportAnchorRef.current = 15;
-    });
+    armWindow(h, 15);
 
     act(() => {
       h.result.current.playClip(10, 30, 3);
@@ -277,7 +284,7 @@ describe('useRowWaveformScroll clip playback', () => {
     /*
      * Initial round.
      */
-    expect(h.result.current.viewportAnchorRef.current).toBe(10);
+    expect(h.result.current.viewportAnchorRef.current).toBeCloseTo(9.9, 3);
 
     /*
      * Simulate the viewport having followed
@@ -303,9 +310,9 @@ describe('useRowWaveformScroll clip playback', () => {
      *
      * must become
      *
-     * 10..20
+     * 9.9..19.9
      */
-    expect(h.result.current.viewportAnchorRef.current).toBe(10);
+    expect(h.result.current.viewportAnchorRef.current).toBeCloseTo(9.9, 3);
 
     /*
      * Simulate round 2 following again.
@@ -321,7 +328,7 @@ describe('useRowWaveformScroll clip playback', () => {
       h.callbacks().onRepeat?.();
     });
 
-    expect(h.result.current.viewportAnchorRef.current).toBe(10);
+    expect(h.result.current.viewportAnchorRef.current).toBeCloseTo(9.9, 3);
   });
 
   /*
@@ -341,27 +348,25 @@ describe('useRowWaveformScroll clip playback', () => {
      * viewport = 15..25
      * clip     = 10..18
      *
-     * Left side is hidden. Arming snaps the window to clip.start
-     * (10); the whole clip then fits inside 10..20, so playback
-     * must not move the window.
+     * Left side is hidden. Arming snaps the window to clip.start minus the
+     * small CLIP_PLAY_MARGIN (9.9); the whole clip then fits inside
+     * 9.9..19.9, so playback must not move the window.
      */
-    act(() => {
-      h.result.current.viewportAnchorRef.current = 15;
-    });
+    armWindow(h, 15);
 
     act(() => {
       h.result.current.playClip(10, 18, 2);
     });
 
-    expect(h.result.current.viewportAnchorRef.current).toBe(10);
+    expect(h.result.current.viewportAnchorRef.current).toBeCloseTo(9.9, 3);
 
     h.setTime(14);
     act(() => flushRaf());
-    expect(h.result.current.viewportAnchorRef.current).toBe(10);
+    expect(h.result.current.viewportAnchorRef.current).toBeCloseTo(9.9, 3);
 
     h.setTime(18);
     act(() => flushRaf());
-    expect(h.result.current.viewportAnchorRef.current).toBe(10);
+    expect(h.result.current.viewportAnchorRef.current).toBeCloseTo(9.9, 3);
   });
 
   it('scrolls a right-hidden clip until its end is visible, then stops', () => {
@@ -373,12 +378,12 @@ describe('useRowWaveformScroll clip playback', () => {
      * viewport = 10..20
      * clip     = 16..24
      *
-     * The window starts where it is and glides with the playhead
-     * until the clip end (24) reaches the right edge at anchor 14.
+     * The window starts where it is and stays put until the playhead
+     * reaches the right edge (threshold = 10 + 10 - 0.1 = 19.9); it then
+     * glides so the clip end stays 0.1s inside the right edge, stopping
+     * at 24 - 10 + 0.1 = 14.1.
      */
-    act(() => {
-      h.result.current.viewportAnchorRef.current = 10;
-    });
+    armWindow(h, 10);
 
     act(() => {
       h.result.current.playClip(16, 24, 2);
@@ -392,19 +397,19 @@ describe('useRowWaveformScroll clip playback', () => {
 
     h.setTime(18);
     act(() => flushRaf());
-    expect(h.result.current.viewportAnchorRef.current).toBe(12);
+    expect(h.result.current.viewportAnchorRef.current).toBe(10);
 
     h.setTime(20);
     act(() => flushRaf());
-    expect(h.result.current.viewportAnchorRef.current).toBe(14);
+    expect(h.result.current.viewportAnchorRef.current).toBeCloseTo(10.1, 3);
 
     /*
-     * 24 is now visible at the right edge of 14..24; the window
-     * must stop scrolling.
+     * 24 is now visible 0.1s inside the right edge of 14.1..24.1;
+     * the window must stop scrolling.
      */
     h.setTime(24);
     act(() => flushRaf());
-    expect(h.result.current.viewportAnchorRef.current).toBe(14);
+    expect(h.result.current.viewportAnchorRef.current).toBeCloseTo(14.1, 3);
   });
 
   it('snaps a both-hidden long clip to its start, scrolls to its end, and repeats', () => {
@@ -416,34 +421,32 @@ describe('useRowWaveformScroll clip playback', () => {
      * viewport = 15..25
      * clip     = 10........30
      *
-     * Both sides are hidden. Arming snaps to clip.start (10), then
-     * the window glides until the clip end (30) is visible at
-     * anchor 20.
+     * Both sides are hidden. Arming snaps to clip.start minus the small
+     * margin (9.9), then the window glides until the clip end (30) sits
+     * 0.1s inside the right edge (anchor 20.1).
      */
-    act(() => {
-      h.result.current.viewportAnchorRef.current = 15;
-    });
+    armWindow(h, 15);
 
     act(() => {
       h.result.current.playClip(10, 30, 3);
     });
 
-    expect(h.result.current.viewportAnchorRef.current).toBe(10);
+    expect(h.result.current.viewportAnchorRef.current).toBeCloseTo(9.9, 3);
 
     h.setTime(15);
     act(() => flushRaf());
-    expect(h.result.current.viewportAnchorRef.current).toBe(15);
+    expect(h.result.current.viewportAnchorRef.current).toBeCloseTo(9.9, 3);
 
     h.setTime(20);
     act(() => flushRaf());
-    expect(h.result.current.viewportAnchorRef.current).toBe(20);
+    expect(h.result.current.viewportAnchorRef.current).toBeCloseTo(10.1, 3);
 
     /*
-     * The clip end (30) is visible at the right edge of 20..30.
+     * The glide keeps the playhead 0.1s inside the right edge.
      */
     h.setTime(25);
     act(() => flushRaf());
-    expect(h.result.current.viewportAnchorRef.current).toBe(20);
+    expect(h.result.current.viewportAnchorRef.current).toBeCloseTo(15.1, 3);
 
     /*
      * Round 2: the player starts the next repetition from the top.
@@ -453,13 +456,13 @@ describe('useRowWaveformScroll clip playback', () => {
     act(() => {
       h.callbacks().onRepeat?.();
     });
-    expect(h.result.current.viewportAnchorRef.current).toBe(10);
+    expect(h.result.current.viewportAnchorRef.current).toBeCloseTo(9.9, 3);
     act(() => flushRaf());
-    expect(h.result.current.viewportAnchorRef.current).toBe(10);
+    expect(h.result.current.viewportAnchorRef.current).toBeCloseTo(9.9, 3);
 
     h.setTime(20);
     act(() => flushRaf());
-    expect(h.result.current.viewportAnchorRef.current).toBe(20);
+    expect(h.result.current.viewportAnchorRef.current).toBeCloseTo(10.1, 3);
 
     /*
      * Round 3: resets to the clip start once more.
@@ -467,7 +470,7 @@ describe('useRowWaveformScroll clip playback', () => {
     act(() => {
       h.callbacks().onRepeat?.();
     });
-    expect(h.result.current.viewportAnchorRef.current).toBe(10);
+    expect(h.result.current.viewportAnchorRef.current).toBeCloseTo(9.9, 3);
   });
 
   /*
@@ -507,9 +510,7 @@ describe('useRowWaveformScroll clip playback', () => {
     /*
      * Initial viewport.
      */
-    act(() => {
-      h.result.current.viewportAnchorRef.current = 10;
-    });
+    armWindow(h, 10);
 
     act(() => {
       h.result.current.playClip(16, 24, 3);
@@ -558,9 +559,9 @@ describe('useRowWaveformScroll clip playback', () => {
      *
      *       16----------------24
      */
-    act(() => {
-      h.result.current.viewportAnchorRef.current = 10;
+    armWindow(h, 10);
 
+    act(() => {
       h.result.current.playClip(16, 24, 3);
     });
 

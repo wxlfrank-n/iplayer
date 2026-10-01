@@ -106,7 +106,7 @@ export function splitBySilence(
     const isSound = b < numBlocks && blockPeak[b] > silenceThreshold;
     if (isSound && clipStartBlock === -1) {
       clipStartBlock = b;
-    } else if (!isSound && clipStartBlock != -1) {
+    } else if (!isSound && clipStartBlock !== -1) {
       clips.push({
         start: clipStartBlock * blockSec,
         end: b * blockSec,

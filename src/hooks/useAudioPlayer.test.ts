@@ -43,13 +43,21 @@ vi.mock('../store/store', () => ({
 /*
  * Don't create a real WebAudio graph.
  */
-vi.mock('../utils/audio', () => ({
-  initializeAudioContext: vi.fn(() => {
-    throw new Error('WebAudio disabled in test');
-  }),
+vi.mock('../utils/audio', () => {
+  const analyser = {fftSize: 0, smoothingTimeConstant: 0, connect: vi.fn()};
 
-  decodeAudioBuffer: vi.fn(),
-}));
+  return {
+    initializeAudioContext: vi.fn(() => ({
+      state: 'running',
+      destination: {},
+      createAnalyser: vi.fn(() => analyser),
+      createMediaElementSource: vi.fn(() => ({connect: vi.fn()})),
+      resume: vi.fn(() => Promise.resolve()),
+    })),
+
+    decodeAudioBuffer: vi.fn(),
+  };
+});
 
 vi.mock('../utils/wav', () => ({
   audioBufferToWavBlob: vi.fn(),
@@ -154,14 +162,16 @@ describe('useAudioPlayer.playRange', () => {
 
     audio = new FakeAudio();
 
+    function audioConstructor() {
+      return audio;
+    }
+
     /*
      * useAudioPlayer creates:
      *
      * useRef(new Audio())
      */
-    vi.stubGlobal('Audio', () => {
-      return audio;
-    });
+    vi.stubGlobal('Audio', audioConstructor);
 
     rafCallback = null;
 

@@ -7,7 +7,7 @@ import type {WaveformData} from '../types';
 import type {Clip as ClipData} from '../utils/clips';
 
 class FakeResizeObserver {
-  constructor(_cb: () => void) {}
+  constructor() {}
   observe() {}
   unobserve() {}
   disconnect() {}

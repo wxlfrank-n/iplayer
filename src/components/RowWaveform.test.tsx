@@ -26,7 +26,7 @@ vi.mock('./Waveform', () => ({
 }));
 
 class FakeResizeObserver {
-  constructor(_callback: ResizeObserverCallback) {}
+  constructor() {}
   observe() {}
   disconnect() {}
 }

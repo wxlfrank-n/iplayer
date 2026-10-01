@@ -70,7 +70,11 @@ export function useWaveform(url: string | null): {
       }
     }
 
-    load();
+    load().catch(() => {
+      if (cancelled) return;
+      dispatch(setWaveform(null));
+      dispatch(setWaveformStatus('error'));
+    });
 
     return () => {
       cancelled = true;

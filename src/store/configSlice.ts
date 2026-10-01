@@ -87,7 +87,9 @@ function loadConfig(): ConfigState {
           : DEFAULT_CONFIG.language,
       };
     }
-  } catch {}
+  } catch {
+    console.warn('Failed to load config from localStorage, using defaults.');
+  }
   return {...DEFAULT_CONFIG};
 }
 
