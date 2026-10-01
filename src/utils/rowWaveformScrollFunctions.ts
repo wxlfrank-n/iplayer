@@ -59,6 +59,7 @@ export function resolveFollow(
   if (time < threshold) return anchor;
   return clampWindowAnchor(time - HS_FOLLOW_FRAC * windowLength, maxStart);
 }
+const CLIP_PLAY_MARGIN = 0.1;
 
 /**
  * Initial viewport for clip playback.
@@ -82,7 +83,7 @@ export function getClipPlaybackViewport(
     return {anchor: currentAnchor, autoFollow: false};
   }
   if (start < currentAnchor) {
-    const anchor = clampWindowAnchor(start, maxStart);
+    const anchor = clampWindowAnchor(start - CLIP_PLAY_MARGIN, maxStart);
     return {anchor, autoFollow: !isFullyVisible(anchor)};
   }
   return {anchor: currentAnchor, autoFollow: true};
@@ -99,7 +100,7 @@ export function resolveClipFollow(
   if (time < context.start) return anchor;
 
   const clipEndAnchor = clampWindowAnchor(
-    Math.max(0, context.end - windowLength),
+    Math.max(0, context.end - windowLength + CLIP_PLAY_MARGIN),
     maxStart,
   );
 
@@ -109,11 +110,11 @@ export function resolveClipFollow(
     return clipEndAnchor;
   }
 
-  const threshold = context.epoch.anchor + HS_FOLLOW_FRAC * windowLength;
+  const threshold = context.epoch.anchor + windowLength - CLIP_PLAY_MARGIN;
 
   if (time < threshold) return anchor;
 
-  const followTarget = time - HS_FOLLOW_FRAC * windowLength;
+  const followTarget = time - windowLength + CLIP_PLAY_MARGIN;
 
   return Math.min(clampWindowAnchor(followTarget, maxStart), clipEndAnchor);
 }
