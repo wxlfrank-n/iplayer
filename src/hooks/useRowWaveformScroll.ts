@@ -5,10 +5,6 @@ import type {
   RefObject,
   SetStateAction,
 } from 'react';
-import {clampWindowAnchor, getWindowSecs} from '../utils/rowWaveform';
-import {calculateWheelChange} from '../utils/rowHandler';
-import type {Clip} from '../utils/clips';
-import {panTarget} from '../utils/pan';
 import {
   CURSOR_CLICK_HOLD_MS,
   HS_PAN_DECIDE_PX,
@@ -16,14 +12,25 @@ import {
   VB_H,
   WAVE_BUFFER_MARGIN_WINDOWS,
   WAVE_BUFFER_WINDOWS,
+  clampWindowAnchor,
   getClipPlaybackViewport,
+  getWindowSecs,
   makeFollowEpoch,
   resolveViewportAnchor,
-} from '../utils/rowWaveformScrollFunctions';
-import type {
-  PlaybackContext,
-  ViewportContext,
-} from '../utils/rowWaveformScrollFunctions';
+} from '../utils/rowWaveform';
+import type {PlaybackContext, ViewportContext} from '../utils/rowWaveform';
+import {positionClipLabels} from '../utils/clipLabels';
+import {updateCursorStyle} from '../utils/cursorStyle';
+import {
+  playedFraction,
+  updatePlayedStyle,
+  updateTrackStyle,
+} from '../utils/waveform';
+import {calculateWheelChange} from '../utils/rowHandler';
+import type {Clip} from '../utils/clips';
+import {panTarget} from '../utils/pan';
+import {startFrameLoop} from '../utils/raf';
+import {addListener, addListeners} from '../utils/listener';
 
 export {
   BARS_TAIL_SEC,
@@ -32,7 +39,7 @@ export {
   VB_W,
   WAVE_BUFFER_MARGIN_WINDOWS,
   WAVE_BUFFER_WINDOWS,
-} from '../utils/rowWaveformScrollFunctions';
+} from '../utils/rowWaveform';
 
 export interface UseRowWaveformScrollArgs {
   waveformDuration: number;
@@ -87,7 +94,7 @@ export function useRowWaveformScroll({
   const bufferAnchorRef = useRef(0);
   const pendingBufferAnchorRef = useRef<number | null>(null);
   const bufferLengthRef = useRef(0);
-  const cursorLeftPctRef = useRef(0);
+
   const [renderedBufferAnchor, setRenderedBufferAnchor] = useState(0);
   const playingRef = useRef(playing);
   const draggingRef = useRef(false);
@@ -227,9 +234,21 @@ export function useRowWaveformScroll({
       return () => observer.disconnect();
     }
     const onResize = () => applyWidth(element.clientWidth);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
+    return addListener(window, 'resize', onResize);
   }, [applyWidth]);
+  // Center the labels right after the layer mounts. Until the first RAF tick
+  // they would otherwise sit at their CSS layout position, which is not where
+  // the visible part of the clip is.
+  useLayoutEffect(() => {
+    const win = hsWinLenRef.current || 1;
+    const viewportWidthPx = hsRef.current?.parentElement?.clientWidth || 1;
+    positionClipLabels(
+      clipLabelLayerRef?.current,
+      viewportAnchorRef.current,
+      win,
+      viewportWidthPx / win,
+    );
+  }, [clipLabelLayerRef]);
   const renderFrame = useCallback(
     (time: number, anchor: number) => {
       const track = trackRef.current;
@@ -241,93 +260,21 @@ export function useRowWaveformScroll({
       const pxPerSec = viewportWidthPx / win;
       const bufferStart = bufferAnchorRef.current;
       const bufferLen = bufferLengthRef.current || win;
-      track.style.width = `${(bufferLen / win) * 100}%`;
-      const trackX = -(anchor - bufferStart) * pxPerSec;
-      track.style.transform = `translate3d(${trackX}px, 0, 0)`;
+      updateTrackStyle(track, anchor, win, pxPerSec, bufferStart, bufferLen);
       // Keep each clip label centered in the visible part of its clip.
       // This is updated in the same RAF as the viewport because the viewport
       // moves imperatively without causing a React render on every frame.
-      clipLabelLayerRef?.current
-        ?.querySelectorAll<HTMLElement>('[data-row-clip-label]')
-        .forEach(label => {
-          const start = Number(label.dataset.clipStart);
-          const end = Number(label.dataset.clipEnd);
-          if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start)
-            return;
-          const visibleStart = Math.max(start, anchor);
-          const visibleEnd = Math.min(end, anchor + win);
-          const labelWidthSec =
-            ((label.firstChild as HTMLElement)?.getBoundingClientRect().width ||
-              0) / pxPerSec; // Convert to seconds
-          if (
-            visibleEnd <= visibleStart ||
-            visibleStart + labelWidthSec > end ||
-            start + labelWidthSec > visibleEnd
-          )
-            return;
-          const labelTime = (visibleStart + visibleEnd) / 2;
-          label.style.left = `${((labelTime - start) / (end - start)) * 100}%`;
-        });
-      const playheadFraction =
-        bufferLen > 0 ? (time - bufferStart) / bufferLen : 0;
-      const playheadPct = playheadFraction * 100;
-      cursorLeftPctRef.current = playheadFraction;
-      const played = playedElRef?.current;
-      if (played) {
-        const clampedPct = Math.max(0, Math.min(100, playheadPct));
-        played.style.clipPath = `inset(0 ${100 - clampedPct}% 0 0)`;
-      }
-      const cursor = cursorElRef?.current;
-      if (!cursor) return;
-      const viewportStart = anchor;
-      const viewportEnd = Math.min(waveformDuration, anchor + win);
-      let cursorTime = time;
-      let cursorEdge: 'left' | 'right' | null = null;
-      if (time < viewportStart) {
-        cursorTime = viewportStart;
-        cursorEdge = 'left';
-      } else if (time > viewportEnd) {
-        cursorTime = viewportEnd;
-        cursorEdge = 'right';
-      } else if (
-        Math.abs(time - waveformDuration) < 1e-6 &&
-        Math.abs(viewportEnd - waveformDuration) < 1e-6
-      ) {
-        cursorTime = viewportEnd;
-        cursorEdge = 'right';
-      }
-      let cursorX = (cursorTime - bufferStart) * pxPerSec;
-      if (cursorEdge === 'right') {
-        cursorX -= cursor.offsetWidth;
-      }
-      cursor.style.left = '0';
-      cursor.style.transform = `translate3d(${cursorX}px, 0, 0)`;
-      const label = cursor.firstElementChild as HTMLElement | null;
-      if (!label) return;
-      if (cursorEdge === 'left') {
-        label.style.left = '6px';
-        label.style.right = 'auto';
-        label.style.transform = 'translateX(0)';
-      } else if (cursorEdge === 'right') {
-        label.style.left = 'auto';
-        label.style.right = '6px';
-        label.style.transform = 'translateX(0)';
-      } else {
-        const viewFraction = (time - viewportStart) / win;
-        if (viewFraction <= 0.02) {
-          label.style.left = '6px';
-          label.style.right = 'auto';
-          label.style.transform = 'translateX(0)';
-        } else if (viewFraction >= 0.98) {
-          label.style.left = 'auto';
-          label.style.right = '6px';
-          label.style.transform = 'translateX(0)';
-        } else {
-          label.style.left = 'auto';
-          label.style.right = 'auto';
-          label.style.transform = 'translateX(-50%)';
-        }
-      }
+      positionClipLabels(clipLabelLayerRef?.current, anchor, win, pxPerSec);
+      updatePlayedStyle(playedElRef?.current, time, bufferStart, bufferLen);
+      updateCursorStyle(
+        cursorElRef?.current,
+        time,
+        anchor,
+        win,
+        pxPerSec,
+        bufferStart,
+        waveformDuration,
+      );
     },
     [clipLabelLayerRef, cursorElRef, playedElRef, waveformDuration],
   );
@@ -336,28 +283,26 @@ export function useRowWaveformScroll({
     pendingBufferAnchorRef.current = null;
     renderFrame(getCurrentTime(), viewportAnchorRef.current);
   }, [getCurrentTime, renderFrame, renderedBufferAnchor]);
-  useEffect(() => {
-    let raf = 0;
-    const frame = () => {
-      const time = getCurrentTime();
-      let anchor = viewportAnchorRef.current;
-      if (playingRef.current && !draggingRef.current) {
-        anchor = resolveViewportAnchor(
-          viewportContextRef.current,
-          anchor,
-          time,
-          hsWinLenRef.current,
-          hsMaxStartRef.current,
-          performance.now(),
-        );
-        setLiveAnchor(anchor);
-      }
-      renderFrame(time, viewportAnchorRef.current);
-      raf = requestAnimationFrame(frame);
-    };
-    raf = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(raf);
-  }, [getCurrentTime, renderFrame, setLiveAnchor]);
+  useEffect(
+    () =>
+      startFrameLoop(() => {
+        const time = getCurrentTime();
+        let anchor = viewportAnchorRef.current;
+        if (playingRef.current && !draggingRef.current) {
+          anchor = resolveViewportAnchor(
+            viewportContextRef.current,
+            anchor,
+            time,
+            hsWinLenRef.current,
+            hsMaxStartRef.current,
+            performance.now(),
+          );
+          setLiveAnchor(anchor);
+        }
+        renderFrame(time, viewportAnchorRef.current);
+      }),
+    [getCurrentTime, renderFrame, setLiveAnchor],
+  );
   const previousPlayingRef = useRef(playing);
   useEffect(() => {
     const wasPlaying = previousPlayingRef.current;
@@ -570,18 +515,21 @@ export function useRowWaveformScroll({
           return;
         }
         ev.preventDefault();
-        window.removeEventListener('pointermove', onMove, true);
-        window.removeEventListener('pointerup', onEnd, true);
-        window.removeEventListener('pointercancel', onEnd, true);
+        stopDragListeners();
         dragRef.current = null;
         draggingRef.current = false;
         if (drag.panned) {
           suppressClickRef.current = true;
         }
       };
-      window.addEventListener('pointermove', onMove, true);
-      window.addEventListener('pointerup', onEnd, true);
-      window.addEventListener('pointercancel', onEnd, true);
+      // The drag listeners remove themselves once the pointer is released, so
+      // the cleanup handle is assigned after `onEnd` closes over it.
+      let stopDragListeners: () => void = () => {};
+      stopDragListeners = addListeners(window, [
+        ['pointermove', onMove, true],
+        ['pointerup', onEnd, true],
+        ['pointercancel', onEnd, true],
+      ]);
     },
     [markManualScroll, setLiveAnchor],
   );
@@ -600,10 +548,7 @@ export function useRowWaveformScroll({
         markManualScroll();
       }
     };
-    element.addEventListener('wheel', onWheel, {
-      passive: false,
-    });
-    return () => element.removeEventListener('wheel', onWheel);
+    return addListener(element, 'wheel', onWheel, {passive: false});
   }, [markManualScroll, setLiveAnchor]);
   const onWaveformClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -643,11 +588,11 @@ export function useRowWaveformScroll({
     [],
   );
   const getStripPlayedPct = useCallback(() => {
-    const bufferLen = bufferLengthRef.current;
-    if (bufferLen <= 0) {
-      return 0;
-    }
-    return (getCurrentTime() - bufferAnchorRef.current) / bufferLen;
+    return playedFraction(
+      getCurrentTime(),
+      bufferAnchorRef.current,
+      bufferLengthRef.current,
+    );
   }, [getCurrentTime]);
   return {
     hsRef,

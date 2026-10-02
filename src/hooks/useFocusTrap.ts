@@ -7,6 +7,7 @@
  */
 
 import {useEffect, useRef} from 'react';
+import {addListener} from '../utils/listener';
 
 const FOCUSABLE_SELECTOR = [
   'a[href]',
@@ -59,8 +60,7 @@ export function useFocusTrap<T extends HTMLElement = HTMLElement>(
       }
     };
 
-    document.addEventListener('keydown', handleKey, true);
-    return () => document.removeEventListener('keydown', handleKey, true);
+    return addListener(document, 'keydown', handleKey, true);
   }, [active, onEscape]);
 
   return ref;

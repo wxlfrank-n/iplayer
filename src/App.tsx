@@ -170,15 +170,17 @@ export default function App() {
     >
       <div className="player-layout">
         <div className="player-main">
-          <PlayerActions
-            playlistOpen={showPlaylist}
-            onTogglePlaylist={togglePlaylist}
-            onOpenSettings={openSettings}
-          />
-
           {currentTrack ? (
             <div className="player-card">
-              <NowPlaying />
+              <NowPlaying
+                actions={
+                  <PlayerActions
+                    playlistOpen={showPlaylist}
+                    onTogglePlaylist={togglePlaylist}
+                    onOpenSettings={openSettings}
+                  />
+                }
+              />
               <ProgressBar
                 key={currentTrack?.url ?? 'none'}
                 onSeek={seek}
@@ -196,7 +198,16 @@ export default function App() {
               />
             </div>
           ) : (
-            <EmptyState onAddFiles={handleFiles} />
+            <>
+              <div className="player-main__corner-actions">
+                <PlayerActions
+                  playlistOpen={showPlaylist}
+                  onTogglePlaylist={togglePlaylist}
+                  onOpenSettings={openSettings}
+                />
+              </div>
+              <EmptyState onAddFiles={handleFiles} />
+            </>
           )}
         </div>
       </div>

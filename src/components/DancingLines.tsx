@@ -14,6 +14,7 @@
 import {memo, useEffect, useRef} from 'react';
 import type {WaveformData} from '../types';
 import {getCssVar} from '../utils/css';
+import {startFrameLoop} from '../utils/raf';
 import './DancingLines.css';
 
 interface DancingLinesProps {
@@ -66,10 +67,8 @@ export const DancingLines = memo(
 
       const levels = new Float32Array(BAR_COUNT);
       let data = new Uint8Array(0);
-      let raf = 0;
 
-      const frame = () => {
-        raf = requestAnimationFrame(frame);
+      return startFrameLoop(() => {
         // Size the backing store to the display box (cls-scaling kept crisp).
         // This CAN'T fight the layout anymore: the strip's box is set purely by
         // CSS `flex: 1 1 0` + width, not by the canvas' intrinsic size.
@@ -162,10 +161,7 @@ export const DancingLines = memo(
           ctx.fillRect(x, base - h, bw * 0.5, h);
         }
         ctx.globalAlpha = 1;
-      };
-
-      raf = requestAnimationFrame(frame);
-      return () => cancelAnimationFrame(raf);
+      });
     }, [getAnalyser, getCurrentTime, waveform]);
 
     return <canvas className="row-waveform__dance" ref={canvasRef} />;

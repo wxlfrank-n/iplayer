@@ -9,6 +9,7 @@ import type {KeyboardEvent} from 'react';
 import PlaylistIcon from '../assets/icons/playlist.svg?react';
 import SettingsIcon from '../assets/icons/settings.svg?react';
 import {useT} from '../i18n';
+import {onOutsideDismiss} from '../utils/listener';
 import './PlayerActions.css';
 
 interface PlayerActionsProps {
@@ -35,18 +36,7 @@ export const PlayerActions = memo(
 
     useEffect(() => {
       if (!open) return;
-      const onPointerDown = (e: PointerEvent) => {
-        if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
-      };
-      const onKeyDown = (e: globalThis.KeyboardEvent) => {
-        if (e.key === 'Escape') setOpen(false);
-      };
-      document.addEventListener('pointerdown', onPointerDown);
-      document.addEventListener('keydown', onKeyDown);
-      return () => {
-        document.removeEventListener('pointerdown', onPointerDown);
-        document.removeEventListener('keydown', onKeyDown);
-      };
+      return onOutsideDismiss(rootRef.current, () => setOpen(false));
     }, [open]);
 
     const activate = (index: number) => {
@@ -89,60 +79,56 @@ export const PlayerActions = memo(
     };
 
     return (
-      <div className="player-main__top-actions">
-        <div className="player-actions" ref={rootRef}>
-          <button
-            type="button"
-            className={`player-actions__button control-btn ${
-              open ? 'player-actions__button--hidden' : ''
-            }`}
-            aria-label={t('actions.more')}
-            aria-haspopup="menu"
-            aria-expanded={open}
-            aria-controls={menuId}
-            aria-activedescendant={
-              open ? `${menuId}-${activeIndex}` : undefined
-            }
-            onClick={() => (open ? setOpen(false) : openMenu())}
-            onKeyDown={handleKeyDown}
-            title={t('actions.more')}
-          >
-            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-              <circle cx="12" cy="5" r="1.7" fill="currentColor" />
-              <circle cx="12" cy="12" r="1.7" fill="currentColor" />
-              <circle cx="12" cy="19" r="1.7" fill="currentColor" />
-            </svg>
-          </button>
+      <div className="player-actions" ref={rootRef}>
+        <button
+          type="button"
+          className={`player-actions__button control-btn ${
+            open ? 'player-actions__button--hidden' : ''
+          }`}
+          aria-label={t('actions.more')}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-controls={menuId}
+          aria-activedescendant={open ? `${menuId}-${activeIndex}` : undefined}
+          onClick={() => (open ? setOpen(false) : openMenu())}
+          onKeyDown={handleKeyDown}
+          title={t('actions.more')}
+        >
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <circle cx="12" cy="5" r="1.7" fill="currentColor" />
+            <circle cx="12" cy="12" r="1.7" fill="currentColor" />
+            <circle cx="12" cy="19" r="1.7" fill="currentColor" />
+          </svg>
+        </button>
 
-          {open && (
-            <ul
-              id={menuId}
-              role="menu"
-              className="player-actions__menu"
-              aria-label={t('actions.more')}
-            >
-              {MENU_LABELS.map((label, i) => (
-                <li
-                  key={label}
-                  id={`${menuId}-${i}`}
-                  role="menuitem"
-                  className={`player-actions__item ${
-                    activeIndex === i ? 'player-actions__item--active' : ''
-                  }`}
-                  onPointerEnter={() => setActiveIndex(i)}
-                  onClick={() => activate(i)}
-                >
-                  {i === 0 ? (
-                    <PlaylistIcon width={16} height={16} />
-                  ) : (
-                    <SettingsIcon width={16} height={16} />
-                  )}
-                  <span>{t(`actions.${label}`)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        {open && (
+          <ul
+            id={menuId}
+            role="menu"
+            className="player-actions__menu"
+            aria-label={t('actions.more')}
+          >
+            {MENU_LABELS.map((label, i) => (
+              <li
+                key={label}
+                id={`${menuId}-${i}`}
+                role="menuitem"
+                className={`player-actions__item ${
+                  activeIndex === i ? 'player-actions__item--active' : ''
+                }`}
+                onPointerEnter={() => setActiveIndex(i)}
+                onClick={() => activate(i)}
+              >
+                {i === 0 ? (
+                  <PlaylistIcon width={16} height={16} />
+                ) : (
+                  <SettingsIcon width={16} height={16} />
+                )}
+                <span>{t(`actions.${label}`)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     );
   },

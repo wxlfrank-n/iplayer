@@ -2,6 +2,7 @@
 import type {Track} from '../types';
 import {decodeAudioBuffer, initializeAudioContext} from '../utils/audio';
 import {audioBufferToWavBlob} from '../utils/wav';
+import {addListener, addListeners} from '../utils/listener';
 import {store} from '../store/store';
 import {useAppDispatch, useAppSelector} from '../store/hooks';
 import {
@@ -26,13 +27,12 @@ const isIOS =
 // requested position (preroll/seek settling), skipping the very beginning.
 // Snap the playhead back to `time` once rendering actually starts.
 function snatchToStart(audio: HTMLAudioElement, time: number) {
-  const onPlaying = () => {
+  const stop = addListener(audio, 'playing', () => {
     if (Math.abs(audio.currentTime - time) > 0.08) {
       audio.currentTime = time;
     }
-    audio.removeEventListener('playing', onPlaying);
-  };
-  audio.addEventListener('playing', onPlaying);
+    stop();
+  });
 }
 
 export function useAudioPlayer(skipSeconds: number) {
@@ -243,21 +243,14 @@ export function useAudioPlayer(skipSeconds: number) {
       console.error('Audio error', audio.error);
     };
 
-    audio.addEventListener('timeupdate', onTimeUpdate);
-    audio.addEventListener('loadedmetadata', onLoadedMetadata);
-    audio.addEventListener('play', onPlay);
-    audio.addEventListener('pause', onPause);
-    audio.addEventListener('ended', onEnded);
-    audio.addEventListener('error', onError);
-
-    return () => {
-      audio.removeEventListener('timeupdate', onTimeUpdate);
-      audio.removeEventListener('loadedmetadata', onLoadedMetadata);
-      audio.removeEventListener('play', onPlay);
-      audio.removeEventListener('pause', onPause);
-      audio.removeEventListener('ended', onEnded);
-      audio.removeEventListener('error', onError);
-    };
+    return addListeners(audio, [
+      ['timeupdate', onTimeUpdate],
+      ['loadedmetadata', onLoadedMetadata],
+      ['play', onPlay],
+      ['pause', onPause],
+      ['ended', onEnded],
+      ['error', onError],
+    ]);
   }, [dispatch]);
 
   useEffect(() => {
@@ -298,7 +291,7 @@ export function useAudioPlayer(skipSeconds: number) {
   // new range (e.g. clicking another clip) drops the previous one instead of
   // letting the old range keep looping/pausing.
   const rangeRafRef = useRef(0);
-  const rangeEndedRef = useRef<(() => void) | null>(null);
+  const rangeEndedStopRef = useRef<(() => void) | null>(null);
   // Monotonic id so a late callback (stale resume timer / event) from a
   // previous range can never touch the state of the range that replaced it.
   const rangeRunIdRef = useRef(0);
@@ -309,10 +302,8 @@ export function useAudioPlayer(skipSeconds: number) {
       rangeRafRef.current = 0;
     }
     const audio = audioRef.current;
-    if (rangeEndedRef.current) {
-      audio.removeEventListener('ended', rangeEndedRef.current);
-      rangeEndedRef.current = null;
-    }
+    rangeEndedStopRef.current?.();
+    rangeEndedStopRef.current = null;
     audio.dataset.clipLoopActive = '0';
     suppressRangePauseRef.current = false;
   }, []);
@@ -541,11 +532,8 @@ export function useAudioPlayer(skipSeconds: number) {
 
         stopLoop();
 
-        if (rangeEndedRef.current) {
-          audio.removeEventListener('ended', rangeEndedRef.current);
-
-          rangeEndedRef.current = null;
-        }
+        rangeEndedStopRef.current?.();
+        rangeEndedStopRef.current = null;
 
         audio.dataset.clipLoopActive = '0';
       };
@@ -802,9 +790,7 @@ export function useAudioPlayer(skipSeconds: number) {
         resetToStart(true);
       };
 
-      rangeEndedRef.current = onEnded;
-
-      audio.addEventListener('ended', onEnded);
+      rangeEndedStopRef.current = addListener(audio, 'ended', onEnded);
 
       /*
        * Initial playback.

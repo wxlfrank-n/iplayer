@@ -39,6 +39,13 @@
   max-width: 80%;
 }
 
+/* Right end of the row: keeps the actions vertically centred with the art. */
+.now-playing__actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+}
+
 .now-playing__title {
   font-size: 1rem;
   font-weight: 600;
@@ -71,7 +78,7 @@
 
 @media (max-width: 767px) {
   .now-playing {
-    padding-right: 40px;
+    gap: 8px;
   }
 }
 

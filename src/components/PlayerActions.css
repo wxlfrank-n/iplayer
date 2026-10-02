@@ -1,4 +1,6 @@
-.player-main__top-actions {
+/* Fallback slot for the empty state, where there is no now-playing row to
+   sit in: the actions stay pinned to the player's top-right corner. */
+.player-main__corner-actions {
   position: absolute;
   top: 12px;
   right: 12px;
@@ -7,14 +9,21 @@
   z-index: 40;
 }
 
+/* Sits at the right end of the now-playing row, vertically centred with the
+   artwork. The z-index lifts the whole slot above the waveform flip button
+   (z-index 30) so the dropdown is never covered; overlays still win at 100+. */
 .player-actions {
   position: relative;
+  z-index: 40;
+  flex: none;
+  display: flex;
+  align-items: center;
 }
 
 .player-actions__button {
-  background: var(--bg-tertiary);
-  color: var(--text-secondary);
-  border: 1px solid var(--border);
+  background: rgba(var(--accent-rgb), 0.12);
+  color: var(--accent);
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
   width: 36px;
   height: 36px;
   border-radius: var(--radius);
@@ -33,13 +42,14 @@
 }
 
 /*
- * Idle shimmer (replaces the former :hover fill): the kebab button brightens
- * on its own so it never disappears into the panel.
+ * Press flash (replaces the former :hover fill): flat at rest, the accent
+ * surface brightens briefly while the button is held.
  */
 @keyframes player-actions-button-press {
   from {
-    background: var(--bg-hover);
-    color: var(--text-primary);
+    background: rgba(var(--accent-rgb), 0.32);
+    border-color: var(--accent);
+    color: var(--accent);
   }
 }
 
@@ -62,10 +72,12 @@
   margin: 0;
   padding: 4px;
   list-style: none;
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
   border-radius: var(--radius-md);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.35),
+    0 0 18px rgba(var(--accent-rgb), 0.45);
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -91,7 +103,8 @@
   padding: 8px 10px;
   border-radius: var(--radius-sm);
   font-size: 0.8rem;
-  color: var(--text-primary);
+  font-weight: 500;
+  color: #fff;
   cursor: pointer;
   transition: background 0.12s;
   animation: player-actions-item 0.15s ease-out backwards;
@@ -108,8 +121,10 @@
   }
 }
 
+/* Highlighted row (keyboard focus or pointer): a light wash reads clearly on
+   the accent surface. */
 .player-actions__item--active {
-  background: var(--bg-hover);
+  background: rgba(255, 255, 255, 0.22);
 }
 
 /*
@@ -118,7 +133,7 @@
  */
 @keyframes player-actions-item-press {
   from {
-    background: var(--bg-hover);
+    background: rgba(255, 255, 255, 0.3);
   }
 }
 
@@ -127,6 +142,6 @@
 }
 
 .player-actions__item svg {
-  color: var(--text-secondary);
+  color: currentColor;
   flex-shrink: 0;
 }

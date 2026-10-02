@@ -1,5 +1,6 @@
 import {useEffect, useId, useRef, useState} from 'react';
 import {LOCALE_IDS, type LocaleId} from '../i18n';
+import {onOutsideDismiss} from '../utils/listener';
 import './LanguageSelect.css';
 
 /**
@@ -40,18 +41,7 @@ export function LanguageSelect({value, onChange, label}: LanguageSelectProps) {
   // Close on outside pointer press and on Escape.
   useEffect(() => {
     if (!open) return;
-    const onPointerDown = (e: PointerEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('pointerdown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
+    return onOutsideDismiss(rootRef.current, () => setOpen(false));
   }, [open]);
 
   const select = (id: LocaleId) => {

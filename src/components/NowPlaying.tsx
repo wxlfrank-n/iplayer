@@ -10,6 +10,7 @@
  */
 
 import {memo} from 'react';
+import type {ReactNode} from 'react';
 import {useAudioMeta} from '../hooks/useAudioMeta';
 import {useAppSelector} from '../store/hooks';
 import {selectCurrentTrack} from '../store/selectors';
@@ -17,7 +18,12 @@ import {ListeningLoopIcon} from './ListeningLoopIcon';
 import {useT} from '../i18n';
 import './NowPlaying.css';
 
-export const NowPlaying = memo(() => {
+interface NowPlayingProps {
+  /** Rendered at the right end of the row, vertically centred with the art. */
+  actions?: ReactNode;
+}
+
+export const NowPlaying = memo(({actions}: NowPlayingProps) => {
   const track = useAppSelector(selectCurrentTrack);
   // Fetch and display audio metadata (channels, sample rate, bitrate)
   const meta = useAudioMeta(track?.url ?? null);
@@ -35,6 +41,7 @@ export const NowPlaying = memo(() => {
             {t('nowPlaying.addMusic')}
           </span>
         </div>
+        {actions && <div className="now-playing__actions">{actions}</div>}
       </div>
     );
   }
@@ -58,6 +65,7 @@ export const NowPlaying = memo(() => {
           </span>
         )}
       </div>
+      {actions && <div className="now-playing__actions">{actions}</div>}
     </div>
   );
 });

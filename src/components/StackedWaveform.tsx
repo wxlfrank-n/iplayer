@@ -20,6 +20,8 @@ import {WaveformCanvas} from './Waveform';
 
 import {type WaveformData} from '../types';
 import type {Clip as ClipData} from '../utils/clips';
+import {startFrameLoop} from '../utils/raf';
+import {addListener} from '../utils/listener';
 import './StackedWaveform.css';
 
 const STACK_ROW_TARGET_SECS = 10;
@@ -249,13 +251,7 @@ export const StackedWaveform = memo(
         }
       };
 
-      el.addEventListener('wheel', onWheel, {
-        passive: false,
-      });
-
-      return () => {
-        el.removeEventListener('wheel', onWheel);
-      };
+      return addListener(el, 'wheel', onWheel, {passive: false});
     }, []);
 
     /*
@@ -616,12 +612,12 @@ export const StackedWaveform = memo(
         }, 1500);
       };
 
-      el.addEventListener('scroll', onScroll, {
+      const stopScrollListener = addListener(el, 'scroll', onScroll, {
         passive: true,
       });
 
       return () => {
-        el.removeEventListener('scroll', onScroll);
+        stopScrollListener();
 
         window.clearTimeout(userScrollTimerRef.current);
 
@@ -636,11 +632,7 @@ export const StackedWaveform = memo(
      */
 
     useEffect(() => {
-      let raf = 0;
-
-      const tick = () => {
-        raf = requestAnimationFrame(tick);
-
+      return startFrameLoop(() => {
         if (!playing || userScrolling) {
           return;
         }
@@ -666,13 +658,7 @@ export const StackedWaveform = memo(
 
           scrollToPage(page);
         }
-      };
-
-      raf = requestAnimationFrame(tick);
-
-      return () => {
-        cancelAnimationFrame(raf);
-      };
+      });
     }, [playing, userScrolling, pageForTime, scrollToPage, getCurrentTime]);
 
     /*
