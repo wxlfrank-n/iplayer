@@ -26,7 +26,7 @@ const MIN_WINDOW_SECS = 2;
  * This does not force every clip to be >= 60px. Very short clips are allowed.
  * It only prevents the overall clip layout from becoming too crowded.
  */
-const TARGET_CLIP_WIDTH_PX = 15;
+const TARGET_CLIP_WIDTH_PX = 24;
 
 const CLIP_PLAY_MARGIN = 0.1;
 

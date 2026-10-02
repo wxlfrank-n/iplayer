@@ -38,9 +38,11 @@ export function positionClipLabels(
         ((label.firstChild as HTMLElement)?.getBoundingClientRect().width *
           1.1 || 0) / pxPerSec; // Convert to seconds
       let labelTime = (visibleStart + visibleEnd) / 2;
-      if (start + labelWidthSec > visibleEnd) {
+      if (end - start < labelWidthSec) {
+        labelTime = (start + end) / 2;
+      } else if (start + labelWidthSec > visibleEnd && end > visibleEnd) {
         labelTime = start + labelWidthSec / 2;
-      } else if (visibleStart + labelWidthSec > end) {
+      } else if (visibleStart + labelWidthSec > end && start < visibleStart) {
         labelTime = end - labelWidthSec / 2;
       }
       label.style.left = `${((labelTime - start) / (end - start)) * 100}%`;
