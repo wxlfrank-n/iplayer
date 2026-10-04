@@ -556,8 +556,12 @@ export function useRowWaveformScroll({
         suppressClickRef.current = false;
         return;
       }
-      if (playbackContextRef.current.type === 'clip') return;
-      const rect = e.currentTarget.getBoundingClientRect();
+      if (
+        playbackContextRef.current.type === 'clip' ||
+        e.currentTarget.parentElement === null
+      )
+        return;
+      const rect = e.currentTarget.parentElement.getBoundingClientRect();
       const fraction = Math.max(
         0,
         Math.min(1, (e.clientX - rect.left) / rect.width),
