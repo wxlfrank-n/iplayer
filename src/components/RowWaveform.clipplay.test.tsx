@@ -87,7 +87,11 @@ function renderRow({
     const transform = track?.style.transform ?? '';
     const m = transform.match(/translate3d\((-?[0-9.]+)px/);
     const px = m ? Number(m[1]) : 0;
-    const win = getWindowSecs(row.clientWidth || window.innerWidth, useClips);
+    const win = getWindowSecs(
+      row.clientWidth || window.innerWidth,
+      useClips,
+      waveform.duration,
+    );
     const pxPerSec = (inner.clientWidth || 1) / win;
     return buffer - px / pxPerSec;
   };
@@ -281,9 +285,10 @@ describe('RowWaveform clip play follow', () => {
       fireEvent.pointerUp(window, {pointerId: 3, clientX: 0, clientY: 50});
     });
     act(() => flushRaf());
-    // The 0.86s clip densifies the window to getWindowSecs(600, shortClips) =
-    // 6.45s, so panning 300px at win/600 px-per-second moves 300 * win / 600.
-    const win = getWindowSecs(600, shortClips);
+    // Clip density over the 120s track gives 600 * 120 / (2 * 1) = 36000s, far
+    // above the 8s base window, so the width alone sets the window here. Panning
+    // 300px at win/600 px-per-second moves 300 * win / 600.
+    const win = getWindowSecs(600, shortClips, waveform.duration);
     const panStart = 300 * (win / 600);
     expect(windowStart()).toBeCloseTo(panStart, 3);
 
@@ -315,8 +320,9 @@ describe('RowWaveform clip play follow', () => {
     const {row, windowStart, rerender, onSeek} = renderRow({initialTime: 0});
 
     // Click the empty track at 85% across the 8s window (seek target 6.8).
-    const inner = row.querySelector('.row-waveform__inner') as HTMLElement;
-    Object.defineProperty(inner, 'getBoundingClientRect', {
+    // The click handler lives on the track, so that is what it measures.
+    const track = row.querySelector('.row-waveform__track') as HTMLElement;
+    Object.defineProperty(track, 'getBoundingClientRect', {
       value: () => ({
         left: 0,
         top: 0,
@@ -326,7 +332,7 @@ describe('RowWaveform clip play follow', () => {
         height: 200,
       }),
     });
-    fireEvent.click(inner, {clientX: 510, clientY: 50});
+    fireEvent.click(track, {clientX: 510, clientY: 50});
     expect(onSeek).toHaveBeenCalledWith(6.8);
 
     // While paused, the click's cursor-hold keeps the viewport stationary:
@@ -401,10 +407,11 @@ describe('RowWaveform clip play follow', () => {
       rerender({currentTime: t});
       act(() => flushRaf());
     }
-    // The 0.86s clip densifies the window to getWindowSecs(600, shortClips) =
-    // 6.45s. Pausing resets the follow context; resuming keeps the same
-    // obeyed 80% follow slot, so at t=8 the anchor is 8 - 0.8*6.45 = 2.84.
-    expect(windowStart()).toBeCloseTo(2.84, 3);
+    // One clip over the 120s track gives 600 * 120 / (2 * 1) = 36000s of density
+    // headroom, so the window stays at the 8s base width. Pausing resets the
+    // follow context; resuming keeps the same obeyed 80% follow slot, so at
+    // t=8 the anchor is 8 - 0.8*8 = 1.6.
+    expect(windowStart()).toBeCloseTo(1.6, 3);
   });
 
   it('does not jump the window when playback starts with a cursor inside it', () => {

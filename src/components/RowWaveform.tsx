@@ -116,7 +116,7 @@ export const RowWaveform = memo(
         onPointerDown={onHsPointerDown}
         onClickCapture={onRootClickCapture}
       >
-        <div className="row-waveform__inner" onClick={onWaveformClick}>
+        <div className="row-waveform__inner">
           <DancingLines
             getAnalyser={getAnalyser}
             getCurrentTime={getCurrentTime}
@@ -125,7 +125,11 @@ export const RowWaveform = memo(
             playing={playing}
             color={color}
           />
-          <div className="row-waveform__track" ref={trackRef}>
+          <div
+            className="row-waveform__track"
+            ref={trackRef}
+            onClick={onWaveformClick}
+          >
             <WaveformCanvas
               className="row-waveform__svg"
               data={waveform.data}

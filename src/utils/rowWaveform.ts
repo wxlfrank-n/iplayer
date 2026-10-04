@@ -18,7 +18,7 @@ export const BARS_TAIL_SEC = 0;
 export const WAVE_BUFFER_WINDOWS = 3;
 export const WAVE_BUFFER_MARGIN_WINDOWS = 0.4;
 
-const MIN_WINDOW_SECS = 2;
+const TARGET_CLIP_WIDTH_PX = 60;
 
 /**
  * Desired minimum rendered width of a typical clip.
@@ -26,35 +26,27 @@ const MIN_WINDOW_SECS = 2;
  * This does not force every clip to be >= 60px. Very short clips are allowed.
  * It only prevents the overall clip layout from becoming too crowded.
  */
-const TARGET_CLIP_WIDTH_PX = 24;
 
 const CLIP_PLAY_MARGIN = 0.1;
 
 export function getBaseWindowSecs(width: number): number {
   if (width >= 1600) return 32;
   if (width >= 1200) return 16;
-  if (width >= 800) return 12;
-  return 8;
+  return 12;
 }
 
-export function getWindowSecs(width: number, clips: Clip[] = []): number {
+export function getWindowSecs(
+  width: number,
+  clips: Clip[] = [],
+  waveformDuration: number,
+): number {
   const baseWindowSecs = getBaseWindowSecs(width);
 
   if (width <= 0 || clips.length === 0) {
     return baseWindowSecs;
   }
 
-  /*
-   * Ignore invalid/zero-length clips.
-   */
-  const durations = clips
-    .map(clip => clip.vEnd - clip.vStart)
-    .filter(duration => duration > 0)
-    .sort((a, b) => a - b);
-
-  if (durations.length === 0) {
-    return baseWindowSecs;
-  }
+  const avgDuration = waveformDuration / clips.length;
 
   /*
    * At windowSecs, a clip of duration D occupies:
@@ -69,10 +61,16 @@ export function getWindowSecs(width: number, clips: Clip[] = []): number {
    *     windowSecs =
    *       D * width / TARGET_CLIP_WIDTH_PX
    */
-  const densityWindowSecs =
-    (Math.max(0.1, durations[0]) * width) / TARGET_CLIP_WIDTH_PX;
 
-  return Math.max(MIN_WINDOW_SECS, Math.min(baseWindowSecs, densityWindowSecs));
+  const minSecond = 0.1;
+  const minWindowSecs = (minSecond * width) / TARGET_CLIP_WIDTH_PX;
+
+  const ratio = (width - TARGET_CLIP_WIDTH_PX) / (baseWindowSecs - minSecond);
+  const densityWindowPx =
+    (avgDuration - minSecond) * ratio + TARGET_CLIP_WIDTH_PX;
+  const densityWindowSecs = (avgDuration * width) / densityWindowPx;
+
+  return Math.max(minWindowSecs, Math.min(baseWindowSecs, densityWindowSecs));
 }
 
 export function clampWindowAnchor(anchor: number, maxStart: number): number {

@@ -77,7 +77,11 @@ function renderRow({playing = false, currentTime = 0} = {}) {
     const transform = track?.style.transform ?? '';
     const m = transform.match(/translate3d\((-?[0-9.]+)px/);
     const px = m ? Number(m[1]) : 0;
-    const win = getWindowSecs(row.clientWidth || window.innerWidth, clips);
+    const win = getWindowSecs(
+      row.clientWidth || window.innerWidth,
+      clips,
+      waveform.duration,
+    );
     const pxPerSec = (inner.clientWidth || 1) / win;
     return buffer - px / pxPerSec;
   };

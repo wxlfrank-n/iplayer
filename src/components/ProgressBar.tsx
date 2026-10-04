@@ -15,7 +15,8 @@ import {shallowEqual} from 'react-redux';
 
 import {RowWaveform} from './RowWaveform';
 import {StackedWaveform} from './StackedWaveform';
-import {ClipToolbar, TOOLBAR_SWIPE_THRESHOLD_PX} from './ClipToolbar';
+import {ClipToolbar} from './ClipToolbar';
+import {ClipToolbarCollapsedHit} from './ClipToolbarCollapsedHit';
 import {WaveformViewFlipButton} from './WaveformViewFlipButton';
 
 import {useAppDispatch, useAppSelector} from '../store/hooks';
@@ -104,12 +105,6 @@ export function ProgressBar({
   const [scrolling, setScrolling] = useState(false);
 
   const scrollTimeoutRef = useRef<number | undefined>(undefined);
-
-  /*
-   * Collapsed toolbar hit area: pointer start for the swipe-down gesture
-   * that re-expands the toolbar.
-   */
-  const hitPointerStartRef = useRef<{x: number; y: number} | null>(null);
 
   /*
    * ---------------------------------------------------------
@@ -299,55 +294,10 @@ export function ProgressBar({
          * COLLAPSED TOOLBAR HIT AREA
          * -----------------------------------------------------
          *
-         * When the clip toolbar is collapsed its box is gone from the
-         * layout, so the double-click / swipe-down target lives here inside
-         * progress-container: an absolutely positioned strip at the
-         * container's bottom edge that expands the toolbar again.
+         * Gesture handling lives in ClipToolbarCollapsedHit.
          */}
         {clips.length > 0 && !showAdvancedControls && (
-          <div
-            className="clip-toolbar__collapsed-hit"
-            onDoubleClick={() => {
-              dispatch(
-                updateConfig({
-                  showAdvancedControls: true,
-                }),
-              );
-            }}
-            onPointerDown={e => {
-              hitPointerStartRef.current = {
-                x: e.clientX,
-                y: e.clientY,
-              };
-            }}
-            onPointerUp={e => {
-              const start = hitPointerStartRef.current;
-
-              hitPointerStartRef.current = null;
-
-              if (!start) {
-                return;
-              }
-
-              const dy = e.clientY - start.y;
-              const absY = Math.abs(dy);
-              const absX = Math.abs(e.clientX - start.x);
-
-              /*
-               * Swipe down expands the toolbar.
-               */
-              if (absY >= TOOLBAR_SWIPE_THRESHOLD_PX && absY > absX && dy > 0) {
-                dispatch(
-                  updateConfig({
-                    showAdvancedControls: true,
-                  }),
-                );
-              }
-            }}
-            onPointerCancel={() => {
-              hitPointerStartRef.current = null;
-            }}
-          />
+          <ClipToolbarCollapsedHit />
         )}
       </div>
 

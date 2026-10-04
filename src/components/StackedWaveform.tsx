@@ -23,8 +23,7 @@ import type {Clip as ClipData} from '../utils/clips';
 import {startFrameLoop} from '../utils/raf';
 import {addListener} from '../utils/listener';
 import './StackedWaveform.css';
-
-const STACK_ROW_TARGET_SECS = 10;
+import {getWindowSecs} from '../utils/rowWaveform';
 
 const VB_W = 1000;
 const VB_H = 200;
@@ -108,22 +107,32 @@ export const StackedWaveform = memo(
     getCurrentTime,
   }: StackedWaveformProps) => {
     const innerH = VB_H - PAD * 2;
-
+    const scrollerRef = useRef<HTMLDivElement>(null);
     /*
      * =========================================================
      * ROWS
      * =========================================================
      */
 
+    const windowSecs = useRef(0);
+
     const stackedRows = useMemo<StackedRow[]>(() => {
+      const el = scrollerRef?.current;
+
+      if (!el) return [];
       const rows: StackedRow[] = [];
 
       let cur: StackedRow | null = null;
+      windowSecs.current = getWindowSecs(
+        el.clientWidth,
+        displayClips,
+        waveform.duration,
+      );
 
       displayClips.forEach((clip, idx) => {
         const duration = clip.vEnd - clip.vStart;
 
-        if (!cur || duration + (cur.end - cur.start) <= STACK_ROW_TARGET_SECS) {
+        if (!cur || duration + (cur.end - cur.start) <= windowSecs.current) {
           if (!cur) {
             cur = {
               start: clip.vStart,
@@ -177,15 +186,13 @@ export const StackedWaveform = memo(
       }
 
       return rows;
-    }, [displayClips, waveform.duration]);
+    }, [displayClips, waveform.duration, scrollerRef.current?.clientWidth]);
 
     /*
      * =========================================================
      * SCROLLER STATE
      * =========================================================
      */
-
-    const scrollerRef = useRef<HTMLDivElement>(null);
 
     const pendingAutoScrollRef = useRef(false);
 
@@ -801,7 +808,7 @@ export const StackedWaveform = memo(
                 const rowStart = row.start;
 
                 const rowLen = Math.max(
-                  STACK_ROW_TARGET_SECS,
+                  windowSecs.current,
                   row.end - row.start,
                 );
 

@@ -185,7 +185,7 @@ export function useRowWaveformScroll({
     (width: number) => {
       if (width <= 0 || waveformDuration <= 0) return;
       const nextWindowSecs = Math.min(
-        getWindowSecs(width, displayClips),
+        getWindowSecs(width, displayClips, waveformDuration),
         waveformDuration,
       );
       if (!Number.isFinite(nextWindowSecs) || nextWindowSecs <= 0) return;
