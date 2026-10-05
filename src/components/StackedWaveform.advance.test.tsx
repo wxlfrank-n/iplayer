@@ -2,9 +2,24 @@
 
 import {render, act, fireEvent} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import {configureStore} from '@reduxjs/toolkit';
+import {Provider} from 'react-redux';
 import {StackedWaveform} from './StackedWaveform';
 import type {WaveformData} from '../types';
-import type {Clip as ClipData} from '../utils/clips';
+import type {Clip as InitClipData} from '../utils/clips';
+import analysisReducer from '../store/analysisSlice';
+import configReducer from '../store/configSlice';
+import playerReducer from '../store/playerSlice';
+
+function makeStore() {
+  return configureStore({
+    reducer: {
+      analysis: analysisReducer,
+      config: configReducer,
+      player: playerReducer,
+    },
+  });
+}
 
 class FakeResizeObserver {
   constructor() {}
@@ -21,7 +36,7 @@ const waveform: WaveformData = {
 
 // 6 × 20s clips; each clip (20s > 10s row target) becomes its own row, and in
 // jsdom clientHeight is 0 → rowsPerPage 1 → each row is one page.
-const clips: ClipData[] = Array.from({length: 6}, (_, i) => ({
+const clips: InitClipData[] = Array.from({length: 6}, (_, i) => ({
   start: i * 20,
   end: (i + 1) * 20,
   vStart: i * 20,
@@ -49,7 +64,12 @@ function setup(initialTime = 0) {
     getCurrentTime: () => props.currentTime,
   };
 
-  const view = render(<StackedWaveform {...props} />);
+  const store = makeStore();
+  const view = render(
+    <Provider store={store}>
+      <StackedWaveform {...props} />
+    </Provider>,
+  );
   const scroller = view.container.querySelector(
     '.stacked-waveform',
   ) as HTMLDivElement;
@@ -57,7 +77,11 @@ function setup(initialTime = 0) {
 
   const rerender = (partial: Partial<typeof props>) => {
     Object.assign(props, partial);
-    view.rerender(<StackedWaveform {...props} />);
+    view.rerender(
+      <Provider store={store}>
+        <StackedWaveform {...props} />
+      </Provider>,
+    );
   };
   return {scrollTo, rerender, scroller, onSeek};
 }

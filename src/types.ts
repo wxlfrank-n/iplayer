@@ -16,7 +16,6 @@ export interface Track {
   artist: string;
   duration: number;
   url: string;
-  file?: File;
 }
 
 /**
@@ -69,7 +68,6 @@ export interface CurrentAudio {
   gaps: number[];
   minGap: number;
   currentTime: number;
-  activeClip: number;
 }
 
 /**
@@ -89,4 +87,21 @@ export interface WaveWindow {
   innerH: number;
   vbW: number;
   vbH: number;
+}
+
+/**
+ * A one-shot request to start playing a clip, described as data.
+ *
+ * Split/merge regroups `displayClips`, so the clip that should be playing after
+ * the gesture is only known afterwards. The owner of the gesture (ProgressBar)
+ * publishes the request; the mounted waveform view consumes it.
+ *
+ * `nonce` makes each request distinguishable: a repeated request for the very
+ * same clip must still re-arm playback, and the view guards against handling
+ * the same one twice.
+ */
+export interface ClipPlayRequest {
+  clip: Clip;
+  repetitions: number;
+  nonce: number;
 }

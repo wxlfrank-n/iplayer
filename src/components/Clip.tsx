@@ -24,14 +24,14 @@
 
 import {memo, useRef, type ReactNode} from 'react';
 
-import type {Clip as ClipData} from '../utils/clips';
+import type {Clip as InitClipData} from '../utils/clips';
 import type {WaveWindow} from '../types';
 
 import {formatTimePrecise} from '../utils/time';
 import './Clip.css';
 
 export interface ClipProps {
-  clip: ClipData;
+  clip: InitClipData;
 
   window: WaveWindow;
 
@@ -203,6 +203,9 @@ export const Clip = memo(
 
       e.stopPropagation();
 
+      if (e.target !== e.currentTarget) {
+        return;
+      }
       activateClip();
     };
 

@@ -18,8 +18,8 @@ import {Clips} from './Clips';
 import {WaveformCursor} from './WaveformCursor';
 import {WaveformCanvas} from './Waveform';
 
-import {type WaveformData} from '../types';
-import type {Clip as ClipData} from '../utils/clips';
+import {type ClipPlayRequest, type WaveformData} from '../types';
+import type {Clip as InitClipData} from '../utils/clips';
 import {startFrameLoop} from '../utils/raf';
 import {addListener} from '../utils/listener';
 import './StackedWaveform.css';
@@ -37,7 +37,7 @@ const HORIZONTAL_DRAG_THRESHOLD = 8;
 interface StackedWaveformProps {
   waveform: WaveformData;
 
-  displayClips: ClipData[];
+  displayClips: InitClipData[];
 
   currentTime: number;
 
@@ -63,6 +63,8 @@ interface StackedWaveformProps {
   ) => void;
 
   getCurrentTime: () => number;
+
+  clipPlayRequest?: ClipPlayRequest;
 }
 
 type StackedRow = {
@@ -70,7 +72,7 @@ type StackedRow = {
   end: number;
 
   clips: {
-    clip: ClipData;
+    clip: InitClipData;
     idx: number;
   }[];
 };
@@ -105,34 +107,31 @@ export const StackedWaveform = memo(
     onActiveClipChange,
     onPlayRange,
     getCurrentTime,
+    clipPlayRequest,
   }: StackedWaveformProps) => {
     const innerH = VB_H - PAD * 2;
     const scrollerRef = useRef<HTMLDivElement>(null);
+    const [scrollerWidth, setScrollerWidth] = useState(0);
     /*
      * =========================================================
      * ROWS
      * =========================================================
      */
 
-    const windowSecs = useRef(0);
+    const windowSecs = useMemo(
+      () => getWindowSecs(scrollerWidth, displayClips, waveform.duration),
+      [scrollerWidth, displayClips, waveform.duration],
+    );
 
     const stackedRows = useMemo<StackedRow[]>(() => {
-      const el = scrollerRef?.current;
-
-      if (!el) return [];
       const rows: StackedRow[] = [];
 
       let cur: StackedRow | null = null;
-      windowSecs.current = getWindowSecs(
-        el.clientWidth,
-        displayClips,
-        waveform.duration,
-      );
 
       displayClips.forEach((clip, idx) => {
         const duration = clip.vEnd - clip.vStart;
 
-        if (!cur || duration + (cur.end - cur.start) <= windowSecs.current) {
+        if (!cur || duration + (cur.end - cur.start) <= windowSecs) {
           if (!cur) {
             cur = {
               start: clip.vStart,
@@ -186,7 +185,7 @@ export const StackedWaveform = memo(
       }
 
       return rows;
-    }, [displayClips, waveform.duration, scrollerRef.current?.clientWidth]);
+    }, [displayClips, windowSecs]);
 
     /*
      * =========================================================
@@ -274,6 +273,7 @@ export const StackedWaveform = memo(
 
       const update = () => {
         setContainerH(el.clientHeight);
+        setScrollerWidth(el.clientWidth);
       };
 
       update();
@@ -781,6 +781,27 @@ export const StackedWaveform = memo(
     );
 
     /*
+     A split/merge changes which clip should be playing. The parent describes
+     that as data (`clipPlayRequest`); this view consumes it here rather than the
+     parent reaching in through a handle.
+     */
+    const handledPlayRequestRef = useRef(0);
+
+    useEffect(() => {
+      if (!clipPlayRequest) return;
+
+      if (handledPlayRequestRef.current === clipPlayRequest.nonce) return;
+
+      handledPlayRequestRef.current = clipPlayRequest.nonce;
+
+      stackedPlayClip(
+        clipPlayRequest.clip.vStart,
+        clipPlayRequest.clip.vEnd,
+        clipPlayRequest.repetitions,
+      );
+    }, [clipPlayRequest, stackedPlayClip]);
+
+    /*
      * =========================================================
      * RENDER
      * =========================================================
@@ -807,10 +828,7 @@ export const StackedWaveform = memo(
               {page.map(({row, gi}) => {
                 const rowStart = row.start;
 
-                const rowLen = Math.max(
-                  windowSecs.current,
-                  row.end - row.start,
-                );
+                const rowLen = Math.max(windowSecs, row.end - row.start);
 
                 const getPlayedPct = () =>
                   Math.max(
@@ -906,7 +924,8 @@ export const StackedWaveform = memo(
                             canSplit={
                               !playing &&
                               !!clip.children &&
-                              clip.children.length > 1
+                              clip.children.length > 1 &&
+                              clip.expanded !== true
                             }
                             canMerge={
                               !playing &&

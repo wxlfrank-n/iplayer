@@ -372,7 +372,6 @@ export function useAudioPlayer(skipSeconds: number) {
         artist: 'Unknown Artist',
         duration: 0,
         url: URL.createObjectURL(file),
-        file,
       }));
       if (newTracks.length === 0) return {added: 0, skipped};
 

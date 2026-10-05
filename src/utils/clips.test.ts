@@ -4,7 +4,7 @@ import {
   expandClip,
   findMinMergeGap,
   mergeClipsByGap,
-  splitBySilence,
+  getInitClipData,
   type Clip,
 } from './clips';
 
@@ -17,7 +17,7 @@ const mk = (start: number, end: number): Clip => ({
 
 const bounds = (clips: Clip[]) => clips.map(c => [c.start, c.end]);
 
-describe('splitBySilence', () => {
+describe('getInitClipData', () => {
   const opts = {
     blockMs: 640,
     silenceRatio: 0.01,
@@ -35,18 +35,18 @@ describe('splitBySilence', () => {
     return data;
   };
 
-  it('returns an empty ClipData when there is no data or a non-positive sample rate', () => {
-    expect(splitBySilence(null, 44100, opts)).toEqual({
+  it('returns an empty InitClipData when there is no data or a non-positive sample rate', () => {
+    expect(getInitClipData(null, 44100, opts)).toEqual({
       clips: [],
       gaps: [],
       minGap: 0,
     });
-    expect(splitBySilence(new Float32Array(0), 44100, opts)).toEqual({
+    expect(getInitClipData(new Float32Array(0), 44100, opts)).toEqual({
       clips: [],
       gaps: [],
       minGap: 0,
     });
-    expect(splitBySilence(buildData([1, 1]), 0, opts)).toEqual({
+    expect(getInitClipData(buildData([1, 1]), 0, opts)).toEqual({
       clips: [],
       gaps: [],
       minGap: 0,
@@ -54,7 +54,7 @@ describe('splitBySilence', () => {
   });
 
   it('detects a continuous run of sound as a single clip spanning the buffer', () => {
-    const [clip] = splitBySilence(buildData([1, 1, 1]), 100, opts).clips;
+    const [clip] = getInitClipData(buildData([1, 1, 1]), 100, opts).clips;
     expect(clip.start).toBe(0);
     expect(clip.end).toBeCloseTo(1.92, 5);
     expect(clip.vStart).toBe(0);
@@ -62,7 +62,7 @@ describe('splitBySilence', () => {
   });
 
   it('splits around a silent block and expands vStart/vEnd into the gap', () => {
-    const {clips} = splitBySilence(buildData([1, 0, 1, 1]), 100, opts);
+    const {clips} = getInitClipData(buildData([1, 0, 1, 1]), 100, opts);
     expect(clips).toHaveLength(2);
     expect(bounds(clips)).toEqual([
       [0, 0.64],
@@ -77,7 +77,7 @@ describe('splitBySilence', () => {
   });
 
   it('trims leading and trailing silence and expands into it by 25% of each gap', () => {
-    const [clip] = splitBySilence(buildData([0, 1, 0]), 100, opts).clips;
+    const [clip] = getInitClipData(buildData([0, 1, 0]), 100, opts).clips;
     expect(bounds([clip])).toEqual([[0.64, 1.28]]);
     expect(clip.vStart).toBeCloseTo(0.48, 5);
     expect(clip.vEnd).toBeCloseTo(1.44, 5);
@@ -87,7 +87,7 @@ describe('splitBySilence', () => {
     // At 1600 Hz a 40ms block is 64 samples = 0.04s; [1,1,0,1,1] gives runs
     // [0, 0.08] and [0.12, 0.2] separated by a 0.04s gap.
     const splitWith = (minClipLength: number) =>
-      splitBySilence(buildData([1, 1, 0, 1, 1]), 1600, {
+      getInitClipData(buildData([1, 1, 0, 1, 1]), 1600, {
         ...opts,
         blockMs: 40,
         minClipLength,
@@ -139,7 +139,7 @@ describe('expandClip', () => {
 });
 
 describe('findMinMergeGap', () => {
-  it('returns an empty ClipData for an empty input', () => {
+  it('returns an empty InitClipData for an empty input', () => {
     expect(findMinMergeGap([], [], 0.3)).toEqual({
       clips: [],
       gaps: [],

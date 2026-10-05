@@ -1,4 +1,4 @@
-﻿import {memo, useRef} from 'react';
+﻿import {memo, useEffect, useRef} from 'react';
 import {Clips} from './Clips';
 import {ClipLabel} from './ClipLabel';
 import {DancingLines} from './DancingLines';
@@ -6,7 +6,8 @@ import {WaveformCursor} from './WaveformCursor';
 import {WaveformCanvas} from './Waveform';
 import {type WaveformData} from '../hooks/useWaveform';
 import {useRowWaveformScroll, VB_W, VB_H} from '../hooks/useRowWaveformScroll';
-import type {Clip as ClipData} from '../utils/clips';
+import type {Clip as InitClipData} from '../utils/clips';
+import type {ClipPlayRequest} from '../types';
 import './RowWaveform.css';
 import {getCssVar} from '../utils/css';
 
@@ -14,7 +15,7 @@ const PAD = 4;
 
 export interface RowWaveformProps {
   waveform: WaveformData;
-  displayClips: ClipData[];
+  displayClips: InitClipData[];
   currentTime: number;
   onSeek: (time: number) => void;
   onPlayRange: (
@@ -34,6 +35,7 @@ export interface RowWaveformProps {
   scrolling: boolean;
   setScrolling: React.Dispatch<React.SetStateAction<boolean>>;
   scrollTimeoutRef: React.RefObject<number | undefined>;
+  clipPlayRequest?: ClipPlayRequest;
 }
 
 export const RowWaveform = memo(
@@ -54,6 +56,7 @@ export const RowWaveform = memo(
     scrolling,
     setScrolling,
     scrollTimeoutRef,
+    clipPlayRequest,
   }: RowWaveformProps) => {
     const innerH = VB_H - PAD * 2;
     const cursorElRef = useRef<HTMLDivElement>(null);
@@ -90,6 +93,27 @@ export const RowWaveform = memo(
       playedElRef,
       clipLabelLayerRef,
     });
+    /*
+     A split/merge changes which clip should be playing. The parent describes
+     that as data (`clipPlayRequest`); this view is the only place that can
+     arm its own playback context, so it reacts here instead of the parent
+     reaching in through a handle.
+     */
+    const handledPlayRequestRef = useRef(0);
+
+    useEffect(() => {
+      if (!clipPlayRequest) return;
+
+      if (handledPlayRequestRef.current === clipPlayRequest.nonce) return;
+
+      handledPlayRequestRef.current = clipPlayRequest.nonce;
+
+      playClip(
+        clipPlayRequest.clip.vStart,
+        clipPlayRequest.clip.vEnd,
+        clipPlayRequest.repetitions,
+      );
+    }, [clipPlayRequest, playClip]);
     const viewportLen = hsWinLenRef.current;
     const bufferLen = bufferLengthRef.current;
     const bufferScale = viewportLen > 0 ? bufferLen / viewportLen : 1;
@@ -192,7 +216,10 @@ export const RowWaveform = memo(
                       duration={c.vEnd - c.vStart}
                       active={id === activeClip}
                       canSplit={
-                        !playing && !!c.children && c.children.length > 1
+                        !playing &&
+                        !!c.children &&
+                        c.children.length > 1 &&
+                        c.expanded !== true
                       }
                       canMerge={
                         !playing && (id > 0 || id < displayClips.length - 1)

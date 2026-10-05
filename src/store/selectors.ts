@@ -45,7 +45,6 @@ export interface CurrentAudioInput {
   gaps: RootState['analysis']['gaps'];
   minGap: RootState['analysis']['minGap'];
   currentTime: RootState['player']['currentTime'];
-  activeClip: RootState['analysis']['activeClip'];
 }
 
 export function toCurrentAudio({
@@ -56,7 +55,6 @@ export function toCurrentAudio({
   gaps,
   minGap,
   currentTime,
-  activeClip,
 }: CurrentAudioInput): CurrentAudio {
   return {
     url: track?.url ?? null,
@@ -67,7 +65,6 @@ export function toCurrentAudio({
     gaps,
     minGap,
     currentTime,
-    activeClip,
   };
 }
 
@@ -81,6 +78,5 @@ export function selectCurrentAudio(s: RootState): CurrentAudio {
     gaps: s.analysis.gaps,
     minGap: s.analysis.minGap,
     currentTime: s.player.currentTime,
-    activeClip: s.analysis.activeClip,
   });
 }

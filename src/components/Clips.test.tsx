@@ -4,7 +4,7 @@ import {fireEvent, render} from '@testing-library/react';
 import {beforeAll, describe, expect, it, vi} from 'vitest';
 import {Clips} from './Clips';
 import type {WaveWindow} from '../types';
-import type {Clip as ClipData} from '../utils/clips';
+import type {Clip as InitClipData} from '../utils/clips';
 
 const windowConfig: WaveWindow = {
   windowStartSec: 0,
@@ -41,12 +41,14 @@ beforeAll(() => {
 
 describe('Clips list', () => {
   it('renders only clips intersecting the window, preserving array indices', () => {
-    const clips: ClipData[] = [
+    const clips: InitClipData[] = [
       {start: 1, end: 3, vStart: 1, vEnd: 3},
       {start: 50, end: 52, vStart: 50, vEnd: 52},
       {start: 4, end: 6, vStart: 4, vEnd: 6},
     ];
-    const getIdx = vi.fn((c: ClipData, i: number) => (c.start === 4 ? 42 : i));
+    const getIdx = vi.fn((c: InitClipData, i: number) =>
+      c.start === 4 ? 42 : i,
+    );
     const renderLabel = vi.fn((id: number) => <span data-label={id}>l</span>);
     const {container} = renderClips({clips, getIdx, renderLabel});
 
@@ -67,8 +69,8 @@ describe('Clips list', () => {
     const onStopPlayback = vi.fn();
     const onPlayRange = vi.fn();
     const onActivate = vi.fn();
-    const clipA: ClipData = {start: 1, end: 3, vStart: 1, vEnd: 3};
-    const clipB: ClipData = {start: 4, end: 6, vStart: 4, vEnd: 6};
+    const clipA: InitClipData = {start: 1, end: 3, vStart: 1, vEnd: 3};
+    const clipB: InitClipData = {start: 4, end: 6, vStart: 4, vEnd: 6};
     const {container} = renderClips({
       clips: [clipA, clipB],
       playing: true,
@@ -88,7 +90,7 @@ describe('Clips list', () => {
   it('stops playback when the active clip itself is clicked', () => {
     const onStopPlayback = vi.fn();
     const onPlayRange = vi.fn();
-    const clipA: ClipData = {start: 1, end: 3, vStart: 1, vEnd: 3};
+    const clipA: InitClipData = {start: 1, end: 3, vStart: 1, vEnd: 3};
     const {container} = renderClips({
       clips: [clipA],
       playing: true,

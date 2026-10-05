@@ -1,12 +1,16 @@
 import {describe, expect, it} from 'vitest';
-import {clampWindowAnchor, getWindowSecs} from './rowWaveform';
+import {
+  clampWindowAnchor,
+  getBaseWindowSecs,
+  getWindowSecs,
+} from './rowWaveform';
 import type {Clip} from './clips';
 
 /**
  * `count` clips of `length` seconds each, laid out end to end.
  *
- * `getWindowSecs` only cares how many clips survive the positive-duration
- * filter, so the individual boundaries do not matter.
+ * `getWindowSecs` divides the track duration by the clip count, so the
+ * individual boundaries do not matter.
  */
 function clips(count: number, length = 1): Clip[] {
   return Array.from({length: count}, (_, i) => ({
@@ -17,30 +21,60 @@ function clips(count: number, length = 1): Clip[] {
   }));
 }
 
+describe('getBaseWindowSecs', () => {
+  const cases: Array<[number, number]> = [
+    [400, 12],
+    [799, 12],
+    [800, 12],
+    [1199, 12],
+    [1200, 16],
+    [1599, 16],
+    [1600, 32],
+    [2560, 32],
+  ];
+
+  it.each(cases)(
+    'width %s gives a base window of %s seconds',
+    (width, expected) => {
+      expect(getBaseWindowSecs(width)).toBe(expected);
+    },
+  );
+});
+
 describe('getWindowSecs', () => {
   /*
-   * The window is `width * waveformDuration / (2 * clipCount)`, floored at
-   * `0.1 * width / 24` (a clip narrower than a tenth of its target width) and
-   * capped at the width's base window.
+   * With `avg = waveformDuration / clipCount`, the window is
+   *
+   *     avg * width / ((avg - 0.1) * ratio + 60)
+   *
+   * where `ratio = (width - 60) / (baseWindowSecs - 0.1)`. The result is capped
+   * at the base window and floored at `0.1 * width / 60`.
+   *
+   * The anchors are chosen so the density term lands exactly on round numbers:
+   * at 600px the base window is 12s and `ratio = 540 / 11.9`, so an average
+   * clip of 12s works out to a 600px density window and therefore a 12s
+   * viewport.
    */
   const densityCases: Array<[number, number, number, number]> = [
     // [width, clipCount, waveformDuration, expected]
-    // Sparse clips: the base window wins.
-    [600, 2, 120, 8],
-    [600, 1, 120, 8],
-    [600, 8, 1, 8],
-    [1600, 2, 120, 32],
-    // Dense clips: 600 / (80 * 2) = 3.75s of headroom at 8 clips per 0.1s.
-    [600, 8, 0.1, 3.75],
-    // Right on the floor: the minimum scales with width, so 600px floors at
-    // 0.1 * 600 / 24 = 2.5s.
-    [600, 8, 0.05, 2.5],
-    [600, 8, 0.075, 2.8125],
-    // A wider row allows a longer minimum window: 0.1 * 1200 / 24 = 5s.
-    [1200, 8, 0.01, 5],
-    // A narrower row allows a shorter one: 0.1 * 400 / 24 = 1.667s, which this
-    // 2.5s density clears.
-    [400, 8, 0.1, 2.5],
+    // Long average clips: the base window caps the result.
+    [600, 1, 120, 12],
+    [600, 2, 120, 12],
+    [600, 10, 120, 12],
+    // The break-even point: avg 12s at 600px is exactly the base window.
+    [600, 20, 120, 10.984615],
+    [600, 60, 120, 8.206897],
+    [600, 120, 120, 5.950024],
+    // The floor wins: 600px floors at 0.1 * 600 / 60 = 1s.
+    [600, 600, 120, 1.859375],
+    [600, 1200, 120, 1],
+    [600, 2400, 120, 1],
+    // A wider row scales the floor: 1200px floors at 0.1 * 1200 / 60 = 2s.
+    [1200, 30, 120, 14.133333],
+    [1200, 6000, 120, 2],
+    // A 1600px row allows the longest base window, and its density term
+    // (avg 30s) lands just under it rather than being capped.
+    [1600, 4, 120, 31.926606],
   ];
 
   it.each(densityCases)(
@@ -48,13 +82,13 @@ describe('getWindowSecs', () => {
     (width, count, duration, expected) => {
       expect(getWindowSecs(width, clips(count), duration)).toBeCloseTo(
         expected,
-        6,
+        4,
       );
     },
   );
 
   const baseCases: Array<[number, number]> = [
-    [400, 8],
+    [400, 12],
     [800, 12],
     [1200, 16],
     [1600, 32],
@@ -69,21 +103,22 @@ describe('getWindowSecs', () => {
     },
   );
 
-  it('ignores clips with no duration', () => {
-    const empty: Clip[] = [{start: 4, end: 4, vStart: 4, vEnd: 4}];
-
-    expect(getWindowSecs(600, empty, 0.1)).toBe(8);
+  it('falls back to the width-derived floor when the duration is zero', () => {
+    // A zero duration makes the average clip length zero, so the density term
+    // collapses and only the floor is left: 1s at 600px.
+    expect(getWindowSecs(600, clips(4), 0)).toBe(1);
   });
 
-  it('falls back to the minimum window when the duration is zero', () => {
-    // Clips-per-second would be Infinity, so the density headroom collapses
-    // to 0 and only the width-derived minimum is left.
-    expect(getWindowSecs(600, clips(4), 0)).toBe(2.5);
+  it('never returns less than the width-derived floor', () => {
+    const floor = (0.1 * 600) / 60;
+
+    expect(getWindowSecs(600, clips(2400), 120)).toBeGreaterThanOrEqual(floor);
+    expect(getWindowSecs(600, clips(4), 0)).toBeGreaterThanOrEqual(floor);
   });
 
-  it('never returns less than the width-derived minimum', () => {
-    const win = getWindowSecs(600, clips(8), 0.05);
-    expect(win).toBeGreaterThanOrEqual((0.1 * 600) / 24);
+  it('never returns more than the base window', () => {
+    expect(getWindowSecs(600, clips(1), 1200)).toBeLessThanOrEqual(12);
+    expect(getWindowSecs(1600, clips(1), 120)).toBeLessThanOrEqual(32);
   });
 });
 

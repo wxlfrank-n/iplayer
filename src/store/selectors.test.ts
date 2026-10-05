@@ -19,7 +19,6 @@ describe('toCurrentAudio', () => {
         gaps: [],
         minGap: 0,
         currentTime: 0,
-        activeClip: -1,
       },
       {
         url: null,
@@ -30,7 +29,6 @@ describe('toCurrentAudio', () => {
         gaps: [],
         minGap: 0,
         currentTime: 0,
-        activeClip: -1,
       },
     ],
     [
@@ -48,7 +46,6 @@ describe('toCurrentAudio', () => {
         gaps: [1, 2.5],
         minGap: 1,
         currentTime: 12.5,
-        activeClip: 2,
       },
       {
         url: '/a.mp3',
@@ -59,7 +56,6 @@ describe('toCurrentAudio', () => {
         gaps: [1, 2.5],
         minGap: 1,
         currentTime: 12.5,
-        activeClip: 2,
       },
     ],
   ];

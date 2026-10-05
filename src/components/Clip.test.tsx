@@ -4,7 +4,7 @@ import {fireEvent, render} from '@testing-library/react';
 import {beforeAll, describe, expect, it, vi} from 'vitest';
 import {Clip} from './Clip';
 import type {WaveWindow} from '../types';
-import type {Clip as ClipData} from '../utils/clips';
+import type {Clip as InitClipData} from '../utils/clips';
 
 const windowConfig: WaveWindow = {
   windowStartSec: 0,
@@ -14,7 +14,7 @@ const windowConfig: WaveWindow = {
   vbH: 200,
 };
 
-const clip: ClipData = {
+const clip: InitClipData = {
   start: 1,
   end: 3,
   vStart: 1,

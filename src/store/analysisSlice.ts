@@ -18,7 +18,6 @@ export interface AnalysisState {
   clips: Clip[];
   gaps: number[];
   minGap: number;
-  activeClip: number;
 }
 
 const initialState: AnalysisState = {
@@ -27,7 +26,6 @@ const initialState: AnalysisState = {
   clips: [],
   gaps: [],
   minGap: 0,
-  activeClip: -1,
 };
 
 export const analysisSlice = createSlice({
@@ -48,12 +46,8 @@ export const analysisSlice = createSlice({
       state.gaps = action.payload.gaps;
       state.minGap = action.payload.minGap;
     },
-    setActiveClip(state, action: PayloadAction<number>) {
-      state.activeClip = action.payload;
-    },
   },
 });
 
-export const {setWaveform, setWaveformStatus, setClips, setActiveClip} =
-  analysisSlice.actions;
+export const {setWaveform, setWaveformStatus, setClips} = analysisSlice.actions;
 export default analysisSlice.reducer;

@@ -26,7 +26,6 @@ const defaultTracks: Track[] = DEFAULT_TRACKS.map(t => ({
   artist: 'Unknown Artist',
   duration: 0,
   url: `${import.meta.env.VITE_BASE_URL}music/${t.filename}`,
-  file: undefined,
 }));
 
 const initialState: PlayerState = {

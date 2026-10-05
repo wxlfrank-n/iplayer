@@ -21,7 +21,7 @@ export const store = configureStore({
       serializableCheck: {
         // The decoded waveform holds a Float32Array of sample amplitudes; it
         // lives only in memory and is never serialized/persisted.
-        ignoredPaths: ['analysis.waveform'],
+        ignoredPaths: ['analysis.waveform', 'player.tracks'],
         ignoredActionPaths: ['payload.data'],
       },
     }),

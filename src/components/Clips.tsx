@@ -18,13 +18,13 @@
 
 import {memo, type ReactNode} from 'react';
 
-import type {Clip as ClipData} from '../utils/clips';
+import type {Clip as InitClipData} from '../utils/clips';
 import type {WaveWindow} from '../types';
 
 import {Clip} from './Clip';
 
 interface ClipsProps {
-  clips: ClipData[];
+  clips: InitClipData[];
 
   window: WaveWindow;
 
@@ -52,12 +52,16 @@ interface ClipsProps {
    *
    * Default: local array index.
    */
-  getIdx?: (clip: ClipData, indexInArray: number) => number;
+  getIdx?: (clip: InitClipData, indexInArray: number) => number;
 
   /**
    * Optional content rendered inside each Clip.
    */
-  renderLabel?: (id: number, clip: ClipData, indexInArray: number) => ReactNode;
+  renderLabel?: (
+    id: number,
+    clip: InitClipData,
+    indexInArray: number,
+  ) => ReactNode;
 }
 
 export const Clips = memo(

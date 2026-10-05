@@ -2,10 +2,25 @@
 
 import {act, fireEvent, render} from '@testing-library/react';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
+import {configureStore} from '@reduxjs/toolkit';
+import {Provider} from 'react-redux';
 import {RowWaveform} from './RowWaveform';
 import type {WaveformData} from '../hooks/useWaveform';
-import type {Clip as ClipData} from '../utils/clips';
+import type {Clip as InitClipData} from '../utils/clips';
 import {getWindowSecs} from '../utils/rowWaveform';
+import analysisReducer from '../store/analysisSlice';
+import configReducer from '../store/configSlice';
+import playerReducer from '../store/playerSlice';
+
+function makeStore() {
+  return configureStore({
+    reducer: {
+      analysis: analysisReducer,
+      config: configReducer,
+      player: playerReducer,
+    },
+  });
+}
 
 vi.mock('./Clips', () => ({
   Clips: () => <div className="waveform-clip" />,
@@ -37,7 +52,7 @@ const waveform: WaveformData = {
   duration: 120,
 };
 
-const clips: ClipData[] = [{start: 1, end: 3, vStart: 1, vEnd: 3}];
+const clips: InitClipData[] = [{start: 1, end: 3, vStart: 1, vEnd: 3}];
 
 function renderRow({playing = false, currentTime = 0} = {}) {
   const props = {
@@ -45,21 +60,23 @@ function renderRow({playing = false, currentTime = 0} = {}) {
     currentTime,
   };
   const view = render(
-    <RowWaveform
-      waveform={waveform}
-      displayClips={clips}
-      currentTime={props.currentTime}
-      onSeek={vi.fn()}
-      onPlayRange={vi.fn()}
-      repetitions={3}
-      activeClip={-1}
-      onActiveClipChange={vi.fn()}
-      getCurrentTime={() => props.currentTime}
-      playing={props.playing}
-      scrolling={false}
-      setScrolling={vi.fn()}
-      scrollTimeoutRef={{current: undefined}}
-    />,
+    <Provider store={makeStore()}>
+      <RowWaveform
+        waveform={waveform}
+        displayClips={clips}
+        currentTime={props.currentTime}
+        onSeek={vi.fn()}
+        onPlayRange={vi.fn()}
+        repetitions={3}
+        activeClip={-1}
+        onActiveClipChange={vi.fn()}
+        getCurrentTime={() => props.currentTime}
+        playing={props.playing}
+        scrolling={false}
+        setScrolling={vi.fn()}
+        scrollTimeoutRef={{current: undefined}}
+      />
+    </Provider>,
   );
   const row = view.container.querySelector('.row-waveform') as HTMLDivElement;
   Object.defineProperty(row, 'clientWidth', {value: 600});
@@ -88,25 +105,27 @@ function renderRow({playing = false, currentTime = 0} = {}) {
   const rerender = (next: Partial<typeof props>) => {
     Object.assign(props, next);
     view.rerender(
-      <RowWaveform
-        waveform={waveform}
-        displayClips={clips}
-        currentTime={props.currentTime}
-        onSeek={vi.fn()}
-        onPlayRange={vi.fn()}
-        repetitions={3}
-        activeClip={-1}
-        onActiveClipChange={vi.fn()}
-        getCurrentTime={() => props.currentTime}
-        playing={props.playing}
-        scrolling={false}
-        setScrolling={vi.fn()}
-        scrollTimeoutRef={{current: undefined}}
-      />,
+      <Provider store={makeStore()}>
+        <RowWaveform
+          waveform={waveform}
+          displayClips={clips}
+          currentTime={props.currentTime}
+          onSeek={vi.fn()}
+          onPlayRange={vi.fn()}
+          repetitions={3}
+          activeClip={-1}
+          onActiveClipChange={vi.fn()}
+          getCurrentTime={() => props.currentTime}
+          playing={props.playing}
+          scrolling={false}
+          setScrolling={vi.fn()}
+          scrollTimeoutRef={{current: undefined}}
+        />
+      </Provider>,
     );
   };
   // clientWidth is patched post-mount; one extra render lets the width effect
-  // settle on the 600px window (8s) before the test interacts.
+  // settle on the 600px window (12s) before the test interacts.
   rerender({});
   return {
     ...view,
@@ -161,7 +180,7 @@ describe('RowWaveform clip dragging', () => {
     });
     act(() => flushRaf());
 
-    expect(viewportStart()).toBe(2);
+    expect(viewportStart()).toBe(3);
   });
 
   it('does not scroll horizontally for a vertical clip swipe', () => {
@@ -203,7 +222,7 @@ describe('RowWaveform clip dragging', () => {
     });
     act(() => flushRaf());
 
-    expect(viewportStart()).toBe(2);
+    expect(viewportStart()).toBe(3);
   });
 
   it('keeps a manual drag in control when playback time is outside the window', () => {
@@ -229,7 +248,7 @@ describe('RowWaveform clip dragging', () => {
     });
     act(() => flushRaf());
 
-    expect(viewportStart()).toBe(2);
+    expect(viewportStart()).toBe(3);
   });
 
   it('does not scroll when the swipe starts above the track (dancing line area)', () => {
@@ -252,5 +271,140 @@ describe('RowWaveform clip dragging', () => {
     act(() => flushRaf());
 
     expect(viewportStart()).toBe(0);
+  });
+
+  it('plays the clip described by a clipPlayRequest', () => {
+    const onPlayRange = vi.fn();
+
+    render(
+      <Provider store={makeStore()}>
+        <RowWaveform
+          waveform={waveform}
+          displayClips={clips}
+          currentTime={0}
+          onSeek={vi.fn()}
+          onPlayRange={onPlayRange}
+          repetitions={3}
+          activeClip={-1}
+          onActiveClipChange={vi.fn()}
+          getCurrentTime={() => 0}
+          playing={false}
+          scrolling={false}
+          setScrolling={vi.fn()}
+          scrollTimeoutRef={{current: undefined}}
+          clipPlayRequest={{clip: clips[0], repetitions: 3, nonce: 1}}
+        />
+      </Provider>,
+    );
+
+    expect(onPlayRange).toHaveBeenCalledWith(
+      clips[0].vStart,
+      clips[0].vEnd,
+      3,
+      expect.any(Function),
+      expect.any(Function),
+    );
+  });
+
+  it('ignores a repeated clipPlayRequest nonce', () => {
+    const onPlayRange = vi.fn();
+    const request = {clip: clips[0], repetitions: 3, nonce: 7};
+
+    const {rerender} = render(
+      <Provider store={makeStore()}>
+        <RowWaveform
+          waveform={waveform}
+          displayClips={clips}
+          currentTime={0}
+          onSeek={vi.fn()}
+          onPlayRange={onPlayRange}
+          repetitions={3}
+          activeClip={-1}
+          onActiveClipChange={vi.fn()}
+          getCurrentTime={() => 0}
+          playing={false}
+          scrolling={false}
+          setScrolling={vi.fn()}
+          scrollTimeoutRef={{current: undefined}}
+          clipPlayRequest={request}
+        />
+      </Provider>,
+    );
+
+    expect(onPlayRange).toHaveBeenCalledTimes(1);
+
+    // A fresh object carrying an already-handled nonce must not replay.
+    rerender(
+      <Provider store={makeStore()}>
+        <RowWaveform
+          waveform={waveform}
+          displayClips={clips}
+          currentTime={0}
+          onSeek={vi.fn()}
+          onPlayRange={onPlayRange}
+          repetitions={3}
+          activeClip={-1}
+          onActiveClipChange={vi.fn()}
+          getCurrentTime={() => 0}
+          playing={false}
+          scrolling={false}
+          setScrolling={vi.fn()}
+          scrollTimeoutRef={{current: undefined}}
+          clipPlayRequest={{...request}}
+        />
+      </Provider>,
+    );
+
+    expect(onPlayRange).toHaveBeenCalledTimes(1);
+  });
+
+  it('replays the same clip when the request nonce advances', () => {
+    const onPlayRange = vi.fn();
+
+    const {rerender} = render(
+      <Provider store={makeStore()}>
+        <RowWaveform
+          waveform={waveform}
+          displayClips={clips}
+          currentTime={0}
+          onSeek={vi.fn()}
+          onPlayRange={onPlayRange}
+          repetitions={3}
+          activeClip={-1}
+          onActiveClipChange={vi.fn()}
+          getCurrentTime={() => 0}
+          playing={false}
+          scrolling={false}
+          setScrolling={vi.fn()}
+          scrollTimeoutRef={{current: undefined}}
+          clipPlayRequest={{clip: clips[0], repetitions: 3, nonce: 1}}
+        />
+      </Provider>,
+    );
+
+    expect(onPlayRange).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <Provider store={makeStore()}>
+        <RowWaveform
+          waveform={waveform}
+          displayClips={clips}
+          currentTime={0}
+          onSeek={vi.fn()}
+          onPlayRange={onPlayRange}
+          repetitions={3}
+          activeClip={-1}
+          onActiveClipChange={vi.fn()}
+          getCurrentTime={() => 0}
+          playing={false}
+          scrolling={false}
+          setScrolling={vi.fn()}
+          scrollTimeoutRef={{current: undefined}}
+          clipPlayRequest={{clip: clips[0], repetitions: 3, nonce: 2}}
+        />
+      </Provider>,
+    );
+
+    expect(onPlayRange).toHaveBeenCalledTimes(2);
   });
 });

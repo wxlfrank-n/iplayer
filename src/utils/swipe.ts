@@ -1,25 +1,43 @@
 import {mergeClipsByGap, type Clip} from './clips';
 
-const groupContaining = (
-  groups: Clip[],
-  target: Clip,
-  defaultIndex: number,
-) => {
-  return groups.findIndex(
-    (clip, index) => index >= defaultIndex && target.start >= clip.start,
-  );
+/**
+ * Index of the group that begins at (or after) the split clip's first child.
+ *
+ * `mergeClipsByGap` keeps the list sorted by start, and the boundary gap is no
+ * longer merged, so the piece that replaces the split group starts exactly at
+ * `target.start`. Comparing in this direction -- rather than "starts before"
+ * -- matters: lowering the merge gap also breaks up earlier groups, which
+ * shifts the split group to a higher index.
+ */
+const groupContaining = (groups: Clip[], target: Clip) =>
+  groups.findIndex(group => group.start >= target.start);
+
+/**
+ * Index of the group that encloses `target`.
+ *
+ * Merging absorbs an adjacent group, so the new group starts *before* `target`
+ * and ends after it. That makes the "starts at or after" search above land on
+ * the following group, so merging scans from the other end: the last group
+ * starting at or before `target.start`.
+ */
+const groupEnclosing = (groups: Clip[], target: Clip) => {
+  for (let i = groups.length - 1; i >= 0; i--) {
+    if (groups[i].start <= target.start) return i;
+  }
+  return -1;
 };
 
 export interface ClipSplitResult {
   mergeGap: number;
   activeClip: number;
+  clips?: Clip[];
 }
 
 /**
  * Swipe up (unpack): set the merge slider just below the largest gap between
  * the group's children so the group separates at that boundary.
  */
-export function getClipSplitResult(
+export function splitClip(
   clips: Clip[],
   displayClips: Clip[],
   idx: number,
@@ -47,10 +65,14 @@ export function getClipSplitResult(
   const mergeGap = Math.max(0, largestChildGap - 0.000001);
 
   const nextClips = mergeClipsByGap(clips, mergeGap);
-  const activeClip = groupContaining(nextClips, children[0], idx);
+  const activeClip = groupContaining(nextClips, children[0]);
 
   return nextClips.length > 0
-    ? {mergeGap, activeClip: activeClip === -1 ? 0 : activeClip}
+    ? {
+        clips: nextClips,
+        mergeGap,
+        activeClip: activeClip === -1 ? 0 : activeClip,
+      }
     : null;
 }
 
@@ -69,7 +91,8 @@ export interface ClipMergeResult {
  * children into a single parent. The merge slider follows the silence used
  * for that pair.
  */
-export function getClipMergeResult(
+export function mergeClips(
+  clips: Clip[],
   displayClips: Clip[],
   idx: number,
 ): ClipMergeResult | null {
@@ -84,28 +107,7 @@ export function getClipMergeResult(
   const neighbor = displayClips[neighborIdx];
   if (!neighbor) return null;
   const mergeGap = Math.min(previousGap, nextGap);
-
-  const children = [
-    ...(clip.children ?? [clip]),
-    ...(neighbor.children ?? [neighbor]),
-  ].sort((a, b) => a.start - b.start);
-  const from = Math.min(idx, neighborIdx);
-  const to = Math.max(idx, neighborIdx);
-  const merged: Clip = {
-    start: children[0].start,
-    end: children[children.length - 1].end,
-    vStart: children[0].vStart,
-    vEnd: children[children.length - 1].vEnd,
-    children,
-  };
-
-  return {
-    clips: [
-      ...displayClips.slice(0, from),
-      merged,
-      ...displayClips.slice(to + 1),
-    ],
-    activeClip: from,
-    mergeGap,
-  };
+  const result = mergeClipsByGap(clips, mergeGap);
+  const activeClip = groupEnclosing(result, clip);
+  return {clips: result, activeClip, mergeGap};
 }

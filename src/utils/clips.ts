@@ -20,6 +20,7 @@ export interface Clip {
   vEnd: number;
   /** Original clips kept under a virtually merged parent. */
   children?: Clip[];
+  expanded?: boolean;
 }
 
 /** User-supplied silence-split parameters (config-driven). */
@@ -35,7 +36,7 @@ export interface SplitOptions {
   minClipLength: number;
 }
 
-export interface ClipData {
+export interface InitClipData {
   clips: Clip[];
   gaps: number[];
   minGap: number;
@@ -45,11 +46,11 @@ export interface ClipData {
  * Split raw decoded audio into clips. Each contiguous run of blocks whose peak
  * exceeds `silenceRatio * trackPeak` becomes a clip, bounded by silent blocks.
  */
-export function splitBySilence(
+export function getInitClipData(
   data: Float32Array | null,
   sampleRate: number,
   options: SplitOptions,
-): ClipData {
+): InitClipData {
   if (!data || data.length === 0 || sampleRate <= 0)
     return {clips: [], minGap: 0, gaps: []};
 
@@ -149,6 +150,7 @@ export function expandClip(
   const endExpand = expandRatio * (nextStart - clip.end);
   clip.vStart = Math.max(0, clip.start - startExpand);
   clip.vEnd = Math.min(maxEnd, clip.end + endExpand);
+  clip.expanded = true;
 }
 
 /**
@@ -207,7 +209,7 @@ export function findMinMergeGap(
   clips: Clip[],
   gaps: number[],
   minClipLength: number,
-): ClipData {
+): InitClipData {
   if (clips.length === 0) {
     return {
       minGap: 0,
@@ -231,7 +233,7 @@ export function findMinMergeGap(
   // Fall back to the unmerged clips (and no merge) when no gap can satisfy
   // minClipLength, so a short track or a single short clip never wipes the
   // clip list.
-  let result: ClipData = {clips, minGap: 0, gaps};
+  let result: InitClipData = {clips, minGap: 0, gaps};
 
   while (low <= high) {
     const mid = Math.floor((low + high) / 2);

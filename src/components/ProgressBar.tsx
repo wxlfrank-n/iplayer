@@ -29,13 +29,14 @@ import {
   selectShowAdvancedControls,
 } from '../store/selectors';
 
-import {setActiveClip} from '../store/analysisSlice';
 import {updateConfig} from '../store/configSlice';
 
 import {mergeClipsByGap} from '../utils/clips';
+import type {Clip as InitClipData} from '../utils/clips';
+import type {ClipPlayRequest} from '../types';
 import './ProgressBar.css';
 
-import {getClipSplitResult, getClipMergeResult} from '../utils/swipe';
+import {splitClip, mergeClips} from '../utils/swipe';
 
 interface ProgressBarProps {
   /** Seek to an absolute track time (seconds). */
@@ -79,8 +80,7 @@ export function ProgressBar({
 
   const showAdvancedControls = useAppSelector(selectShowAdvancedControls);
 
-  const {waveform, waveformStatus, clips, currentTime, activeClip, minGap} =
-    audio;
+  const {waveform, waveformStatus, clips, currentTime, minGap} = audio;
 
   const hasWaveform = waveform !== null && waveform.data.length > 0;
 
@@ -105,6 +105,42 @@ export function ProgressBar({
   const [scrolling, setScrolling] = useState(false);
 
   const scrollTimeoutRef = useRef<number | undefined>(undefined);
+
+  /*
+   * ---------------------------------------------------------
+   * ACTIVE CLIP
+   * ---------------------------------------------------------
+   *
+   * Index into `displayClips` (the currently grouped list), so it is only
+   * meaningful together with the grouping that produced it.
+   *
+   * This is local UI state: nothing outside this component reads it, and it
+   * must not outlive the grouping, so it does not belong in the store.
+   */
+  const [activeClip, setActiveClip] = useState(-1);
+
+  /*
+   * One-shot request for the mounted view to start playing a clip, published
+   * after a split/merge regroups the clips. The view owns the playback context,
+   * so it reacts to this itself.
+   */
+  const [clipPlayRequest, setClipPlayRequest] = useState<
+    ClipPlayRequest | undefined
+  >(undefined);
+
+  const playRequestNonceRef = useRef(0);
+
+  /*
+   * Loading a different track replaces `clips` wholesale, so the stored index
+   * no longer refers to the same clip. Reset it.
+   *
+   * Deliberately NOT keyed on `mergeGap`: a split/merge sets both the new gap
+   * and the new active clip in the same handler, so clearing on gap change
+   * would immediately undo the selection the gesture just made.
+   */
+  useEffect(() => {
+    setActiveClip(-1);
+  }, [clips]);
 
   /*
    * ---------------------------------------------------------
@@ -140,15 +176,39 @@ export function ProgressBar({
    * ---------------------------------------------------------
    */
 
+  /*
+   * `idx` comes from the clip list the user is looking at, so it is validated
+   * against `displayClips`, not the raw `clips` (whose indexes differ whenever
+   * clips are grouped).
+   */
   const handleActiveClipChange = useCallback(
-    (val: number) => {
-      if (!audio.clips[val]) {
+    (idx: number) => {
+      if (!displayClips[idx]) {
         return;
       }
 
-      dispatch(setActiveClip(val));
+      setActiveClip(idx);
     },
-    [audio.clips, dispatch],
+    [displayClips],
+  );
+
+  /*
+   * Publish a one-shot playback request for `clip`.
+   *
+   * The nonce makes each request distinct, so requesting the same clip twice in
+   * a row still re-arms playback instead of being treated as a duplicate.
+   */
+  const requestClipPlayback = useCallback(
+    (clip: InitClipData) => {
+      playRequestNonceRef.current += 1;
+
+      setClipPlayRequest({
+        clip,
+        repetitions,
+        nonce: playRequestNonceRef.current,
+      });
+    },
+    [repetitions],
   );
 
   /*
@@ -164,7 +224,7 @@ export function ProgressBar({
        * merge this clip with an adjacent clip.
        */
       if (direction === 'down') {
-        const result = getClipMergeResult(displayClips, idx);
+        const result = mergeClips(clips, displayClips, idx);
 
         if (!result) {
           return;
@@ -172,7 +232,13 @@ export function ProgressBar({
 
         setMergeGap(result.mergeGap);
 
-        dispatch(setActiveClip(result.activeClip));
+        setActiveClip(result.activeClip);
+
+        const newActiveClip = result.clips?.[result.activeClip];
+
+        if (newActiveClip) {
+          requestClipPlayback(newActiveClip);
+        }
 
         return;
       }
@@ -181,7 +247,7 @@ export function ProgressBar({
        * Swipe up:
        * split/unpack a virtually merged clip.
        */
-      const result = getClipSplitResult(clips, displayClips, idx);
+      const result = splitClip(clips, displayClips, idx);
 
       if (!result) {
         return;
@@ -189,9 +255,22 @@ export function ProgressBar({
 
       setMergeGap(result.mergeGap);
 
-      dispatch(setActiveClip(result.activeClip));
+      setActiveClip(result.activeClip);
+
+      /*
+       * Play the clip that is active AFTER the split.
+       *
+       * `displayClips` still describes the pre-split grouping here, so the new
+       * clip has to be re-derived from the raw clips at the new merge gap.
+       * Indexing the stale list would replay the pre-split clip's range.
+       */
+      const newActiveClip = result.clips?.[result.activeClip];
+
+      if (newActiveClip) {
+        requestClipPlayback(newActiveClip);
+      }
     },
-    [clips, dispatch, displayClips],
+    [clips, displayClips, requestClipPlayback],
   );
 
   return (
@@ -259,6 +338,7 @@ export function ProgressBar({
               scrolling={scrolling}
               setScrolling={setScrolling}
               scrollTimeoutRef={scrollTimeoutRef}
+              clipPlayRequest={clipPlayRequest}
             />
           ) : hasWaveform && waveformView === 'stacked' ? (
             <StackedWaveform
@@ -274,6 +354,7 @@ export function ProgressBar({
               onStopPlayback={onStopPlayback}
               getCurrentTime={getCurrentTime}
               onActiveClipChange={handleActiveClipChange}
+              clipPlayRequest={clipPlayRequest}
             />
           ) : null}
         </div>
