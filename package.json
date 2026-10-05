@@ -11,6 +11,7 @@
     "lint:fix": "eslint . --fix",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "serve": "vite preview",
     "serve:local": "serve ./",
     "clean": "gts clean",
@@ -30,6 +31,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.63.0",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^22.7.5",
@@ -41,6 +43,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.7",
     "globals": "^17.12.0",
+    "gts": "^7.0.0",
     "jiti": "^2.7.0",
     "jsdom": "^30.1.0",
     "oxlint": "^1.79.0",
@@ -50,7 +53,6 @@
     "typescript-eslint": "^8.71.0",
     "vite": "^8.2.2",
     "vite-plugin-svgr": "^5.2.0",
-    "vitest": "^5.0.1",
-    "gts": "^7.0.0"
+    "vitest": "^5.0.1"
   }
 }

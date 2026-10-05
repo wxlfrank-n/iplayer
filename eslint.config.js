@@ -33,4 +33,15 @@ export default [
       },
     },
   },
+
+  // End-to-end tests
+  {
+    files: ["e2e/**/*.ts", "playwright.config.ts"],
+    languageOptions: {
+      parserOptions: {
+        project: "./tsconfig.e2e.json",
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
 ];
