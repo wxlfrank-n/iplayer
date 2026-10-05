@@ -167,10 +167,10 @@ export const no: Messages = {
   player: {
     play: 'Spill av',
     pause: 'Pause',
-    backToStart: 'Gå til start',
-    skipToEnd: 'Gå til slutt',
-    backSeconds: 'Gå tilbake {seconds} sekunder',
-    forwardSeconds: 'Gå fremover {seconds} sekunder',
+    backToStart: 'G\u00e5 til start',
+    skipToEnd: 'G\u00e5 til slutt',
+    backSeconds: 'G\u00e5 tilbake {seconds} sekunder',
+    forwardSeconds: 'G\u00e5 fremover {seconds} sekunder',
     backSecondsShort: 'Tilbake {seconds}s',
     forwardSecondsShort: 'Fremover {seconds}s',
   },
@@ -182,8 +182,8 @@ export const no: Messages = {
   },
 
   nowPlaying: {
-    noTrack: 'Ingen lÃ¥t valgt',
-    addMusic: 'Legg til en lydfil for Ã¥ komme i gang',
+    noTrack: 'Ingen l\u00e5t valgt',
+    addMusic: 'Legg til en lydfil for \u00e5 komme i gang',
     mono: 'Mono',
     stereo: 'Stereo',
   },
@@ -195,41 +195,41 @@ export const no: Messages = {
   },
 
   trackList: {
-    empty: 'Ingen lÃ¥ter ennÃ¥',
+    empty: 'Ingen l\u00e5ter enn\u00e5',
     hint: 'Dra lydfiler hit eller bruk knappen over',
-    removeTrack: 'Fjern lÃ¥t',
+    removeTrack: 'Fjern l\u00e5t',
   },
 
   emptyState: {
-    title: 'Legg til en lydfil for Ã¥ komme i gang',
+    title: 'Legg til en lydfil for \u00e5 komme i gang',
     subtitle:
       'Dra lydfiler hvor som helst i dette vinduet, eller velg dem fra enheten din.',
     addFiles: 'Legg til lydfiler',
   },
 
   reps: {
-    title: 'Antall ganger en klipp repeteres nÃ¥r du klikker pÃ¥ den',
+    title: 'Antall ganger et klipp repeteres n\u00e5r du klikker p\u00e5 det',
     label: 'Repetisjoner:',
     decrease: 'Reduser repetisjoner',
-    decreaseHint: 'Repeter hvert klipp fÃ¦rre ganger',
-    increase: 'Ãk repetisjoner',
+    decreaseHint: 'Repeter hvert klipp f\u00e6rre ganger',
+    increase: '\u00d8k repetisjoner',
     increaseHint: 'Repeter hvert klipp flere ganger',
   },
 
   merge: {
-    increaseGap: 'SlÃ¥ sammen flere klipp',
+    increaseGap: 'Sl\u00e5 sammen flere klipp',
     increaseHint: 'Tillat lenger pauser mellom klipp',
-    decreaseGap: 'SlÃ¥ sammen fÃ¦rre klipp',
-    decreaseHint: 'Bare slÃ¥ sammen klipp med kortere pauser',
-    bubbleTitle: 'Klipp med pauser kortere enn denne slÃ¥s sammen',
-    rangeTitle: 'Klipp mindre enn {gap}s fra hverandre slÃ¥s sammen',
+    decreaseGap: 'Sl\u00e5 sammen f\u00e6rre klipp',
+    decreaseHint: 'Bare sl\u00e5 sammen klipp med kortere pauser',
+    bubbleTitle: 'Klipp med pauser kortere enn denne sl\u00e5s sammen',
+    rangeTitle: 'Klipp mindre enn {gap}s fra hverandre sl\u00e5s sammen',
     clipCount: '{count} klipp',
     clipCountPlural: '{count} klipp',
   },
 
   clipLabel: {
     split: 'Del klipp',
-    merge: 'SlÃ¥ sammen med naboklipp',
+    merge: 'Sl\u00e5 sammen med naboklipp',
   },
 
   viewFlip: {
@@ -249,44 +249,45 @@ export const no: Messages = {
     tabClips: 'Klippdeteksjon',
 
     theme: 'Tema',
-    language: 'SprÃ¥k',
+    language: 'Spr\u00e5k',
 
-    waveformView: 'BÃ¸lgevisning',
+    waveformView: 'B\u00f8lgevisning',
     singleRow: 'Enkel rad',
     stacked: 'Stakkvis',
-    singleRowHint: 'Vis bÃ¸lgen i en scrollbar rad som fÃ¸lger avspilling.',
+    singleRowHint:
+      'Vis b\u00f8lgen i en scrollbar rad som f\u00f8lger avspilling.',
 
     skipBy: 'Hopp frem eller tilbake med',
 
     repeatsPerClip: 'Repetisjoner per klipp',
     repeatsHint:
-      'Velg hvor mange ganger et klipp repeteres nÃ¥r du klikker pÃ¥ det.',
+      'Velg hvor mange ganger et klipp repeteres n\u00e5r du klikker p\u00e5 det.',
 
     showAdvanced: 'Vis avanserte kontroller',
     showAdvancedHint:
-      'Vis hurtigkontroller for Ã¥ slÃ¥ sammen klipp og endre repetisjoner under bÃ¸lgen.',
+      'Vis hurtigkontroller for \u00e5 sl\u00e5 sammen klipp og endre repetisjoner under b\u00f8lgen.',
 
     silenceThreshold: 'Stilleterskel',
     silenceHint:
-      'Styrer hvor stille lyd mÃ¥ vÃ¦re fÃ¸r den behandles som en pause. Lavere verdier oppdager bare stille pauser.',
+      'Styrer hvor stille lyd m\u00e5 v\u00e6re f\u00f8r den behandles som en pause. Lavere verdier oppdager bare stille pauser.',
 
     analysisDetail: 'Deteksjonspresisjon',
     analysisHint:
-      'Mindre verdier finner mer presise delpunkter men kan ta litt lenger Ã¥ prosessere.',
+      'Mindre verdier finner mer presise delpunkter men kan ta litt lenger \u00e5 prosessere.',
 
     minClipLength: 'Minste klipplengde',
     minClipLengthHint:
-      'Klipp kortere enn dette slÃ¥s automatisk sammen med et naboklipp.',
+      'Klipp kortere enn dette sl\u00e5s automatisk sammen med et naboklipp.',
 
-    mergeScope: 'Omfang for slÃ¥ing sammen',
+    mergeScope: 'Omfang for sl\u00e5ing sammen',
     mergeScopeGlobal: 'Hele sporet',
     mergeScopeClip: 'Valgt klipp',
     mergeScopeHint:
-      'Velg om slÃ¥ing sammen og deling gjelder alle klipp eller bare det valgte.',
+      'Velg om sl\u00e5ing sammen og deling gjelder alle klipp eller bare det valgte.',
     mergeScopeGlobalHint:
-      'En sammenslÃ¥ingsgap grupperer hvert klipp i sporet.',
+      'En sammensl\u00e5ingsgap grupperer hvert klipp i sporet.',
     mergeScopeClipHint:
-      'SlÃ¥ing sammen og deling pÃ¥virker bare det klippet du valgte.',
+      'Sl\u00e5ing sammen og deling p\u00e5virker bare det klippet du valgte.',
 
     resetAll: 'Nullstill alle innstillinger',
     changesLive: 'Endringer trer i kraft umiddelbart og lagres automatisk',
@@ -294,7 +295,7 @@ export const no: Messages = {
 
   themes: {
     dark: 'Skifer',
-    light: 'TÃ¥ke',
+    light: 'T\u00e5ke',
     midnight: 'Midnatt',
     paper: 'Himmel',
     nova: 'Nova',
