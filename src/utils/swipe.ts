@@ -1,4 +1,10 @@
-import {mergeClipsByGap, type Clip} from './clips';
+import {
+  mergeClipPair,
+  mergeClipsByGap,
+  splitClipAtLargestGap,
+  type Clip,
+} from './clips';
+import type {MergeScope} from '../types';
 
 /**
  * Index of the group that begins at (or after) the split clip's first child.
@@ -34,38 +40,47 @@ export interface ClipSplitResult {
 }
 
 /**
- * Swipe up (unpack): set the merge slider just below the largest gap between
- * the group's children so the group separates at that boundary.
+ * Swipe up (unpack): split a virtually merged clip at its largest child gap.
+ *
+ * "clip" scope cuts the selected group in two and leaves every other group
+ * exactly as it is. "global" scope instead sets the merge gap just below that
+ * same gap and regroups the whole track, so other groups can break up too.
+ *
+ * Either way the chosen boundary is the largest gap between children, so both
+ * scopes agree on where to cut.
  */
 export function splitClip(
   clips: Clip[],
   displayClips: Clip[],
   idx: number,
+  scope: MergeScope = 'clip',
 ): ClipSplitResult | null {
   const clip = displayClips[idx];
   if (!clip) return null;
 
-  // Prefer explicit children. If the displayed clip has no children,
-  // recover the original clips contained by its range.
-  const children = clip.children ?? [];
+  const split = splitClipAtLargestGap(clip);
 
-  if (children.length < 2) return null;
+  if (!split) return null;
 
-  let largestChildGap = -Infinity;
-
-  for (let i = 1; i < children.length; i++) {
-    const gap = children[i].start - children[i - 1].end;
-    largestChildGap = Math.max(largestChildGap, gap);
+  if (scope === 'clip') {
+    return {
+      clips: [
+        ...displayClips.slice(0, idx),
+        ...split.pieces,
+        ...displayClips.slice(idx + 1),
+      ],
+      mergeGap: split.gap,
+      activeClip: idx,
+    };
   }
-
-  if (!Number.isFinite(largestChildGap)) return null;
 
   // Put the threshold immediately below this gap so that boundary
   // is no longer merged.
-  const mergeGap = Math.max(0, largestChildGap - 0.000001);
+  const mergeGap = Math.max(0, split.gap - 0.000001);
 
   const nextClips = mergeClipsByGap(clips, mergeGap);
-  const activeClip = groupContaining(nextClips, children[0]);
+
+  const activeClip = groupContaining(nextClips, clip.children![0]);
 
   return nextClips.length > 0
     ? {
@@ -86,15 +101,19 @@ export interface ClipMergeResult {
 }
 
 /**
- * Swipe down (pack): merge the clip at `idx` only with its nearest neighbor
- * (the adjacent group with the smallest inter-group gap), combining their
- * children into a single parent. The merge slider follows the silence used
- * for that pair.
+ * Swipe down (pack): merge the clip at `idx` with its nearest neighbor (the
+ * adjacent group with the smallest inter-group gap), combining their children
+ * into a single parent. The merge slider follows the silence used for that pair.
+ *
+ * "clip" scope merges exactly that one pair and leaves every other group as it
+ * is. "global" scope instead applies that gap to the raw detection result across
+ * the whole track, so other groups can merge too.
  */
 export function mergeClips(
   clips: Clip[],
   displayClips: Clip[],
   idx: number,
+  scope: MergeScope = 'clip',
 ): ClipMergeResult | null {
   const clip = displayClips[idx];
   if (!clip) return null;
@@ -107,7 +126,32 @@ export function mergeClips(
   const neighbor = displayClips[neighborIdx];
   if (!neighbor) return null;
   const mergeGap = Math.min(previousGap, nextGap);
+
+  if (scope === 'clip') {
+    const merged = mergeClipPair(
+      displayClips[Math.min(idx, neighborIdx)],
+      displayClips[Math.max(idx, neighborIdx)],
+    );
+
+    return {
+      clips: [
+        ...displayClips.slice(0, Math.min(idx, neighborIdx)),
+        merged,
+        ...displayClips.slice(Math.max(idx, neighborIdx) + 1),
+      ],
+      activeClip: Math.min(idx, neighborIdx),
+      mergeGap,
+    };
+  }
+
   const result = mergeClipsByGap(clips, mergeGap);
+
+  /*
+   * The merged pair is one group starting at `min(clip.start, neighbor.start)`,
+   * which is at or before `clip.start`, so scanning back from the end lands on
+   * the pair itself.
+   */
   const activeClip = groupEnclosing(result, clip);
+
   return {clips: result, activeClip, mergeGap};
 }

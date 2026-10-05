@@ -4,6 +4,7 @@ import {
   expandClip,
   findMinMergeGap,
   mergeClipsByGap,
+  mergeClipsByGapScoped,
   getInitClipData,
   type Clip,
 } from './clips';
@@ -279,6 +280,55 @@ describe('mergeClipsByGap', () => {
     const [parent] = mergeClipsByGap([a, b, c], 0.5);
     expect(parent.vStart).toBe(0);
     expect(parent.vEnd).toBe(3.5);
+  });
+});
+
+describe('mergeClipsByGapScoped', () => {
+  // gaps: a-b 0.2, b-c 2.5, c-d 0.3
+  const clips = [mk(0, 1), mk(1.2, 2), mk(4.5, 5), mk(5.3, 6)];
+
+  it('merges only the focused clip run and leaves the rest alone', () => {
+    // Focus spans a-b, so that pair is the run being regrouped.
+    const focus = {start: 0, end: 2, vStart: 0, vEnd: 2};
+
+    // c-d also sit within a 0.3 gap, but they are outside the focused run, so
+    // they stay separate -- the opposite of a global merge at this gap, which
+    // would join them too.
+    expect(bounds(mergeClipsByGapScoped(clips, 3, focus))).toEqual([
+      [0, 2],
+      [4.5, 5],
+      [5.3, 6],
+    ]);
+
+    // A gap too small to merge a-b leaves the list untouched.
+    expect(bounds(mergeClipsByGapScoped(clips, 0.1, focus))).toEqual(
+      bounds(clips),
+    );
+  });
+
+  it('does not merge inside a focus that is a single raw clip', () => {
+    // Focus b: its run holds one clip, so there is nothing to merge, even
+    // though a global merge at this gap would join b and c across 2.5s.
+    const result = mergeClipsByGapScoped(clips, 3, clips[1]);
+    expect(bounds(result)).toEqual(bounds(clips));
+    expect(result[1].children).toBeUndefined();
+  });
+
+  it('accepts a merged parent as focus', () => {
+    const [parent] = mergeClipsByGap([clips[0], clips[1]], 0.5);
+    expect(bounds(mergeClipsByGapScoped(clips, 0.1, parent))).toEqual([
+      [0, 1],
+      [1.2, 2],
+      [4.5, 5],
+      [5.3, 6],
+    ]);
+  });
+
+  it('returns the clips unchanged for a single-clip or unknown focus', () => {
+    expect(mergeClipsByGapScoped([mk(0, 1)], 0.5, mk(0, 1))).toEqual([
+      mk(0, 1),
+    ]);
+    expect(mergeClipsByGapScoped(clips, 0.5, mk(50, 60))).toEqual(clips);
   });
 });
 

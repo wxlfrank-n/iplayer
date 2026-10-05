@@ -17,6 +17,8 @@ export const selectRepetitions = (s: RootState) => s.config.repetitions ?? 3;
 /** Whether the clip toolbar (merge gap + repeats) is visible. */
 export const selectShowAdvancedControls = (s: RootState) =>
   s.config.showAdvancedControls ?? true;
+/** Whether a merge/split gesture applies to the whole track or one clip. */
+export const selectMergeScope = (s: RootState) => s.config.mergeScope ?? 'clip';
 
 // ---- player ----
 export const selectTracks = (s: RootState) => s.player.tracks;

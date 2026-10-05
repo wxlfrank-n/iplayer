@@ -36,6 +36,13 @@ interface ClipToolbarProps {
   repetitions: number;
   /** Reports a new repeat count whenever the user steps it. */
   onRepetitionsChange: (value: number) => void;
+  /**
+   * Whether to show the merge-gap slider.
+   *
+   * In "clip" scope there is no single track-wide gap to adjust, so the slider
+   * is hidden and merging happens per clip through the swipe gestures.
+   */
+  showMergeSlider?: boolean;
   /** Disables the controls (e.g. while playing). */
   disabled?: boolean;
 }
@@ -46,6 +53,7 @@ export function ClipToolbar({
   onMergeGapChange,
   repetitions,
   onRepetitionsChange,
+  showMergeSlider = true,
   disabled = false,
 }: ClipToolbarProps) {
   const dispatch = useAppDispatch();
@@ -112,12 +120,14 @@ export function ClipToolbar({
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerCancel}
     >
-      <MergeSlider
-        value={mergeGap}
-        clipCount={clipCount}
-        onChange={onMergeGapChange}
-        disabled={disabled}
-      />
+      {showMergeSlider && (
+        <MergeSlider
+          value={mergeGap}
+          clipCount={clipCount}
+          onChange={onMergeGapChange}
+          disabled={disabled}
+        />
+      )}
 
       <RepsStepper
         value={repetitions}

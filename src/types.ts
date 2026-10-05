@@ -47,6 +47,15 @@ export type WaveformStatus = 'idle' | 'loading' | 'ready' | 'error';
 export type WaveformView = 'stacked' | 'horizontal';
 
 /**
+ * How far a merge/split gesture reaches.
+ *
+ * - "global": one merge gap threshold regroups every clip in the track.
+ * - "clip": the gesture only regroups the selected clip, leaving its neighbors
+ *   alone.
+ */
+export type MergeScope = 'global' | 'clip';
+
+/**
  * Consolidated state for the currently played audio. Owned by the app root so
  * every view (waveform, clip toolbar, player controls) reads the same record
  * instead of deriving it independently.

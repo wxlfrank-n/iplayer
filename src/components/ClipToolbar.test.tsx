@@ -31,7 +31,10 @@ function makeStore() {
   });
 }
 
-function renderToolbar(store: ReturnType<typeof makeStore>) {
+function renderToolbar(
+  store: ReturnType<typeof makeStore>,
+  showMergeSlider?: boolean,
+) {
   store.dispatch(updateConfig({showAdvancedControls: true}));
   return render(
     <Provider store={store}>
@@ -41,6 +44,7 @@ function renderToolbar(store: ReturnType<typeof makeStore>) {
         onMergeGapChange={() => {}}
         repetitions={3}
         onRepetitionsChange={() => {}}
+        showMergeSlider={showMergeSlider}
       />
     </Provider>,
   );
@@ -51,6 +55,15 @@ describe('ClipToolbar', () => {
     const store = makeStore();
     const {container} = renderToolbar(store);
     expect(container.querySelector('.clip-merge')).not.toBeNull();
+    expect(container.querySelector('.clip-reps')).not.toBeNull();
+  });
+
+  it('hides the merge slider but keeps the repeat stepper', () => {
+    // Clip scope merges per clip through the swipe gestures, so the
+    // track-wide merge gap has no slider.
+    const store = makeStore();
+    const {container} = renderToolbar(store, false);
+    expect(container.querySelector('.clip-merge')).toBeNull();
     expect(container.querySelector('.clip-reps')).not.toBeNull();
   });
 

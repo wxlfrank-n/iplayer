@@ -27,6 +27,7 @@ import {
   selectIsPlaying,
   selectRepetitions,
   selectShowAdvancedControls,
+  selectMergeScope,
 } from '../store/selectors';
 
 import {updateConfig} from '../store/configSlice';
@@ -80,6 +81,8 @@ export function ProgressBar({
 
   const showAdvancedControls = useAppSelector(selectShowAdvancedControls);
 
+  const mergeScope = useAppSelector(selectMergeScope);
+
   const {waveform, waveformStatus, clips, currentTime, minGap} = audio;
 
   const hasWaveform = waveform !== null && waveform.data.length > 0;
@@ -94,10 +97,29 @@ export function ProgressBar({
     setMergeGap(minGap);
   }, [minGap]);
 
-  const displayClips = useMemo(
-    () => mergeClipsByGap(clips, mergeGap),
-    [clips, mergeGap],
+  /*
+   * The grouping the detector itself asked for, before any user merge/split.
+   * This is the starting point for "clip" scope.
+   */
+  const baselineClips = useMemo(
+    () => mergeClipsByGap(clips, minGap),
+    [clips, minGap],
   );
+
+  /*
+   * "clip" scope cannot be derived from a single threshold, so the regrouped
+   * list is held here instead and only ever changed by a gesture or by the
+   * slider acting on the selected clip. `null` means "not regrouped yet", i.e.
+   * show the baseline.
+   *
+   * Reset per track change (see below) so it can never leak across tracks.
+   */
+  const [scopedClips, setScopedClips] = useState<InitClipData[] | null>(null);
+
+  const displayClips = useMemo(() => {
+    if (mergeScope === 'clip') return scopedClips ?? baselineClips;
+    return mergeClipsByGap(clips, mergeGap);
+  }, [mergeScope, scopedClips, baselineClips, clips, mergeGap]);
 
   /*
    * Scroll state shared with RowWaveform's follow behavior.
@@ -140,6 +162,14 @@ export function ProgressBar({
    */
   useEffect(() => {
     setActiveClip(-1);
+  }, [clips]);
+
+  /*
+   * Per-clip grouping belongs to the track it was built from, so drop it when
+   * the track's clips are replaced.
+   */
+  useEffect(() => {
+    setScopedClips(null);
   }, [clips]);
 
   /*
@@ -224,13 +254,22 @@ export function ProgressBar({
        * merge this clip with an adjacent clip.
        */
       if (direction === 'down') {
-        const result = mergeClips(clips, displayClips, idx);
+        const result = mergeClips(clips, displayClips, idx, mergeScope);
 
         if (!result) {
           return;
         }
 
         setMergeGap(result.mergeGap);
+
+        /*
+         * "clip" scope keeps its own grouping, so the gesture's result becomes
+         * the new list. In "global" scope `displayClips` is derived from
+         * `mergeGap`, which was just updated above.
+         */
+        if (mergeScope === 'clip') {
+          setScopedClips(result.clips);
+        }
 
         setActiveClip(result.activeClip);
 
@@ -247,13 +286,17 @@ export function ProgressBar({
        * Swipe up:
        * split/unpack a virtually merged clip.
        */
-      const result = splitClip(clips, displayClips, idx);
+      const result = splitClip(clips, displayClips, idx, mergeScope);
 
       if (!result) {
         return;
       }
 
       setMergeGap(result.mergeGap);
+
+      if (mergeScope === 'clip') {
+        setScopedClips(result.clips ?? null);
+      }
 
       setActiveClip(result.activeClip);
 
@@ -270,8 +313,23 @@ export function ProgressBar({
         requestClipPlayback(newActiveClip);
       }
     },
-    [clips, displayClips, requestClipPlayback],
+    [clips, displayClips, mergeScope, requestClipPlayback],
   );
+
+  /*
+   * ---------------------------------------------------------
+   * MERGE SLIDER
+   * ---------------------------------------------------------
+   */
+
+  /*
+   * The merge slider is only shown in "global" scope, where it sets the single
+   * threshold every clip is regrouped by. In "clip" scope merging happens per
+   * clip through the swipe gestures instead.
+   */
+  const handleMergeGapChange = useCallback((gap: number) => {
+    setMergeGap(gap);
+  }, []);
 
   return (
     <>
@@ -391,7 +449,8 @@ export function ProgressBar({
         <ClipToolbar
           mergeGap={mergeGap}
           clipCount={displayClips.length}
-          onMergeGapChange={setMergeGap}
+          onMergeGapChange={handleMergeGapChange}
+          showMergeSlider={mergeScope === 'global'}
           repetitions={repetitions}
           onRepetitionsChange={handleRepetitionsChange}
           disabled={playing}

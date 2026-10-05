@@ -125,6 +125,15 @@ export const en = {
     minClipLengthHint:
       'Clips shorter than this are automatically joined with a nearby clip.',
 
+    mergeScope: 'Merge scope',
+    mergeScopeGlobal: 'Whole track',
+    mergeScopeClip: 'Selected clip',
+    mergeScopeHint:
+      'Choose whether merging and splitting applies to every clip or only to the selected one.',
+    mergeScopeGlobalHint: 'One merge gap regroups every clip in the track.',
+    mergeScopeClipHint:
+      'Merging and splitting only changes the clip you picked.',
+
     resetAll: 'Reset all settings',
     changesLive: 'Changes apply instantly and are saved automatically',
   },
@@ -262,6 +271,13 @@ export const zh: Messages = {
 
     minClipLength: '最短片段长度',
     minClipLengthHint: '短于此长度的片段会自动与附近的片段合并。',
+
+    mergeScope: '合并范围',
+    mergeScopeGlobal: '整个音轨',
+    mergeScopeClip: '选中的片段',
+    mergeScopeHint: '选择合并和拆分是应用于所有片段，还是仅应用于选中的片段。',
+    mergeScopeGlobalHint: '一个合并间隔会重新分组音轨中的所有片段。',
+    mergeScopeClipHint: '合并和拆分只改变你选择的片段。',
 
     resetAll: '恢复默认设置',
     changesLive: '修改立即生效并自动保存',

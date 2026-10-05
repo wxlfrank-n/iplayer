@@ -11,6 +11,8 @@
  * - repetitions: How many times a clicked clip is repeated (default: 3).
  * - showAdvancedControls: Whether the clip toolbar (merge gap + repeat
  *   controls) is shown below the waveform (default: true).
+ * - mergeScope: Whether a merge/split gesture applies to every clip in the
+ *   track ("global") or only the selected clip ("clip") (default: "clip").
  * - theme: Appearance palette (dark/light/midnight/paper/rose/nova). Each theme
  *   carries its own accent color, so there is no separate accent setting.
  * - language: UI locale ("en" | "zh", default: "en").
@@ -20,12 +22,18 @@
 
 import {createSlice} from '@reduxjs/toolkit';
 import type {PayloadAction} from '@reduxjs/toolkit';
-import type {WaveformView} from '../types';
+import type {MergeScope, WaveformView} from '../types';
 import type {ThemeId} from '../themes';
 import {DEFAULT_THEME, THEME_IDS} from '../themes';
 import {isLocale, type LocaleId} from '../i18n/translations';
 
 const STORAGE_KEY = 'Listeenoop_config';
+
+export const MERGE_SCOPES: readonly MergeScope[] = ['global', 'clip'];
+
+function isMergeScope(value: unknown): value is MergeScope {
+  return MERGE_SCOPES.includes(value as MergeScope);
+}
 
 interface ConfigState {
   skipSeconds: number;
@@ -35,6 +43,7 @@ interface ConfigState {
   minClipLength: number;
   repetitions: number;
   showAdvancedControls: boolean;
+  mergeScope: MergeScope;
   theme: ThemeId;
   language: LocaleId;
 }
@@ -47,6 +56,7 @@ export const DEFAULT_CONFIG: ConfigState = {
   minClipLength: 0.3,
   repetitions: 3,
   showAdvancedControls: false,
+  mergeScope: 'clip',
   theme: DEFAULT_THEME,
   language: 'en',
 };
@@ -85,6 +95,9 @@ function loadConfig(): ConfigState {
         language: isLocale(parsed.language)
           ? parsed.language
           : DEFAULT_CONFIG.language,
+        mergeScope: isMergeScope(parsed.mergeScope)
+          ? parsed.mergeScope
+          : DEFAULT_CONFIG.mergeScope,
       };
     }
   } catch {

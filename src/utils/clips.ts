@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Silence-based clip detection.
  *
  * Explodes raw decoded audio into discrete clips by splitting around silent
@@ -205,6 +205,128 @@ export function getClipGaps(clips: Clip[]): number[] {
   return [...new Set(gaps)].sort((a, b) => a - b);
 }
 
+/**
+ * The ungrouped clips inside `clips`, recursively.
+ *
+ * `mergeClipsByGap` nests every merge it performs, so a displayed group can
+ * contain other groups. Regrouping has to start from these leaves: merging the
+ * groups themselves would keep an already-merged boundary intact no matter how
+ * low the gap went.
+ */
+function rawLeaves(clips: Clip[]): Clip[] {
+  return clips.flatMap(clip =>
+    clip.children ? rawLeaves(clip.children) : [clip],
+  );
+}
+
+/**
+ * Wrap `clips` as a single group, or return them as-is when there is only one.
+ *
+ * A group of one would be unsplittable, so single clips stay single clips.
+ */
+function asGroup(clips: Clip[]): Clip {
+  const last = clips[clips.length - 1];
+
+  return clips.length === 1
+    ? clips[0]
+    : {
+        start: clips[0].start,
+        end: last.end,
+        vStart: clips[0].vStart,
+        vEnd: last.vEnd,
+        children: clips,
+      };
+}
+
+/**
+ * Split a merged `clip` at its largest gap between consecutive children.
+ *
+ * Returns exactly two pieces plus the gap they were split at, or `null` when
+ * `clip` is not a merged group. The gap is only reported so callers can keep
+ * the merge slider pointed at the boundary that was used -- the split itself
+ * never depends on a threshold.
+ */
+export function splitClipAtLargestGap(
+  clip: Clip,
+): {pieces: Clip[]; gap: number} | null {
+  const children = rawLeaves(clip.children ?? []);
+
+  if (children.length < 2) return null;
+
+  let splitAt = 1;
+  let largestGap = -Infinity;
+
+  for (let i = 1; i < children.length; i++) {
+    const gap = children[i].start - children[i - 1].end;
+
+    // Strictly greater, so equal gaps split at the earliest boundary.
+    if (gap > largestGap) {
+      largestGap = gap;
+      splitAt = i;
+    }
+  }
+
+  return {
+    pieces: [
+      asGroup(children.slice(0, splitAt)),
+      asGroup(children.slice(splitAt)),
+    ],
+    gap: largestGap,
+  };
+}
+
+/**
+ * Regroup `displayClips` so it is merged by `mergeGap` only inside `focus`,
+ * leaving every other clip exactly as it is.
+ *
+ * This is the per-clip counterpart of `mergeClipsByGap`: the gesture's gap
+ * applies to the selected clip's own run of clips instead of to the whole track.
+ *
+ * `displayClips` is the *current* grouping, not the raw detection result, so
+ * grouping established elsewhere on the track survives the gesture instead of
+ * being reverted to the detector's output.
+ *
+ * The focused run is regrouped from its ungrouped leaves (see `rawLeaves`) so
+ * that `mergeGap` can both create and break merges. `focus` is matched by
+ * containment, so passing either a displayed group or one of the clips inside
+ * it selects the same region.
+ *
+ * Returns `displayClips` unchanged when `focus` matches nothing or holds fewer
+ * than two clips.
+ */
+export function mergeClipsByGapScoped(
+  displayClips: Clip[],
+  mergeGap: number,
+  focus: Clip,
+): Clip[] {
+  const start = displayClips.findIndex(c => c.start >= focus.start);
+
+  let lastIdx = -1;
+  for (let i = displayClips.length - 1; i >= 0; i--) {
+    if (displayClips[i].end <= focus.end) {
+      lastIdx = i;
+      break;
+    }
+  }
+
+  if (start === -1 || lastIdx === -1) return displayClips;
+
+  const run = displayClips.slice(start, lastIdx + 1);
+
+  const leaves = rawLeaves(run);
+
+  // Nothing to regroup: the run is already a single unmerged clip.
+  if (leaves.length < 2) return displayClips;
+
+  const merged = mergeClipsByGap(leaves, mergeGap);
+
+  return [
+    ...displayClips.slice(0, start),
+    ...merged,
+    ...displayClips.slice(lastIdx + 1),
+  ];
+}
+
 export function findMinMergeGap(
   clips: Clip[],
   gaps: number[],
@@ -304,9 +426,9 @@ export function mergeClipsByConfig(
       }
 
       if (mergeLeft) {
-        result.splice(i - 1, 2, mergeTwoClips(left!, clip));
+        result.splice(i - 1, 2, mergeClipPair(left!, clip));
       } else {
-        result.splice(i, 2, mergeTwoClips(clip, right!));
+        result.splice(i, 2, mergeClipPair(clip, right!));
       }
 
       // The structure changed, so restart and
@@ -325,7 +447,12 @@ export function mergeClipsByConfig(
   return result;
 }
 
-function mergeTwoClips(left: Clip, right: Clip): Clip {
+/**
+ * Merge two adjacent clips into one group, flattening whatever children they
+ * already had into the new parent's `children`. The result is always a merged
+ * clip with at least two children, so it can be split again.
+ */
+export function mergeClipPair(left: Clip, right: Clip): Clip {
   return {
     start: left.start,
     end: right.end,

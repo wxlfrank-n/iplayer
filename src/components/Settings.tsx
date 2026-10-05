@@ -259,9 +259,46 @@ function PlaybackTab() {
 function ClipDetectionTab() {
   const {config, updateConfig} = useConfig();
   const t = useT();
-  const {blockMs, silenceRatio, minClipLength} = config;
+  const {blockMs, silenceRatio, minClipLength, mergeScope} = config;
   return (
     <>
+      <div className="settings-field">
+        <div className="settings-field-head">
+          <label className="settings-label">{t('settings.mergeScope')}</label>
+          <output className="settings-value">
+            {t(
+              mergeScope === 'clip'
+                ? 'settings.mergeScopeClip'
+                : 'settings.mergeScopeGlobal',
+            )}
+          </output>
+        </div>
+        <p className="settings-hint">{t('settings.mergeScopeHint')}</p>
+        <label className="settings-switch">
+          <input
+            type="checkbox"
+            checked={mergeScope === 'clip'}
+            onChange={e =>
+              updateConfig({
+                mergeScope: e.target.checked ? 'clip' : 'global',
+              })
+            }
+          />
+          <span className="settings-switch__track" aria-hidden="true">
+            <span className="settings-switch__knob" />
+          </span>
+          <span className="settings-switch__label">
+            {t('settings.mergeScopeClip')}
+            <small>
+              {t(
+                mergeScope === 'clip'
+                  ? 'settings.mergeScopeClipHint'
+                  : 'settings.mergeScopeGlobalHint',
+              )}
+            </small>
+          </span>
+        </label>
+      </div>
       <SliderSetting
         label={t('settings.silenceThreshold')}
         hint={t('settings.silenceHint')}
