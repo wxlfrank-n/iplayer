@@ -14,6 +14,7 @@ import './LanguageSelect.css';
 const OPTION_LABELS: Record<LocaleId, string> = {
   en: 'English',
   zh: '中文',
+  no: 'Norsk',
 };
 
 interface LanguageSelectProps {

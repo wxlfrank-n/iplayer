@@ -24,6 +24,7 @@ describe('LanguageSelect', () => {
     expect(screen.getAllByRole('option').map(o => o.textContent)).toEqual([
       'English',
       '中文',
+      'Norsk',
     ]);
   });
 
@@ -38,21 +39,43 @@ describe('LanguageSelect', () => {
     );
   });
 
+  it('reports selection of Norwegian', () => {
+    const onChange = vi.fn();
+    render(<LanguageSelect value="en" onChange={onChange} label="Language" />);
+    fireEvent.click(screen.getByRole('button'));
+    fireEvent.click(screen.getByText('Norsk'));
+    expect(onChange).toHaveBeenCalledWith('no');
+    expect(screen.getByRole('button').getAttribute('aria-expanded')).toBe(
+      'false',
+    );
+  });
+
   it('moves the highlight with the arrow keys and selects on Enter', () => {
     const onChange = vi.fn();
     render(<LanguageSelect value="en" onChange={onChange} label="Language" />);
     const button = screen.getByRole('button');
-    fireEvent.keyDown(button, {key: 'ArrowDown'});
-    fireEvent.keyDown(button, {key: 'ArrowDown'});
+    fireEvent.keyDown(button, {key: 'ArrowDown'}); // open
+    fireEvent.keyDown(button, {key: 'ArrowDown'}); // move to zh
     fireEvent.keyDown(button, {key: 'Enter'});
     expect(onChange).toHaveBeenCalledWith('zh');
+  });
+
+  it('moves highlight through all locales with arrow keys', () => {
+    const onChange = vi.fn();
+    render(<LanguageSelect value="en" onChange={onChange} label="Language" />);
+    const button = screen.getByRole('button');
+    fireEvent.keyDown(button, {key: 'ArrowDown'}); // open
+    fireEvent.keyDown(button, {key: 'ArrowDown'}); // zh
+    fireEvent.keyDown(button, {key: 'ArrowDown'}); // no
+    fireEvent.keyDown(button, {key: 'Enter'});
+    expect(onChange).toHaveBeenCalledWith('no');
   });
 
   it('closes on Escape', () => {
     render(<LanguageSelect value="en" onChange={() => {}} label="Language" />);
     const button = screen.getByRole('button');
     fireEvent.click(button);
-    expect(screen.getAllByRole('option')).toHaveLength(2);
+    expect(screen.getAllByRole('option')).toHaveLength(3);
     fireEvent.keyDown(button, {key: 'Escape'});
     expect(screen.queryByRole('option')).toBeNull();
   });

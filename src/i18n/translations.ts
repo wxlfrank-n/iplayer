@@ -154,7 +154,160 @@ export const en = {
   },
 
   errorBoundary: {
-    crashed: 'Something went wrong',
+    crashed: 'Noe gikk galt',
+  },
+};
+
+export const no: Messages = {
+  common: {
+    close: 'Lukk',
+  },
+
+  player: {
+    play: 'Spill av',
+    pause: 'Pause',
+    backToStart: 'Gå til start',
+    skipToEnd: 'Gå til slutt',
+    backSeconds: 'Gå tilbake {seconds} sekunder',
+    forwardSeconds: 'Gå fremover {seconds} sekunder',
+    backSecondsShort: 'Tilbake {seconds}s',
+    forwardSecondsShort: 'Fremover {seconds}s',
+  },
+
+  actions: {
+    playlist: 'Avspillingsliste',
+    settings: 'Innstillinger',
+    more: 'Mer',
+  },
+
+  nowPlaying: {
+    noTrack: 'Ingen lÃ¥t valgt',
+    addMusic: 'Legg til en MP3-fil for Ã¥ komme i gang',
+    mono: 'Mono',
+    stereo: 'Stereo',
+  },
+
+  playlist: {
+    title: 'Avspillingsliste ({count})',
+    addTracks: 'Legg til lÃ¥ter',
+    close: 'Lukk avspillingsliste',
+  },
+
+  trackList: {
+    empty: 'Ingen lÃ¥ter ennÃ¥',
+    hint: 'Dra MP3-filer hit eller bruk knappen over',
+    removeTrack: 'Fjern lÃ¥t',
+  },
+
+  emptyState: {
+    title: 'Legg til en MP3-fil for Ã¥ komme i gang',
+    subtitle:
+      'Dra MP3-filer hvor som helst i dette vinduet, eller velg dem fra enheten din.',
+    addFiles: 'Legg til MP3-filer',
+  },
+
+  reps: {
+    title: 'Antall ganger en klipp repeteres nÃ¥r du klikker pÃ¥ den',
+    label: 'Repetisjoner:',
+    decrease: 'Reduser repetisjoner',
+    decreaseHint: 'Repeter hvert klipp fÃ¦rre ganger',
+    increase: 'Ãk repetisjoner',
+    increaseHint: 'Repeter hvert klipp flere ganger',
+  },
+
+  merge: {
+    increaseGap: 'SlÃ¥ sammen flere klipp',
+    increaseHint: 'Tillat lenger pauser mellom klipp',
+    decreaseGap: 'SlÃ¥ sammen fÃ¦rre klipp',
+    decreaseHint: 'Bare slÃ¥ sammen klipp med kortere pauser',
+    bubbleTitle: 'Klipp med pauser kortere enn denne slÃ¥s sammen',
+    rangeTitle: 'Klipp mindre enn {gap}s fra hverandre slÃ¥s sammen',
+    clipCount: '{count} klipp',
+    clipCountPlural: '{count} klipp',
+  },
+
+  clipLabel: {
+    split: 'Del klipp',
+    merge: 'SlÃ¥ sammen med naboklipp',
+  },
+
+  viewFlip: {
+    toStacked: 'Bytt til stakkvis visning',
+    toSingle: 'Bytt til enkelt-radvisning',
+    stacked: 'Stakkvis visning',
+    single: 'Enkelt-radvisning',
+  },
+
+  settings: {
+    title: 'Innstillinger',
+    close: 'Lukk innstillinger',
+    sectionsLabel: 'Innstillingsseksjoner',
+
+    tabAppearance: 'Utseende',
+    tabPlayback: 'Avspilling',
+    tabClips: 'Klippdeteksjon',
+
+    theme: 'Tema',
+    language: 'SprÃ¥k',
+
+    waveformView: 'BÃ¸lgevisning',
+    singleRow: 'Enkel rad',
+    stacked: 'Stakkvis',
+    singleRowHint: 'Vis bÃ¸lgen i en scrollbar rad som fÃ¸lger avspilling.',
+
+    skipBy: 'Hopp frem eller tilbake med',
+
+    repeatsPerClip: 'Repetisjoner per klipp',
+    repeatsHint:
+      'Velg hvor mange ganger et klipp repeteres nÃ¥r du klikker pÃ¥ det.',
+
+    showAdvanced: 'Vis avanserte kontroller',
+    showAdvancedHint:
+      'Vis hurtigkontroller for Ã¥ slÃ¥ sammen klipp og endre repetisjoner under bÃ¸lgen.',
+
+    silenceThreshold: 'Stilleterskel',
+    silenceHint:
+      'Styrer hvor stille lyd mÃ¥ vÃ¦re fÃ¸r den behandles som en pause. Lavere verdier oppdager bare stille pauser.',
+
+    analysisDetail: 'Deteksjonspresisjon',
+    analysisHint:
+      'Mindre verdier finner mer presise delpunkter men kan ta litt lenger Ã¥ prosessere.',
+
+    minClipLength: 'Minste klipplengde',
+    minClipLengthHint:
+      'Klipp kortere enn dette slÃ¥s automatisk sammen med et naboklipp.',
+
+    mergeScope: 'Omfang for slÃ¥ing sammen',
+    mergeScopeGlobal: 'Hele sporet',
+    mergeScopeClip: 'Valgt klipp',
+    mergeScopeHint:
+      'Velg om slÃ¥ing sammen og deling gjelder alle klipp eller bare det valgte.',
+    mergeScopeGlobalHint:
+      'En sammenslÃ¥ingsgap grupperer hvert klipp i sporet.',
+    mergeScopeClipHint:
+      'SlÃ¥ing sammen og deling pÃ¥virker bare det klippet du valgte.',
+
+    resetAll: 'Nullstill alle innstillinger',
+    changesLive: 'Endringer trer i kraft umiddelbart og lagres automatisk',
+  },
+
+  themes: {
+    dark: 'Skifer',
+    light: 'TÃ¥ke',
+    midnight: 'Midnatt',
+    paper: 'Himmel',
+    nova: 'Nova',
+    rose: 'Lysrosa',
+  },
+
+  app: {
+    skippedNonMp3: 'Hoppet over {count} fil fordi bare MP3-filer er støttet.',
+    skippedNonMp3Plural:
+      'Hoppet over {count} filer fordi bare MP3-filer er støttet.',
+  },
+
+  errorBoundary: {
+    crashed: 'Noe gikk galt',
   },
 };
 
@@ -333,7 +486,7 @@ type DeepKeys<T> = T extends string
 
 export type TranslationParams = Record<string, string | number>;
 
-const dictionaries: Record<string, Messages> = {en, zh};
+const dictionaries: Record<string, Messages> = {en, zh, no};
 
 export type LocaleId = keyof typeof dictionaries;
 
