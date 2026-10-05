@@ -36,7 +36,7 @@ export function EmptyState({onAddFiles}: EmptyStateProps) {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".mp3,audio/mpeg"
+          accept=".mp3,audio/mpeg,.wav,audio/wav,.ogg,audio/ogg,.m4a,audio/mp4,.flac,audio/flac,.webm,audio/webm"
           multiple
           onChange={e => {
             if (e.target.files) onAddFiles(e.target.files);

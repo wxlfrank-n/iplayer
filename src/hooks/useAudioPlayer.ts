@@ -364,9 +364,12 @@ export function useAudioPlayer(skipSeconds: number) {
   const addTracks = useCallback(
     (files: FileList, playAfter: boolean = false) => {
       const all = Array.from(files);
-      const mp3Files = all.filter(f => f.name.toLowerCase().endsWith('.mp3'));
-      const skipped = all.length - mp3Files.length;
-      const newTracks: Track[] = mp3Files.map(file => ({
+      const supported = ['.mp3', '.wav', '.ogg', '.m4a', '.flac', '.webm'];
+      const audioFiles = all.filter(f =>
+        supported.some(ext => f.name.toLowerCase().endsWith(ext)),
+      );
+      const skipped = all.length - audioFiles.length;
+      const newTracks: Track[] = audioFiles.map(file => ({
         id: crypto.randomUUID(),
         title: file.name.replace(/\.[^/.]+$/, ''),
         artist: 'Unknown Artist',

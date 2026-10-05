@@ -37,21 +37,21 @@ export const en = {
 
   playlist: {
     title: 'Playlist ({count})',
-    addTracks: 'Add tracks',
+    addTracks: 'Add audio files',
     close: 'Close playlist',
   },
 
   trackList: {
     empty: 'No tracks yet',
-    hint: 'Drop MP3 files here or use the button above',
+    hint: 'Drop audio files here or use the button above',
     removeTrack: 'Remove track',
   },
 
   emptyState: {
-    title: 'Add an MP3 file to get started',
+    title: 'Add an audio file to get started',
     subtitle:
-      'Drop MP3 files anywhere in this window, or choose them from your device.',
-    addFiles: 'Add MP3 files',
+      'Drop audio files anywhere in this window, or choose them from your device.',
+    addFiles: 'Add audio files',
   },
 
   reps: {
@@ -148,9 +148,10 @@ export const en = {
   },
 
   app: {
-    skippedNonMp3: 'Skipped {count} file because only MP3 files are supported.',
+    skippedNonMp3:
+      'Skipped {count} file because only supported audio formats are accepted.',
     skippedNonMp3Plural:
-      'Skipped {count} files because only MP3 files are supported.',
+      'Skipped {count} files because only supported audio formats are accepted.',
   },
 
   errorBoundary: {
@@ -182,28 +183,28 @@ export const no: Messages = {
 
   nowPlaying: {
     noTrack: 'Ingen lÃ¥t valgt',
-    addMusic: 'Legg til en MP3-fil for Ã¥ komme i gang',
+    addMusic: 'Legg til en lydfil for Ã¥ komme i gang',
     mono: 'Mono',
     stereo: 'Stereo',
   },
 
   playlist: {
     title: 'Avspillingsliste ({count})',
-    addTracks: 'Legg til lÃ¥ter',
+    addTracks: 'Legg til lydfiler',
     close: 'Lukk avspillingsliste',
   },
 
   trackList: {
     empty: 'Ingen lÃ¥ter ennÃ¥',
-    hint: 'Dra MP3-filer hit eller bruk knappen over',
+    hint: 'Dra lydfiler hit eller bruk knappen over',
     removeTrack: 'Fjern lÃ¥t',
   },
 
   emptyState: {
-    title: 'Legg til en MP3-fil for Ã¥ komme i gang',
+    title: 'Legg til en lydfil for Ã¥ komme i gang',
     subtitle:
-      'Dra MP3-filer hvor som helst i dette vinduet, eller velg dem fra enheten din.',
-    addFiles: 'Legg til MP3-filer',
+      'Dra lydfiler hvor som helst i dette vinduet, eller velg dem fra enheten din.',
+    addFiles: 'Legg til lydfiler',
   },
 
   reps: {
@@ -301,9 +302,10 @@ export const no: Messages = {
   },
 
   app: {
-    skippedNonMp3: 'Hoppet over {count} fil fordi bare MP3-filer er støttet.',
+    skippedNonMp3:
+      'Hoppet over {count} fil fordi bare støttede lydformater aksepteres.',
     skippedNonMp3Plural:
-      'Hoppet over {count} filer fordi bare MP3-filer er støttet.',
+      'Hoppet over {count} filer fordi bare støttede lydformater aksepteres.',
   },
 
   errorBoundary: {
@@ -335,7 +337,7 @@ export const zh: Messages = {
 
   nowPlaying: {
     noTrack: '未选择音频',
-    addMusic: '添加 MP3 文件开始使用',
+    addMusic: '添加音频文件开始使用',
     mono: '单声道',
     stereo: '立体声',
   },
@@ -348,14 +350,14 @@ export const zh: Messages = {
 
   trackList: {
     empty: '还没有添加音频',
-    hint: '将 MP3 文件拖到这里，或使用下方按钮添加',
+    hint: '将音频文件拖到这里，或使用下方按钮添加',
     removeTrack: '移除音频',
   },
 
   emptyState: {
-    title: '添加 MP3 文件开始使用',
-    subtitle: '将 MP3 文件拖到窗口中的任意位置，或从设备中选择文件。',
-    addFiles: '添加 MP3 文件',
+    title: '添加音频文件开始使用',
+    subtitle: '将音频文件拖到窗口中的任意位置，或从设备中选择文件。',
+    addFiles: '添加音频文件',
   },
 
   reps: {
@@ -446,8 +448,8 @@ export const zh: Messages = {
   },
 
   app: {
-    skippedNonMp3: '已跳过 {count} 个文件，目前仅支持 MP3 文件。',
-    skippedNonMp3Plural: '已跳过 {count} 个文件，目前仅支持 MP3 文件。',
+    skippedNonMp3: '已跳过 {count} 个文件，目前仅支持常见音频格式。',
+    skippedNonMp3Plural: '已跳过 {count} 个文件，目前仅支持常见音频格式。',
   },
 
   errorBoundary: {
