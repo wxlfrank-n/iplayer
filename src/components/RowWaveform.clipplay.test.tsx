@@ -22,9 +22,16 @@ function makeStore() {
   });
 }
 
-vi.mock('./ClipLabel', () => ({
-  ClipLabel: () => null,
-}));
+vi.mock('./ClipLabel', async importOriginal => {
+  // Stub the rendered label but keep the real props helper: it is pure and the
+  // view still has to call it.
+  const actual = await importOriginal<typeof import('./ClipLabel')>();
+
+  return {
+    ...actual,
+    ClipLabel: () => null,
+  };
+});
 vi.mock('./DancingLines', () => ({
   DancingLines: () => null,
 }));

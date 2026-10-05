@@ -1,11 +1,12 @@
-﻿import {memo, useEffect, useRef} from 'react';
+﻿import {memo, useRef} from 'react';
 import {Clips} from './Clips';
-import {ClipLabel} from './ClipLabel';
+import {ClipLabel, clipLabelProps} from './ClipLabel';
 import {DancingLines} from './DancingLines';
 import {WaveformCursor} from './WaveformCursor';
 import {WaveformCanvas} from './Waveform';
 import {type WaveformData} from '../hooks/useWaveform';
 import {useRowWaveformScroll, VB_W, VB_H} from '../hooks/useRowWaveformScroll';
+import {useClipPlayRequest} from '../hooks/useClipPlayRequest';
 import type {Clip as InitClipData} from '../utils/clips';
 import type {ClipPlayRequest} from '../types';
 import './RowWaveform.css';
@@ -99,21 +100,8 @@ export const RowWaveform = memo(
      arm its own playback context, so it reacts here instead of the parent
      reaching in through a handle.
      */
-    const handledPlayRequestRef = useRef(0);
+    useClipPlayRequest(clipPlayRequest, playClip);
 
-    useEffect(() => {
-      if (!clipPlayRequest) return;
-
-      if (handledPlayRequestRef.current === clipPlayRequest.nonce) return;
-
-      handledPlayRequestRef.current = clipPlayRequest.nonce;
-
-      playClip(
-        clipPlayRequest.clip.vStart,
-        clipPlayRequest.clip.vEnd,
-        clipPlayRequest.repetitions,
-      );
-    }, [clipPlayRequest, playClip]);
     const viewportLen = hsWinLenRef.current;
     const bufferLen = bufferLengthRef.current;
     const bufferScale = viewportLen > 0 ? bufferLen / viewportLen : 1;
@@ -212,24 +200,14 @@ export const RowWaveform = memo(
                     }}
                   >
                     <ClipLabel
-                      index={id}
-                      duration={c.vEnd - c.vStart}
-                      active={id === activeClip}
-                      canSplit={
-                        !playing &&
-                        !!c.children &&
-                        c.children.length > 1 &&
-                        c.expanded !== true
-                      }
-                      canMerge={
-                        !playing && (id > 0 || id < displayClips.length - 1)
-                      }
-                      onSplit={
-                        onSwipeClip ? () => onSwipeClip(id, 'up') : undefined
-                      }
-                      onMerge={
-                        onSwipeClip ? () => onSwipeClip(id, 'down') : undefined
-                      }
+                      {...clipLabelProps({
+                        id,
+                        clip: c,
+                        activeClip,
+                        clipCount: displayClips.length,
+                        playing,
+                        onSwipeClip,
+                      })}
                     />
                   </div>
                 )}

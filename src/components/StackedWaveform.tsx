@@ -13,21 +13,15 @@
 
 import {memo, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 
-import {ClipLabel} from './ClipLabel';
-import {Clips} from './Clips';
-import {WaveformCursor} from './WaveformCursor';
-import {WaveformCanvas} from './Waveform';
+import {StackRow, type StackedRow} from './StackRow';
 
 import {type ClipPlayRequest, type WaveformData} from '../types';
 import type {Clip as InitClipData} from '../utils/clips';
 import {startFrameLoop} from '../utils/raf';
 import {addListener} from '../utils/listener';
+import {useClipPlayRequest} from '../hooks/useClipPlayRequest';
 import './StackedWaveform.css';
 import {getWindowSecs} from '../utils/rowWaveform';
-
-const VB_W = 1000;
-const VB_H = 200;
-const PAD = 4;
 
 const ROW_H = 64;
 const ROW_GAP = 4;
@@ -67,16 +61,6 @@ interface StackedWaveformProps {
   clipPlayRequest?: ClipPlayRequest;
 }
 
-type StackedRow = {
-  start: number;
-  end: number;
-
-  clips: {
-    clip: InitClipData;
-    idx: number;
-  }[];
-};
-
 type StackedRowEntry = {
   row: StackedRow;
   gi: number;
@@ -109,7 +93,6 @@ export const StackedWaveform = memo(
     getCurrentTime,
     clipPlayRequest,
   }: StackedWaveformProps) => {
-    const innerH = VB_H - PAD * 2;
     const scrollerRef = useRef<HTMLDivElement>(null);
     const [scrollerWidth, setScrollerWidth] = useState(0);
     /*
@@ -785,21 +768,7 @@ export const StackedWaveform = memo(
      that as data (`clipPlayRequest`); this view consumes it here rather than the
      parent reaching in through a handle.
      */
-    const handledPlayRequestRef = useRef(0);
-
-    useEffect(() => {
-      if (!clipPlayRequest) return;
-
-      if (handledPlayRequestRef.current === clipPlayRequest.nonce) return;
-
-      handledPlayRequestRef.current = clipPlayRequest.nonce;
-
-      stackedPlayClip(
-        clipPlayRequest.clip.vStart,
-        clipPlayRequest.clip.vEnd,
-        clipPlayRequest.repetitions,
-      );
-    }, [clipPlayRequest, stackedPlayClip]);
+    useClipPlayRequest(clipPlayRequest, stackedPlayClip);
 
     /*
      * =========================================================
@@ -825,137 +794,28 @@ export const StackedWaveform = memo(
         <div className="stacked-waveform__pages">
           {pagedRows.map((page, pageIndex) => (
             <div key={pageIndex} className="stacked-waveform__page">
-              {page.map(({row, gi}) => {
-                const rowStart = row.start;
-
-                const rowLen = Math.max(windowSecs, row.end - row.start);
-
-                const getPlayedPct = () =>
-                  Math.max(
-                    0,
-                    Math.min(1, (getCurrentTime() - rowStart) / rowLen),
-                  );
-
-                const getCursorPct = () =>
-                  Math.min(getPlayedPct(), (row.end - rowStart) / rowLen);
-
-                const isLastRow = row.end >= waveform.duration - 1e-6;
-
-                const showCursor =
-                  currentTime >= rowStart &&
-                  (currentTime < row.end ||
-                    (isLastRow && currentTime >= row.end - 1e-6));
-
-                return (
-                  <div
-                    key={gi}
-                    className="stacked-waveform__row"
-                    onClick={e => {
-                      /*
-                       * A horizontal page drag must
-                       * never become a seek.
-                       */
-                      if (suppressRowClickRef.current) {
-                        suppressRowClickRef.current = false;
-
-                        return;
-                      }
-
-                      if (clipPlayActive) {
-                        return;
-                      }
-
-                      const rect = e.currentTarget.getBoundingClientRect();
-
-                      const f = Math.max(
-                        0,
-                        Math.min(1, (e.clientX - rect.left) / rect.width),
-                      );
-
-                      handleRowSeek(rowStart + f * rowLen);
-                    }}
-                  >
-                    <WaveformCanvas
-                      className="stacked-waveform__svg"
-                      data={waveform.data}
-                      sampleRate={waveform.sampleRate}
-                      window={{
-                        windowStartSec: rowStart,
-
-                        windowLen: rowLen,
-
-                        innerH,
-
-                        vbW: VB_W,
-
-                        vbH: VB_H,
-                      }}
-                      contentEndSec={row.end}
-                    />
-
-                    <div className="stacked-waveform__clip-layer">
-                      <Clips
-                        clips={row.clips.map(({clip}) => clip)}
-                        window={{
-                          windowStartSec: rowStart,
-
-                          windowLen: rowLen,
-
-                          innerH,
-
-                          vbW: VB_W,
-
-                          vbH: VB_H,
-                        }}
-                        onPlayRange={stackedPlayClip}
-                        repetitions={repetitions}
-                        playing={playing}
-                        onStopPlayback={onStopPlayback}
-                        activeClip={activeClip}
-                        onActivate={onActiveClipChange}
-                        onSwipe={onSwipeClip}
-                        getIdx={(_clip, i) => row.clips[i].idx}
-                        renderLabel={(id, clip) => (
-                          <ClipLabel
-                            key={`lbl-${id}`}
-                            index={id}
-                            duration={clip.vEnd - clip.vStart}
-                            active={id === activeClip}
-                            canSplit={
-                              !playing &&
-                              !!clip.children &&
-                              clip.children.length > 1 &&
-                              clip.expanded !== true
-                            }
-                            canMerge={
-                              !playing &&
-                              (id > 0 || id < displayClips.length - 1)
-                            }
-                            onSplit={
-                              onSwipeClip
-                                ? () => onSwipeClip(id, 'up')
-                                : undefined
-                            }
-                            onMerge={
-                              onSwipeClip
-                                ? () => onSwipeClip(id, 'down')
-                                : undefined
-                            }
-                          />
-                        )}
-                      />
-                    </div>
-
-                    {showCursor && (
-                      <WaveformCursor
-                        view="stacked"
-                        getPlayedPct={getCursorPct}
-                        getCurrentTime={getCurrentTime}
-                      />
-                    )}
-                  </div>
-                );
-              })}
+              {page.map(({row, gi}) => (
+                <StackRow
+                  key={gi}
+                  row={row}
+                  gi={gi}
+                  waveform={waveform}
+                  windowSecs={windowSecs}
+                  currentTime={currentTime}
+                  playing={playing}
+                  clipPlayActive={clipPlayActive}
+                  clipCount={displayClips.length}
+                  activeClip={activeClip}
+                  repetitions={repetitions}
+                  onStopPlayback={onStopPlayback}
+                  onActivate={onActiveClipChange}
+                  onSwipeClip={onSwipeClip}
+                  onPlayRange={stackedPlayClip}
+                  onSeek={handleRowSeek}
+                  getCurrentTime={getCurrentTime}
+                  suppressClickRef={suppressRowClickRef}
+                />
+              ))}
 
               {Array.from({
                 length: Math.max(0, rowsPerPage - page.length),

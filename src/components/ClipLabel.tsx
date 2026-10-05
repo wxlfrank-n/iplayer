@@ -13,9 +13,10 @@
 
 import {memo} from 'react';
 import {useT} from '../i18n';
+import type {Clip} from '../utils/clips';
 import './ClipLabel.css';
 
-interface ClipLabelProps {
+export interface ClipLabelProps {
   index: number;
   duration: number;
   active: boolean;
@@ -23,6 +24,56 @@ interface ClipLabelProps {
   canMerge: boolean;
   onSplit?: () => void;
   onMerge?: () => void;
+}
+
+interface ClipLabelState {
+  /** Display index of the clip the label belongs to. */
+  id: number;
+  clip: Clip;
+  /** Currently active clip index, used to highlight the label. */
+  activeClip: number;
+  /** Total number of displayed clips, used to detect a lone clip. */
+  clipCount: number;
+  playing: boolean;
+  /** Swipe handler; absent (or undefined) disables the split/merge actions. */
+  onSwipeClip?: (idx: number, direction: 'up' | 'down') => void;
+}
+
+/**
+ * Props for a `ClipLabel`, derived from the clip it describes.
+ *
+ * Both waveform views label their clips the same way and differ only in the
+ * element they wrap the label in, so the split/merge availability rules live
+ * here instead of being restated per view.
+ */
+export function clipLabelProps({
+  id,
+  clip,
+  activeClip,
+  clipCount,
+  playing,
+  onSwipeClip,
+}: ClipLabelState): ClipLabelProps {
+  return {
+    index: id,
+    duration: clip.vEnd - clip.vStart,
+    active: id === activeClip,
+
+    /*
+     * Only a merged group can be split back apart. `expanded` marks a clip the
+     * detector already produced, which is never a user-made merge.
+     */
+    canSplit:
+      !playing &&
+      !!clip.children &&
+      clip.children.length > 1 &&
+      clip.expanded !== true,
+
+    /* The outermost clip has no neighbor in one direction. */
+    canMerge: !playing && (id > 0 || id < clipCount - 1),
+    onSplit: onSwipeClip ? () => onSwipeClip(id, 'up') : undefined,
+    onMerge: onSwipeClip ? () => onSwipeClip(id, 'down') : undefined,
+  };
 }
 
 export const ClipLabel = memo(
