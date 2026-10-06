@@ -19,6 +19,9 @@ export const selectShowAdvancedControls = (s: RootState) =>
   s.config.showAdvancedControls ?? true;
 /** Whether a merge/split gesture applies to the whole track or one clip. */
 export const selectMergeScope = (s: RootState) => s.config.mergeScope ?? 'clip';
+/** Smallest piece a split may leave alone. */
+export const selectMinSplitPieceSec = (s: RootState) =>
+  s.config.minSplitPieceSec;
 
 // ---- player ----
 export const selectTracks = (s: RootState) => s.player.tracks;

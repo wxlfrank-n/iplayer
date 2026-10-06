@@ -119,6 +119,7 @@ export default function App() {
           blockMs: config.blockMs,
           silenceRatio: config.silenceRatio,
           minClipLength: config.minClipLength,
+          minSplitPieceSec: config.minSplitPieceSec,
         },
       ),
     [
@@ -126,6 +127,7 @@ export default function App() {
       config.blockMs,
       config.silenceRatio,
       config.minClipLength,
+      config.minSplitPieceSec,
     ],
   );
   useEffect(() => {

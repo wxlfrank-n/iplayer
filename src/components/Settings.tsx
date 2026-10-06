@@ -263,7 +263,8 @@ function PlaybackTab() {
 function ClipDetectionTab() {
   const {config, updateConfig} = useConfig();
   const t = useT();
-  const {blockMs, silenceRatio, minClipLength, mergeScope} = config;
+  const {blockMs, silenceRatio, minClipLength, minSplitPieceSec, mergeScope} =
+    config;
   return (
     <>
       <div className="settings-field">
@@ -334,6 +335,17 @@ function ClipDetectionTab() {
         step={0.05}
         unit="s"
         onChange={v => updateConfig({minClipLength: v})}
+      />
+      <SliderSetting
+        label={t('settings.minSplitPiece')}
+        hint={t('settings.minSplitPieceHint')}
+        presets={[0.05, 0.1, 0.2, 0.3]}
+        value={minSplitPieceSec}
+        min={CONFIG_RANGES.minSplitPieceSec.min}
+        max={CONFIG_RANGES.minSplitPieceSec.max}
+        step={0.05}
+        unit="s"
+        onChange={v => updateConfig({minSplitPieceSec: v})}
       />
     </>
   );

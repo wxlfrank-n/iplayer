@@ -30,10 +30,18 @@ export interface SplitOptions {
   /** A block whose peak is <= this ratio of the track peak counts as silence. */
   silenceRatio: number;
   /**
-   * Shortest clip to keep after splitting, in seconds. Runs shorter than this
-   * are merged into a neighbor when the separating silence is small.
+   * Minimum clip length, in seconds, that `getInitClipData` *attempts* to
+   * achieve by merging short runs into neighbors. Not a guarantee: a lone
+   * short run, runs that only clear `mustMergeThan`, and the unmerged fallback
+   * in `findMinMergeGap` can all leave final clips shorter than this.
    */
   minClipLength: number;
+  /**
+   * Smallest piece a clip may be left alone as, in seconds. Detection merges
+   * any run below this with a neighbor no matter what surrounds it (passed
+   * through as `mustMergeThan`), so nothing this short survives on its own.
+   */
+  minSplitPieceSec: number;
 }
 
 export interface InitClipData {
@@ -117,7 +125,11 @@ export function getInitClipData(
       clipStartBlock = -1;
     }
   }
-  clips = mergeClipsByConfig(clips, options.minClipLength, 0.1);
+  clips = mergeClipsByConfig(
+    clips,
+    options.minClipLength,
+    options.minSplitPieceSec,
+  );
   expandClips(clips, audioDuration);
   const gaps = getClipGaps(clips);
   return findMinMergeGap(clips, gaps, options.minClipLength);
@@ -239,24 +251,65 @@ function asGroup(clips: Clip[]): Clip {
 }
 
 /**
+ * Smallest piece a split gesture is allowed to leave behind.
+ *
+ * A boundary is skipped when either resulting side would still be shorter than
+ * this: gaps between two sub-minimum clips, or gaps where a sub-minimum clip's
+ * accumulated side of the track is itself still short. Both merge scopes honor
+ * this when picking the gap to cut at.
+ */
+export const MIN_SPLIT_PIECE_SEC = 0.1;
+
+/**
  * Split a merged `clip` at its largest gap between consecutive children.
  *
  * Returns exactly two pieces plus the gap they were split at, or `null` when
- * `clip` is not a merged group. The gap is only reported so callers can keep
- * the merge slider pointed at the boundary that was used -- the split itself
- * never depends on a threshold.
+ * `clip` is not a merged group (or, with `minPieceSec`, when no gap is a valid
+ * boundary). The gap is only reported so callers can keep the merge slider
+ * pointed at the boundary that was used -- the split itself never depends on a
+ * threshold.
+ *
+ * With `minPieceSec > 0`, a gap is skipped when either side of the cut would
+ * come out shorter than the minimum:
+ *   1. both bordering clips are sub-minimum,
+ *   2. the left clip is sub-minimum and the accumulated piece from the first
+ *      child through it is still short,
+ *   3. the right clip is sub-minimum and the accumulated piece from it through
+ *      the last child is still short.
  */
 export function splitClipAtLargestGap(
   clip: Clip,
+  minPieceSec = 0,
 ): {pieces: Clip[]; gap: number} | null {
   const children = rawLeaves(clip.children ?? []);
 
   if (children.length < 2) return null;
 
-  let splitAt = 1;
+  const longEnough = (child: Clip) => child.end - child.start >= minPieceSec;
+
+  let splitAt = -1;
   let largestGap = -Infinity;
 
   for (let i = 1; i < children.length; i++) {
+    if (minPieceSec > 0) {
+      const left = children[i - 1];
+      const right = children[i];
+      const last = children[children.length - 1];
+
+      const leftStranded =
+        !longEnough(left) && left.end - children[0].start < minPieceSec;
+      const rightStranded =
+        !longEnough(right) && last.end - right.start < minPieceSec;
+
+      if (
+        (!longEnough(left) && !longEnough(right)) ||
+        leftStranded ||
+        rightStranded
+      ) {
+        continue;
+      }
+    }
+
     const gap = children[i].start - children[i - 1].end;
 
     // Strictly greater, so equal gaps split at the earliest boundary.
@@ -265,6 +318,8 @@ export function splitClipAtLargestGap(
       splitAt = i;
     }
   }
+
+  if (splitAt === -1) return null;
 
   return {
     pieces: [
@@ -384,6 +439,15 @@ export function findMinMergeGap(
   return result;
 }
 
+/**
+ * Merge short detected clips into a neighbor until every clip is either long
+ * enough, or too short to be left alone.
+ *
+ * A clip below `minClipLength` is a candidate; `mustMergeThan` matches
+ * `MIN_SPLIT_PIECE_SEC` so nothing smaller than the split rule would accept is
+ * ever left on its own. A clip that only clears `mustMergeThan` stays only
+ * when its nearest neighbor already cleared `minClipLength`.
+ */
 export function mergeClipsByConfig(
   clips: Clip[],
   minClipLength: number,

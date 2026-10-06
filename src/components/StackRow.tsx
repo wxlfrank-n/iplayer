@@ -199,6 +199,7 @@ export const StackRow = memo(
                   activeClip,
                   clipCount,
                   playing,
+                  minPieceSec: config.minSplitPieceSec,
                   onSwipeClip,
                 })}
               />

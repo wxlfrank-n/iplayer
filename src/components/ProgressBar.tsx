@@ -28,6 +28,7 @@ import {
   selectRepetitions,
   selectShowAdvancedControls,
   selectMergeScope,
+  selectMinSplitPieceSec,
 } from '../store/selectors';
 
 import {updateConfig} from '../store/configSlice';
@@ -82,6 +83,8 @@ export function ProgressBar({
   const showAdvancedControls = useAppSelector(selectShowAdvancedControls);
 
   const mergeScope = useAppSelector(selectMergeScope);
+
+  const minSplitPieceSec = useAppSelector(selectMinSplitPieceSec);
 
   const {waveform, waveformStatus, clips, currentTime, minGap} = audio;
 
@@ -286,7 +289,13 @@ export function ProgressBar({
        * Swipe up:
        * split/unpack a virtually merged clip.
        */
-      const result = splitClip(clips, displayClips, idx, mergeScope);
+      const result = splitClip(
+        clips,
+        displayClips,
+        idx,
+        mergeScope,
+        minSplitPieceSec,
+      );
 
       if (!result) {
         return;
@@ -313,7 +322,7 @@ export function ProgressBar({
         requestClipPlayback(newActiveClip);
       }
     },
-    [clips, displayClips, mergeScope, requestClipPlayback],
+    [clips, displayClips, mergeScope, minSplitPieceSec, requestClipPlayback],
   );
 
   /*

@@ -23,6 +23,7 @@ describe('getInitClipData', () => {
     blockMs: 640,
     silenceRatio: 0.01,
     minClipLength: 0.3,
+    minSplitPieceSec: 0.1,
   };
 
   // Builds a buffer of 64-sample blocks (the block size in samples at the

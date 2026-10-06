@@ -13,7 +13,11 @@
 
 import {memo} from 'react';
 import {useT} from '../i18n';
-import type {Clip} from '../utils/clips';
+import {
+  MIN_SPLIT_PIECE_SEC,
+  splitClipAtLargestGap,
+  type Clip,
+} from '../utils/clips';
 import './ClipLabel.css';
 
 export interface ClipLabelProps {
@@ -35,6 +39,8 @@ interface ClipLabelState {
   /** Total number of displayed clips, used to detect a lone clip. */
   clipCount: number;
   playing: boolean;
+  /** Smallest piece a split may leave alone (defaults to MIN_SPLIT_PIECE_SEC). */
+  minPieceSec?: number;
   /** Swipe handler; absent (or undefined) disables the split/merge actions. */
   onSwipeClip?: (idx: number, direction: 'up' | 'down') => void;
 }
@@ -52,6 +58,7 @@ export function clipLabelProps({
   activeClip,
   clipCount,
   playing,
+  minPieceSec = MIN_SPLIT_PIECE_SEC,
   onSwipeClip,
 }: ClipLabelState): ClipLabelProps {
   return {
@@ -61,13 +68,14 @@ export function clipLabelProps({
 
     /*
      * Only a merged group can be split back apart. `expanded` marks a clip the
-     * detector already produced, which is never a user-made merge.
+     * detector already produced, which is never a user-made merge. Both merge
+     * scopes honor the same min-piece rule, so the group must have a boundary
+     * that leaves neither side shorter than the configured minimum.
      */
     canSplit:
       !playing &&
-      !!clip.children &&
-      clip.children.length > 1 &&
-      clip.expanded !== true,
+      clip.expanded !== true &&
+      splitClipAtLargestGap(clip, minPieceSec) !== null,
 
     /* The outermost clip has no neighbor in one direction. */
     canMerge: !playing && (id > 0 || id < clipCount - 1),

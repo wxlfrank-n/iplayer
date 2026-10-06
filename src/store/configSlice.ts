@@ -6,8 +6,13 @@
  * - waveformView: Waveform display mode ("stacked" or "horizontal")
  * - blockMs: Silence-detection block size in milliseconds (default: 12)
  * - silenceRatio: Silence cutoff as a ratio of the track peak (default: 0.01)
- * - minClipLength: Shortest clip to keep after silence splitting (default: 0.3).
- *   Clips shorter than this are folded into a neighbor when the gap is small.
+ * - minClipLength: Minimum clip length detection attempts to achieve by
+ *   merging short runs into neighbors (default: 0.3). Not a guarantee: a lone
+ *   short clip may survive, and the unmerged fallback can also leave shorter
+ *   clips.
+ * - minSplitPieceSec: Smallest piece a clip may be left alone as after a
+ *   split, and the floor detection also merges short runs up to (default: 0.1,
+ *   see `MIN_SPLIT_PIECE_SEC`).
  * - repetitions: How many times a clicked clip is repeated (default: 3).
  * - showAdvancedControls: Whether the clip toolbar (merge gap + repeat
  *   controls) is shown below the waveform (default: true).
@@ -26,6 +31,7 @@ import type {MergeScope, WaveformView} from '../types';
 import type {ThemeId} from '../themes';
 import {DEFAULT_THEME, THEME_IDS} from '../themes';
 import {isLocale, type LocaleId} from '../i18n/translations';
+import {MIN_SPLIT_PIECE_SEC} from '../utils/clips';
 
 const STORAGE_KEY = 'Listeenoop_config';
 
@@ -41,6 +47,7 @@ interface ConfigState {
   blockMs: number;
   silenceRatio: number;
   minClipLength: number;
+  minSplitPieceSec: number;
   repetitions: number;
   showAdvancedControls: boolean;
   mergeScope: MergeScope;
@@ -54,6 +61,7 @@ export const DEFAULT_CONFIG: ConfigState = {
   blockMs: 12,
   silenceRatio: 0.01,
   minClipLength: 0.3,
+  minSplitPieceSec: MIN_SPLIT_PIECE_SEC,
   repetitions: 3,
   showAdvancedControls: false,
   mergeScope: 'clip',
@@ -67,6 +75,7 @@ export const CONFIG_RANGES = {
   blockMs: {min: 2, max: 64},
   silenceRatio: {min: 0.005, max: 0.1},
   minClipLength: {min: 0.2, max: 1},
+  minSplitPieceSec: {min: 0.01, max: 0.5},
   repetitions: {min: 1, max: 20},
 } as const;
 

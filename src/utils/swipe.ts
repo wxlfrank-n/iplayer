@@ -1,6 +1,7 @@
 import {
   mergeClipPair,
   mergeClipsByGap,
+  MIN_SPLIT_PIECE_SEC,
   splitClipAtLargestGap,
   type Clip,
 } from './clips';
@@ -47,18 +48,21 @@ export interface ClipSplitResult {
  * same gap and regroups the whole track, so other groups can break up too.
  *
  * Either way the chosen boundary is the largest gap between children, so both
- * scopes agree on where to cut.
+ * scopes agree on where to cut. Both scopes skip gaps that would leave either
+ * side shorter than the configured `minPieceSec` floor, and the gesture fails
+ * when none are left.
  */
 export function splitClip(
   clips: Clip[],
   displayClips: Clip[],
   idx: number,
   scope: MergeScope = 'clip',
+  minPieceSec: number = MIN_SPLIT_PIECE_SEC,
 ): ClipSplitResult | null {
   const clip = displayClips[idx];
   if (!clip) return null;
 
-  const split = splitClipAtLargestGap(clip);
+  const split = splitClipAtLargestGap(clip, minPieceSec);
 
   if (!split) return null;
 

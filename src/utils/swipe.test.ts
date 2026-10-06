@@ -161,6 +161,146 @@ describe('splitClip', () => {
     expect(result.clips![3].children).toEqual([clips[4], clips[5]]);
     expect(result.activeClip).toBe(1);
   });
+
+  it('skips a gap between two sub-0.1s pieces in clip scope', () => {
+    /*
+     * Rule 1: a gap whose two bordering clips are each shorter than
+     * MIN_SPLIT_PIECE_SEC is not a candidate, even when the accumulated pieces
+     * on both sides would be long enough. So the 3.44 silence between the two
+     * 0.01s clips is ignored and the split lands on the next largest gap.
+     */
+    const clip: Clip = {
+      start: 0,
+      end: 7,
+      vStart: 0,
+      vEnd: 7,
+      children: [mk(0, 1), mk(1.05, 1.06), mk(4.5, 4.51), mk(6, 7)],
+    };
+
+    const result = splitClip([clip], [clip], 0, 'clip')!;
+
+    expect(bounds(result.clips!)).toEqual([
+      [0, 4.51],
+      [6, 7],
+    ]);
+    expect(result.activeClip).toBe(0);
+  });
+
+  it('skips a gap stranding a leading sub-0.1s piece in clip scope', () => {
+    /*
+     * Rule 2: the gap right after the 0.05s leading clip is not a candidate --
+     * the accumulated piece from the first child to that clip is still only
+     * 0.05s. The split falls back to the gap at the other end.
+     */
+    const clip: Clip = {
+      start: 0,
+      end: 4,
+      vStart: 0,
+      vEnd: 4,
+      children: [mk(0, 0.05), mk(1, 2), mk(3, 4)],
+    };
+
+    const result = splitClip([clip], [clip], 0, 'clip')!;
+
+    expect(bounds(result.clips!)).toEqual([
+      [0, 2],
+      [3, 4],
+    ]);
+    expect(result.activeClip).toBe(0);
+  });
+
+  it('skips a gap stranding a trailing sub-0.1s piece in clip scope', () => {
+    /*
+     * Rule 3: the gap just before the 0.01s trailing clip is not a candidate --
+     * the accumulated piece from that clip to the last child is still only
+     * 0.01s. The split falls back to the gap at the other end.
+     */
+    const clip: Clip = {
+      start: 0,
+      end: 4,
+      vStart: 0,
+      vEnd: 4,
+      children: [mk(0, 1), mk(2, 3), mk(3.02, 3.03)],
+    };
+
+    const result = splitClip([clip], [clip], 0, 'clip')!;
+
+    expect(bounds(result.clips!)).toEqual([
+      [0, 1],
+      [2, 3.03],
+    ]);
+    expect(result.activeClip).toBe(0);
+  });
+
+  it('allows a piece of exactly MIN_SPLIT_PIECE_SEC in clip scope', () => {
+    // 0.1s is not *less than* the minimum, so both surrounding gaps stay valid.
+    const clip: Clip = {
+      start: 0,
+      end: 4,
+      vStart: 0,
+      vEnd: 4,
+      children: [mk(0, 1), mk(1.15, 1.25), mk(3, 4)],
+    };
+
+    const result = splitClip([clip], [clip], 0, 'clip')!;
+
+    expect(bounds(result.clips!)).toEqual([
+      [0, 1.25],
+      [3, 4],
+    ]);
+  });
+
+  it('returns null when the only gap strands a sub-0.1s piece', () => {
+    // The single gap leaves the 0.05s leading clip alone, so no boundary works.
+    const clip: Clip = {
+      start: 0,
+      end: 3,
+      vStart: 0,
+      vEnd: 3,
+      children: [mk(0, 0.05), mk(2, 3)],
+    };
+
+    expect(splitClip([clip], [clip], 0, 'clip')).toBeNull();
+  });
+
+  it('applies the 0.1s piece rule to the global merge gap too', () => {
+    /*
+     * The 0.01s middle clip does not strand a piece -- the accumulated piece
+     * to its left is 1.06s -- so the largest gap is still a valid boundary and
+     * the merge level sits just below it.
+     */
+    const clip: Clip = {
+      start: 0,
+      end: 5.5,
+      vStart: 0,
+      vEnd: 5.5,
+      children: [mk(0, 1), mk(1.05, 1.06), mk(5, 5.5)],
+    };
+
+    const result = splitClip([clip], [clip], 0, 'global')!;
+
+    expect(result.mergeGap).toBeCloseTo(3.939999, 6);
+  });
+
+  it('skips a stranding gap when setting the global merge gap', () => {
+    /*
+     * The largest gap (5.95) sits next to the 0.05s leading clip and would
+     * leave it alone on one side, so global scope must not set the merge level
+     * just below it. It falls to the gap that keeps both sides at least
+     * MIN_SPLIT_PIECE_SEC.
+     */
+    const clip: Clip = {
+      start: 0,
+      end: 8,
+      vStart: 0,
+      vEnd: 8,
+      children: [mk(0, 0.05), mk(6, 6.5), mk(7, 8)], // 5.95 silence > 0.5
+    };
+
+    const result = splitClip([clip], [clip], 0, 'global')!;
+
+    expect(result.mergeGap).toBeCloseTo(0.499999, 6);
+  });
 });
 
 describe('mergeClips', () => {
