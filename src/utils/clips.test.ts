@@ -6,6 +6,7 @@ import {
   mergeClipsByGap,
   mergeClipsByGapScoped,
   getInitClipData,
+  splitClipAtLargestGap,
   type Clip,
 } from './clips';
 
@@ -281,6 +282,59 @@ describe('mergeClipsByGap', () => {
     const [parent] = mergeClipsByGap([a, b, c], 0.5);
     expect(parent.vStart).toBe(0);
     expect(parent.vEnd).toBe(3.5);
+  });
+});
+
+describe('splitClipAtLargestGap', () => {
+  it('returns null for a clip without children', () => {
+    expect(splitClipAtLargestGap(mk(0, 1))).toBeNull();
+  });
+
+  it('returns null for a group with fewer than two children', () => {
+    expect(
+      splitClipAtLargestGap({...mk(0, 1), children: [mk(0, 1)]}),
+    ).toBeNull();
+  });
+
+  it('cuts a group at its largest child gap into two pieces', () => {
+    const a = mk(0, 1);
+    const b = mk(2, 3);
+    const c = mk(4, 5);
+    const result = splitClipAtLargestGap({...mk(0, 5), children: [a, b, c]});
+    expect(result?.gap).toBe(1);
+    expect(result?.pieces).toHaveLength(2);
+    expect(result?.pieces[0].children).toBeUndefined();
+    expect(result?.pieces[0]).toBe(a);
+    expect(result?.pieces[1].children).toEqual([b, c]);
+  });
+
+  it('does not tear apart a nested group: splits at its direct children', () => {
+    /*
+     * A detector-merged subgroup `bc` (expanded into the surrounding silence,
+     * with unexpanded raw children) sits inside a larger display group. The
+     * split must cut between the direct children of the display group and
+     * leave `bc` intact, otherwise the pieces lose the subgroup's expansion.
+     */
+    const a = {...mk(0, 1), vStart: 0, vEnd: 1.2, expanded: true};
+    const b = mk(1, 1.5);
+    const c = mk(1.5, 2);
+    const bc = {
+      start: 1,
+      end: 2,
+      vStart: 0.9,
+      vEnd: 2.1,
+      expanded: true,
+      children: [b, c],
+    };
+    const parent = {...mk(0, 2), children: [a, bc]};
+
+    const result = splitClipAtLargestGap(parent);
+
+    expect(result?.gap).toBe(0);
+    expect(result?.pieces).toEqual([a, bc]);
+    expect(result?.pieces[1].expanded).toBe(true);
+    expect(result?.pieces[1].vStart).toBeCloseTo(0.9, 6);
+    expect(result?.pieces[1].vEnd).toBeCloseTo(2.1, 6);
   });
 });
 

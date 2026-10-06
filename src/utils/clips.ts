@@ -218,20 +218,6 @@ export function getClipGaps(clips: Clip[]): number[] {
 }
 
 /**
- * The ungrouped clips inside `clips`, recursively.
- *
- * `mergeClipsByGap` nests every merge it performs, so a displayed group can
- * contain other groups. Regrouping has to start from these leaves: merging the
- * groups themselves would keep an already-merged boundary intact no matter how
- * low the gap went.
- */
-function rawLeaves(clips: Clip[]): Clip[] {
-  return clips.flatMap(clip =>
-    clip.children ? rawLeaves(clip.children) : [clip],
-  );
-}
-
-/**
  * Wrap `clips` as a single group, or return them as-is when there is only one.
  *
  * A group of one would be unsplittable, so single clips stay single clips.
@@ -281,7 +267,7 @@ export function splitClipAtLargestGap(
   clip: Clip,
   minPieceSec = 0,
 ): {pieces: Clip[]; gap: number} | null {
-  const children = rawLeaves(clip.children ?? []);
+  const children = clip.children ?? [];
 
   if (children.length < 2) return null;
 
@@ -341,8 +327,9 @@ export function splitClipAtLargestGap(
  * grouping established elsewhere on the track survives the gesture instead of
  * being reverted to the detector's output.
  *
- * The focused run is regrouped from its ungrouped leaves (see `rawLeaves`) so
- * that `mergeGap` can both create and break merges. `focus` is matched by
+ * The focused run is regrouped as currently displayed, so `mergeGap` only
+ * creates merges between the run's existing groups. Already-merged groups are
+ * treated as atomic units and never broken back apart. `focus` is matched by
  * containment, so passing either a displayed group or one of the clips inside
  * it selects the same region.
  *
@@ -368,12 +355,10 @@ export function mergeClipsByGapScoped(
 
   const run = displayClips.slice(start, lastIdx + 1);
 
-  const leaves = rawLeaves(run);
-
   // Nothing to regroup: the run is already a single unmerged clip.
-  if (leaves.length < 2) return displayClips;
+  if (run.length < 2) return displayClips;
 
-  const merged = mergeClipsByGap(leaves, mergeGap);
+  const merged = mergeClipsByGap(run, mergeGap);
 
   return [
     ...displayClips.slice(0, start),
