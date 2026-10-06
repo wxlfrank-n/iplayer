@@ -443,6 +443,19 @@ export const StackedWaveform = memo(
           return;
         }
 
+        /*
+         * A move with no button held cannot be a gesture: it is the pointer
+         * gliding over the scroller, possibly right after a clip tap whose
+         * pointerup was consumed by Clip and never reached `finishPointerDrag`
+         * (so `dragRef` is still set). Abandon the gesture so this stray move
+         * cannot be mistaken for a horizontal page drag.
+         */
+        if (e.buttons === 0) {
+          dragRef.current = null;
+
+          return;
+        }
+
         const dx = e.clientX - drag.startX;
 
         const dy = e.clientY - drag.startY;

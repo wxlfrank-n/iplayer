@@ -48,6 +48,13 @@ function setup(initialTime = 0) {
   (HTMLElement.prototype as unknown as {scrollTo: typeof scrollTo}).scrollTo =
     scrollTo;
 
+  const setPointerCapture = vi.fn();
+  (
+    HTMLElement.prototype as unknown as {
+      setPointerCapture: typeof setPointerCapture;
+    }
+  ).setPointerCapture = setPointerCapture;
+
   const onSeek = vi.fn();
   const props: React.ComponentProps<typeof StackedWaveform> = {
     waveform,
@@ -83,7 +90,7 @@ function setup(initialTime = 0) {
       </Provider>,
     );
   };
-  return {scrollTo, rerender, scroller, onSeek};
+  return {scrollTo, setPointerCapture, rerender, scroller, onSeek};
 }
 
 beforeEach(() => {
@@ -259,5 +266,56 @@ describe('stacked waveform paged auto-advance', () => {
     fireEvent.click(scroller.querySelector('.stacked-waveform__row')!);
 
     expect(onSeek).not.toHaveBeenCalled();
+  });
+
+  it('does not start a page drag from a buttonless move after a clip tap', () => {
+    const {scrollTo, setPointerCapture, scroller} = setup(0);
+
+    const clip = scroller.querySelector('.waveform-clip')!;
+
+    // Tap the clip once, then tap it again. Clip swallows pointerup (so the
+    // scroller's dragRef is left dangling) and stops the clip on the repeat.
+    fireEvent.pointerDown(clip, {
+      pointerId: 1,
+      button: 0,
+      buttons: 1,
+      clientX: 100,
+      clientY: 50,
+    });
+    fireEvent.pointerUp(clip, {
+      pointerId: 1,
+      button: 0,
+      buttons: 0,
+      clientX: 100,
+      clientY: 50,
+    });
+    fireEvent.pointerDown(clip, {
+      pointerId: 1,
+      button: 0,
+      buttons: 1,
+      clientX: 100,
+      clientY: 50,
+    });
+    fireEvent.pointerUp(clip, {
+      pointerId: 1,
+      button: 0,
+      buttons: 0,
+      clientX: 100,
+      clientY: 50,
+    });
+
+    scrollTo.mockClear();
+    setPointerCapture.mockClear();
+
+    // A plain mouse glide (no buttons pressed) moves far horizontally. It must
+    // not be mistaken for a horizontal page drag.
+    fireEvent.pointerMove(scroller, {
+      pointerId: 1,
+      clientX: 500,
+      clientY: 50,
+    });
+
+    expect(setPointerCapture).not.toHaveBeenCalled();
+    expect(scrollTo).not.toHaveBeenCalled();
   });
 });
