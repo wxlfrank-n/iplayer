@@ -16,6 +16,7 @@ import {ClipLabel, clipLabelProps} from './ClipLabel';
 import {Clips} from './Clips';
 import {WaveformCanvas} from './Waveform';
 import {WaveformCursor} from './WaveformCursor';
+import {useConfig} from '../hooks/useConfig';
 
 import type {WaveformData} from '../types';
 import type {Clip as InitClipData} from '../utils/clips';
@@ -88,6 +89,8 @@ export const StackRow = memo(
     getCurrentTime,
     suppressClickRef,
   }: StackRowProps) => {
+    const {config} = useConfig();
+    const theme = config.theme;
     const rowStart = row.start;
 
     const rowLen = Math.max(windowSecs, row.end - row.start);
@@ -109,6 +112,8 @@ export const StackRow = memo(
 
     const getCursorPct = () =>
       Math.min(getPlayedPct(), (row.end - rowStart) / rowLen);
+
+    const playedPct = getPlayedPct();
 
     const isLastRow = row.end >= waveform.duration - END_EPSILON;
 
@@ -151,8 +156,28 @@ export const StackRow = memo(
           sampleRate={waveform.sampleRate}
           window={rowWindow}
           contentEndSec={row.end}
+          theme={theme}
         />
-
+        <div
+          className="stacked-waveform__played"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            overflow: 'hidden',
+            pointerEvents: 'none',
+            clipPath: `inset(0 ${100 - playedPct * 100}% 0 0)`,
+          }}
+        >
+          <WaveformCanvas
+            className="stacked-waveform__svg stacked-waveform__svg--played"
+            data={waveform.data}
+            sampleRate={waveform.sampleRate}
+            window={rowWindow}
+            contentEndSec={row.end}
+            colorVar="--waveform-bar-played"
+            theme={theme}
+          />
+        </div>
         <div className="stacked-waveform__clip-layer">
           <Clips
             clips={row.clips.map(({clip}) => clip)}

@@ -12,8 +12,17 @@ interface WaveformCanvasProps {
   strokeWidth?: number;
   /** Overrides normal and silent waveform colors. */
   color?: string;
+  /**
+   * CSS custom property to read for the override color at draw time (e.g.
+   * `--waveform-bar-played`). Resolved inside `draw()` so theme changes
+   * apply — a value captured during render would be stale, because the
+   * ThemeProvider writes the new variables in its own effect afterwards.
+   */
+  colorVar?: string;
   /** Distance between waveform bars in CSS pixels. */
   barSpacing?: number;
+  /** Current theme ID to trigger redraw on theme change. */
+  theme?: string;
 }
 
 const MIN_BAR_PX = 2;
@@ -34,7 +43,9 @@ export const WaveformCanvas = memo(
     style,
     strokeWidth = 1,
     color,
+    colorVar,
     barSpacing = 3,
+    theme,
   }: WaveformCanvasProps) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const {
@@ -106,10 +117,14 @@ export const WaveformCanvas = memo(
       const scaleY = innerH / 2;
       const cs = getComputedStyle(canvas);
 
-      const baseColor =
-        color || cs.getPropertyValue('--waveform-bar').trim() || '#8f96a0';
-      const silentColor =
+      const override =
         color ||
+        (colorVar ? cs.getPropertyValue(colorVar).trim() : '') ||
+        undefined;
+      const baseColor =
+        override || cs.getPropertyValue('--waveform-bar').trim() || '#8f96a0';
+      const silentColor =
+        override ||
         cs.getPropertyValue('--waveform-bar-silent').trim() ||
         '#434a53';
 
@@ -195,7 +210,9 @@ export const WaveformCanvas = memo(
       contentEndSec,
       strokeWidth,
       color,
+      colorVar,
       barSpacing,
+      theme,
     ]);
 
     useEffect(() => {

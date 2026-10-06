@@ -145,6 +145,10 @@ export const en = {
     paper: 'Sky',
     nova: 'Nova',
     rose: 'Lilac',
+    qinghua: 'Qinghua',
+    zhusha: 'Zhusha',
+    yingluo: 'Yingluo',
+    norge: 'Norway',
   },
 
   app: {
@@ -300,6 +304,10 @@ export const no: Messages = {
     paper: 'Himmel',
     nova: 'Nova',
     rose: 'Lysrosa',
+    qinghua: 'Qinghua',
+    zhusha: 'Zhusha',
+    yingluo: 'Yingluo',
+    norge: 'Norge',
   },
 
   app: {
@@ -446,6 +454,10 @@ export const zh: Messages = {
     paper: '晴空',
     nova: '星辉',
     rose: '丁香',
+    qinghua: '青花瓷',
+    zhusha: '朱砂',
+    yingluo: '璎珞',
+    norge: '挪威',
   },
 
   app: {

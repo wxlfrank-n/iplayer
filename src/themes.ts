@@ -8,7 +8,17 @@
  * it is deepened so interactive elements stay readable.
  */
 
-export type ThemeId = 'dark' | 'light' | 'midnight' | 'paper' | 'rose' | 'nova';
+export type ThemeId =
+  | 'dark'
+  | 'light'
+  | 'midnight'
+  | 'paper'
+  | 'rose'
+  | 'nova'
+  | 'qinghua'
+  | 'zhusha'
+  | 'yingluo'
+  | 'norge';
 
 export interface Theme {
   label: string;
@@ -47,6 +57,8 @@ export interface Theme {
   accentDimRgb: string;
   /** Clip swipe hint icon color (pack/unpack affordance on the active clip). */
   clipSwipe: string;
+  /** Waveform bar color for the played portion. */
+  waveformBarPlayed: string;
 }
 
 export const THEMES: Record<ThemeId, Theme> = {
@@ -65,8 +77,9 @@ export const THEMES: Record<ThemeId, Theme> = {
     danger: '#ef5350',
     waveformBgTop: '#23272e',
     waveformBgMid: '#1c2026',
-    waveformBar: '#8f96a0',
+    waveformBar: '#5a6b8a',
     waveformBarSilent: '#434a53',
+    waveformBarPlayed: '#58a6ff',
     clipLabelBg: 'rgba(22, 25, 30, 0.72)',
     clipLabelText: '#e7eaee',
     clipLabelBorder: 'rgba(255, 255, 255, 0.16)',
@@ -91,8 +104,9 @@ export const THEMES: Record<ThemeId, Theme> = {
     danger: '#d64545',
     waveformBgTop: '#e7eaee',
     waveformBgMid: '#dbe0e6',
-    waveformBar: '#5b646e',
+    waveformBar: '#8a94b8',
     waveformBarSilent: '#b2bac2',
+    waveformBarPlayed: '#2f80ed',
     clipLabelBg: 'rgba(255, 255, 255, 0.72)',
     clipLabelText: '#171c21',
     clipLabelBorder: 'rgba(0, 0, 0, 0.10)',
@@ -117,8 +131,9 @@ export const THEMES: Record<ThemeId, Theme> = {
     danger: '#ff6b6b',
     waveformBgTop: '#14326e',
     waveformBgMid: '#0f2a5e',
-    waveformBar: '#9db9ff',
+    waveformBar: '#5a7fc8',
     waveformBarSilent: '#2f4d86',
+    waveformBarPlayed: '#4ad1dc',
     clipLabelBg: 'rgba(13, 39, 93, 0.72)',
     clipLabelText: '#d7e6ff',
     clipLabelBorder: 'rgba(255, 255, 255, 0.18)',
@@ -143,8 +158,9 @@ export const THEMES: Record<ThemeId, Theme> = {
     danger: '#c1293e',
     waveformBgTop: '#cfe4ff',
     waveformBgMid: '#c4dcfd',
-    waveformBar: '#1d4696',
+    waveformBar: '#6a9bd8',
     waveformBarSilent: '#8fb3ec',
+    waveformBarPlayed: '#2b74d8',
     clipLabelBg: 'rgba(235, 244, 255, 0.72)',
     clipLabelText: '#0b2a66',
     clipLabelBorder: 'rgba(0, 0, 0, 0.08)',
@@ -169,8 +185,9 @@ export const THEMES: Record<ThemeId, Theme> = {
     danger: '#ff5c7a',
     waveformBgTop: '#381f60',
     waveformBgMid: '#2f1b54',
-    waveformBar: '#d0b9ff',
+    waveformBar: '#8a7bd8',
     waveformBarSilent: '#5a4390',
+    waveformBarPlayed: '#b18cff',
     clipLabelBg: 'rgba(43, 24, 74, 0.72)',
     clipLabelText: '#f0e8ff',
     clipLabelBorder: 'rgba(255, 255, 255, 0.18)',
@@ -195,8 +212,9 @@ export const THEMES: Record<ThemeId, Theme> = {
     danger: '#b23b74',
     waveformBgTop: '#e4d7fe',
     waveformBgMid: '#dcccfd',
-    waveformBar: '#4a32a0',
+    waveformBar: '#8a7bd8',
     waveformBarSilent: '#b49dec',
+    waveformBarPlayed: '#7a52d6',
     clipLabelBg: 'rgba(245, 240, 255, 0.72)',
     clipLabelText: '#3a2390',
     clipLabelBorder: 'rgba(0, 0, 0, 0.08)',
@@ -205,6 +223,119 @@ export const THEMES: Record<ThemeId, Theme> = {
     accentRgb: '122, 82, 214',
     accentDimRgb: '95, 60, 191',
     clipSwipe: '#5f3cbf',
+  },
+
+  qinghua: {
+    label: 'Qinghua',
+    colorScheme: 'light',
+    bgPrimary: '#ffffff',
+    bgSecondary: '#f8faff',
+    bgTertiary: '#e8f0fe',
+    bgHover: '#d0e0fd',
+    bgPanel: '#fafcff',
+    textPrimary: '#001d4a',
+    textSecondary: '#003080',
+    textTertiary: '#4a6fc8',
+    border: '#8ab4f8',
+    danger: '#b00020',
+    waveformBgTop: '#f0f5ff',
+    waveformBgMid: '#e0eaff',
+    waveformBar: '#6a9ce0',
+    waveformBarSilent: '#7a9ce0',
+    waveformBarPlayed: '#0038a8',
+    clipLabelBg: 'rgba(255, 255, 255, 0.85)',
+    clipLabelText: '#001d4a',
+    clipLabelBorder: 'rgba(0, 29, 74, 0.18)',
+    accent: '#0038a8',
+    accentDim: '#002878',
+    accentRgb: '0, 56, 168',
+    accentDimRgb: '0, 40, 120',
+    clipSwipe: '#0038a8',
+  },
+
+  zhusha: {
+    label: 'Zhusha',
+    colorScheme: 'dark',
+    bgPrimary: '#0d0d0d',
+    bgSecondary: '#1a0a0a',
+    bgTertiary: '#2d1212',
+    bgHover: '#3d1818',
+    bgPanel: '#140808',
+    textPrimary: '#fff0f0',
+    textSecondary: '#ffcccc',
+    textTertiary: '#ff9999',
+    border: '#ff4444',
+    danger: '#ff3333',
+    waveformBgTop: '#1a0a0a',
+    waveformBgMid: '#0d0505',
+    waveformBar: '#8a3333',
+    waveformBarSilent: '#802222',
+    waveformBarPlayed: '#e60012',
+    clipLabelBg: 'rgba(20, 8, 8, 0.85)',
+    clipLabelText: '#fff0f0',
+    clipLabelBorder: 'rgba(255, 68, 68, 0.25)',
+    accent: '#e60012',
+    accentDim: '#b8000e',
+    accentRgb: '230, 0, 18',
+    accentDimRgb: '184, 0, 14',
+    clipSwipe: '#e60012',
+  },
+
+  yingluo: {
+    label: 'Yingluo',
+    colorScheme: 'light',
+    bgPrimary: '#fff8f0',
+    bgSecondary: '#fffef8',
+    bgTertiary: '#ffe8e0',
+    bgHover: '#ffd8cc',
+    bgPanel: '#fffaf5',
+    textPrimary: '#4a0d1a',
+    textSecondary: '#801830',
+    textTertiary: '#c86a80',
+    border: '#ffb3cc',
+    danger: '#8b002a',
+    waveformBgTop: '#fff0e8',
+    waveformBgMid: '#ffe0d0',
+    waveformBar: '#c775a0',
+    waveformBarSilent: '#e08ab8',
+    waveformBarPlayed: '#c71585',
+    clipLabelBg: 'rgba(255, 248, 240, 0.85)',
+    clipLabelText: '#4a0d1a',
+    clipLabelBorder: 'rgba(74, 13, 26, 0.18)',
+    accent: '#c71585',
+    accentDim: '#a01068',
+    accentRgb: '199, 21, 133',
+    accentDimRgb: '160, 16, 104',
+    clipSwipe: '#c71585',
+  },
+
+  norge: {
+    label: 'Norge',
+    colorScheme: 'light',
+    bgPrimary: '#ffffff',
+    bgSecondary: '#f0f4f8',
+    bgTertiary: '#dce8f4',
+    bgHover: '#c8d8f0',
+    bgPanel: '#f8faff',
+    textPrimary: '#002868',
+    textSecondary: '#003878',
+    textTertiary: '#4a78a8',
+    border: '#ba0c2f',
+    danger: '#ba0c2f',
+    waveformBgTop: '#f0f4f8',
+    waveformBgMid: '#e0e8f0',
+    // Flag split: unplayed bars in vivid flag blue, played in flag red.
+    waveformBar: '#0057b8',
+    waveformBarSilent: '#4a94e0',
+    waveformBarPlayed: '#ba0c2f',
+    clipLabelBg: 'rgba(255, 255, 255, 0.9)',
+    clipLabelText: '#002868',
+    clipLabelBorder: 'rgba(186, 12, 47, 0.22)',
+    accent: '#ba0c2f',
+    accentDim: '#960925',
+    accentRgb: '186, 12, 47',
+    accentDimRgb: '150, 9, 37',
+    clipSwipe: '#ba0c2f',
   },
 };
 
@@ -237,6 +368,7 @@ export function applyThemeVars(theme: ThemeId): void {
     ['--waveform-bg-mid', t.waveformBgMid],
     ['--waveform-bar', t.waveformBar],
     ['--waveform-bar-silent', t.waveformBarSilent],
+    ['--waveform-bar-played', t.waveformBarPlayed],
     ['--clip-label-bg', t.clipLabelBg],
     ['--clip-label-text', t.clipLabelText],
     ['--clip-label-border', t.clipLabelBorder],

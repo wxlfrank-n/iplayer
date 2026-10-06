@@ -1,4 +1,4 @@
-﻿import {memo, useRef} from 'react';
+import {memo, useRef} from 'react';
 import {Clips} from './Clips';
 import {ClipLabel, clipLabelProps} from './ClipLabel';
 import {DancingLines} from './DancingLines';
@@ -7,10 +7,10 @@ import {WaveformCanvas} from './Waveform';
 import {type WaveformData} from '../hooks/useWaveform';
 import {useRowWaveformScroll, VB_W, VB_H} from '../hooks/useRowWaveformScroll';
 import {useClipPlayRequest} from '../hooks/useClipPlayRequest';
+import {useConfig} from '../hooks/useConfig';
 import type {Clip as InitClipData} from '../utils/clips';
 import type {ClipPlayRequest} from '../types';
 import './RowWaveform.css';
-import {getCssVar} from '../utils/css';
 
 const PAD = 4;
 
@@ -63,6 +63,8 @@ export const RowWaveform = memo(
     const cursorElRef = useRef<HTMLDivElement>(null);
     const playedElRef = useRef<HTMLDivElement>(null);
     const clipLabelLayerRef = useRef<HTMLDivElement>(null);
+    const {config} = useConfig();
+    const theme = config.theme;
     const {
       hsRef,
       trackRef,
@@ -102,11 +104,9 @@ export const RowWaveform = memo(
      */
     useClipPlayRequest(clipPlayRequest, playClip);
 
-    const viewportLen = hsWinLenRef.current;
     const bufferLen = bufferLengthRef.current;
-    const bufferScale = viewportLen > 0 ? bufferLen / viewportLen : 1;
+    const bufferScale = bufferLen > 0 ? hsWinLenRef.current / bufferLen : 1;
     const vbW = VB_W * bufferScale;
-    const color = getCssVar('--accent');
     const waveformWindow = {
       windowStartSec: renderedBufferAnchor,
       windowLen: bufferLen,
@@ -135,7 +135,7 @@ export const RowWaveform = memo(
             waveform={waveform}
             currentTime={currentTime}
             playing={playing}
-            color={color}
+            theme={theme}
           />
           <div
             className="row-waveform__track"
@@ -149,6 +149,7 @@ export const RowWaveform = memo(
               window={waveformWindow}
               strokeWidth={1.6}
               style={canvasStyle}
+              theme={theme}
             />
             <div
               ref={playedElRef}
@@ -167,8 +168,9 @@ export const RowWaveform = memo(
                 sampleRate={waveform.sampleRate}
                 window={waveformWindow}
                 strokeWidth={1.6}
-                color={color}
+                colorVar="--waveform-bar-played"
                 style={canvasStyle}
+                theme={theme}
               />
             </div>
             <div

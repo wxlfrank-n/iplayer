@@ -32,7 +32,8 @@ interface DancingLinesProps {
    *  audio graph is currently outputting, so when paused it shows nothing at
    *  the clicked position; the decoded-sample profile is used instead. */
   playing: boolean;
-  color?: string;
+  /** Current theme ID to trigger redraw on theme change. */
+  theme?: string;
 }
 
 const BAR_COUNT = 56;
@@ -51,7 +52,7 @@ export const DancingLines = memo(
     waveform,
     currentTime,
     playing,
-    color,
+    theme,
   }: DancingLinesProps) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const currentTimeRef = useRef(currentTime);
@@ -151,7 +152,7 @@ export const DancingLines = memo(
         }
 
         ctx.globalAlpha = 0.8;
-        ctx.fillStyle = color || getCssVar('--accent');
+        ctx.fillStyle = getCssVar('--accent');
         const bw = cw / BAR_COUNT;
         const base = ch - 4;
         const maxH = ch - 8;
@@ -162,7 +163,7 @@ export const DancingLines = memo(
         }
         ctx.globalAlpha = 1;
       });
-    }, [getAnalyser, getCurrentTime, waveform]);
+    }, [getAnalyser, getCurrentTime, waveform, theme]);
 
     return <canvas className="row-waveform__dance" ref={canvasRef} />;
   },

@@ -39,6 +39,10 @@ const THEME_LABEL_KEYS: Record<ThemeId, TranslationKey> = {
   paper: 'themes.paper',
   nova: 'themes.nova',
   rose: 'themes.rose',
+  qinghua: 'themes.qinghua',
+  zhusha: 'themes.zhusha',
+  yingluo: 'themes.yingluo',
+  norge: 'themes.norge',
 };
 
 const clamp = (v: number, min: number, max: number) =>
