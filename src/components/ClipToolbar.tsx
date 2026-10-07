@@ -6,8 +6,8 @@
  * repeat stepper. Collapses via double-click on its background or a swipe up;
  * the collapsed hit area that re-expands it lives inside progress-container.
  */
-import {useRef} from 'react';
-import type {MouseEvent, PointerEvent} from 'react';
+import {useDrag} from '@use-gesture/react';
+import type {MouseEvent} from 'react';
 
 import {MergeSlider} from './MergeSlider';
 import {RepsStepper} from './RepsStepper';
@@ -19,11 +19,6 @@ import './ClipToolbar.css';
 
 /** Vertical distance (px) that counts as a swipe to hide the toolbar. */
 export const TOOLBAR_SWIPE_THRESHOLD_PX = 24;
-
-interface PointerStart {
-  x: number;
-  y: number;
-}
 
 interface ClipToolbarProps {
   /** Snapped merge gap (seconds) applied to the clips. */
@@ -58,8 +53,6 @@ export function ClipToolbar({
 }: ClipToolbarProps) {
   const dispatch = useAppDispatch();
 
-  const pointerStartRef = useRef<PointerStart | null>(null);
-
   const handleDoubleClick = (e: MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
 
@@ -76,49 +69,42 @@ export function ClipToolbar({
     );
   };
 
-  const handlePointerDown = (e: PointerEvent<HTMLDivElement>) => {
-    pointerStartRef.current = {
-      x: e.clientX,
-      y: e.clientY,
-    };
-  };
+  /*
+   * Swipe up (vertical, upward) hides the toolbar.
+   */
+  const bindToolbar = useDrag(
+    ({last, event, initial}) => {
+      if (!last) return;
 
-  const handlePointerUp = (e: PointerEvent<HTMLDivElement>) => {
-    const start = pointerStartRef.current;
+      /*
+       * Use the pointer position of the releasing event rather than the
+       * accumulated `movement`: a fast gesture may deliver pointerup at a new
+       * position without an intermediate pointermove.
+       */
+      const pointer = event as PointerEvent;
 
-    pointerStartRef.current = null;
+      const dy = pointer.clientY - initial[1];
+      const absY = Math.abs(dy);
+      const absX = Math.abs(pointer.clientX - initial[0]);
 
-    if (!start) {
-      return;
-    }
-
-    const dy = e.clientY - start.y;
-    const absY = Math.abs(dy);
-    const absX = Math.abs(e.clientX - start.x);
-
-    /*
-     * Swipe up (vertical, upward) hides the toolbar.
-     */
-    if (absY >= TOOLBAR_SWIPE_THRESHOLD_PX && absY > absX && dy < 0) {
-      dispatch(
-        updateConfig({
-          showAdvancedControls: false,
-        }),
-      );
-    }
-  };
-
-  const handlePointerCancel = () => {
-    pointerStartRef.current = null;
-  };
+      if (absY >= TOOLBAR_SWIPE_THRESHOLD_PX && absY > absX && dy < 0) {
+        dispatch(
+          updateConfig({
+            showAdvancedControls: false,
+          }),
+        );
+      }
+    },
+    {
+      pointer: {capture: false, buttons: -1, keys: false},
+    },
+  );
 
   return (
     <div
       className={`clip-toolbar ${disabled ? 'clip-toolbar--disabled' : ''}`}
       onDoubleClick={handleDoubleClick}
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerCancel}
+      {...bindToolbar()}
     >
       {showMergeSlider && (
         <MergeSlider

@@ -12,17 +12,18 @@
  *
  * horizontal drag
  *   -> NOT handled here
- *   -> bubbles to the waveform container
+ *   -> observed by the waveform container
  *   -> RowWaveform scrolls
  *   -> StackedWaveform changes page
  *
- * Important:
- * Clip must NOT capture the pointer on pointer-down.
- * At that moment we do not yet know whether the user
- * intends a vertical clip gesture or horizontal navigation.
+ * The drag gesture never captures the pointer on pointer-down
+ * (`pointer: {capture: false}`): at that moment we do not yet know
+ * whether the user intends a vertical clip gesture or horizontal
+ * navigation, so the waveform parent must keep observing the pointer too.
  */
 
 import {memo, useRef, type ReactNode} from 'react';
+import {useDrag} from '@use-gesture/react';
 
 import type {Clip as InitClipData} from '../utils/clips';
 import type {WaveWindow} from '../types';
@@ -58,11 +59,6 @@ export interface ClipProps {
 const SWIPE_THRESHOLD_PX = 24;
 const TAP_THRESHOLD_PX = 8;
 
-interface PointerStart {
-  x: number;
-  y: number;
-}
-
 export const Clip = memo(
   ({
     clip,
@@ -78,8 +74,6 @@ export const Clip = memo(
     onSwipe,
   }: ClipProps) => {
     const {windowStartSec, windowLen, innerH, vbH} = window;
-
-    const pointerStartRef = useRef<PointerStart | null>(null);
 
     const suppressClickRef = useRef(false);
 
@@ -112,112 +106,104 @@ export const Clip = memo(
 
     /*
      * ---------------------------------------------------------
-     * POINTER DOWN
+     * TAP / SWIPE
      * ---------------------------------------------------------
      *
-     * Deliberately DO NOT call setPointerCapture().
+     * `pointer: {capture: false}` is deliberate: Clip must NOT capture the
+     * pointer on pointer-down. Both Clip and its waveform parent need to
+     * observe the movement until the gesture direction becomes clear.
      *
-     * Both Clip and its waveform parent need to observe the
-     * movement until the gesture direction becomes clear.
+     * `buttons: -1` keeps the historical behavior of reacting to any button.
      */
-    const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-      pointerStartRef.current = {
-        x: e.clientX,
-        y: e.clientY,
-      };
+    const bindClip = useDrag(
+      ({first, last, event, initial, target, currentTarget}) => {
+        if (first) {
+          suppressClickRef.current = false;
 
-      suppressClickRef.current = false;
-    };
+          return;
+        }
 
-    /*
-     * ---------------------------------------------------------
-     * POINTER UP
-     * ---------------------------------------------------------
-     */
-    const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-      const start = pointerStartRef.current;
+        if (!last) {
+          return;
+        }
 
-      pointerStartRef.current = null;
+        if (event.type === 'pointercancel') {
+          suppressClickRef.current = true;
 
-      if (!start) {
-        return;
-      }
+          return;
+        }
 
-      const dx = e.clientX - start.x;
+        /*
+         * Use the pointer position of the releasing event rather than the
+         * accumulated `movement`: a fast gesture may deliver pointerup at a
+         * new position without an intermediate pointermove, and use-gesture
+         * accumulates movement only on pointermove.
+         */
+        const pointer = event as PointerEvent;
 
-      const dy = e.clientY - start.y;
+        const dx = pointer.clientX - initial[0];
 
-      const absX = Math.abs(dx);
+        const dy = pointer.clientY - initial[1];
 
-      const absY = Math.abs(dy);
+        const absX = Math.abs(dx);
 
-      /*
-       * Vertical swipe:
-       *
-       * Clip owns this gesture.
-       */
-      if (absY >= SWIPE_THRESHOLD_PX && absY > absX) {
+        const absY = Math.abs(dy);
+
+        /*
+         * Vertical swipe:
+         *
+         * Clip owns this gesture.
+         */
+        if (absY >= SWIPE_THRESHOLD_PX && absY > absX) {
+          suppressClickRef.current = true;
+
+          onSwipe?.(id, dy < 0 ? 'up' : 'down');
+
+          return;
+        }
+
+        /*
+         * Horizontal movement:
+         *
+         * The parent waveform owns horizontal navigation.
+         *
+         * StackedWaveform:
+         *   swipe left  -> next page
+         *   swipe right -> previous page
+         *
+         * RowWaveform:
+         *   horizontal pan
+         */
+        if (absX >= TAP_THRESHOLD_PX) {
+          suppressClickRef.current = true;
+
+          return;
+        }
+
+        /*
+         * Small vertical movement that isn't a swipe
+         * shouldn't accidentally become a tap.
+         */
+        if (absY >= TAP_THRESHOLD_PX) {
+          suppressClickRef.current = true;
+
+          return;
+        }
+
+        /*
+         * Genuine tap.
+         */
         suppressClickRef.current = true;
 
-        e.stopPropagation();
-
-        onSwipe?.(id, dy < 0 ? 'up' : 'down');
-
-        return;
-      }
-
-      /*
-       * Horizontal movement:
-       *
-       * Do NOT stop propagation.
-       *
-       * The parent waveform owns horizontal navigation.
-       *
-       * StackedWaveform:
-       *   swipe left  -> next page
-       *   swipe right -> previous page
-       *
-       * RowWaveform:
-       *   horizontal pan
-       */
-      if (absX >= TAP_THRESHOLD_PX) {
-        suppressClickRef.current = true;
-
-        return;
-      }
-
-      /*
-       * Small vertical movement that isn't a swipe
-       * shouldn't accidentally become a tap.
-       */
-      if (absY >= TAP_THRESHOLD_PX) {
-        suppressClickRef.current = true;
-
-        return;
-      }
-
-      /*
-       * Genuine tap.
-       */
-      suppressClickRef.current = true;
-
-      e.stopPropagation();
-
-      if (e.target !== e.currentTarget) {
-        return;
-      }
-      activateClip();
-    };
-
-    const handlePointerCancel = () => {
-      pointerStartRef.current = null;
-
-      /*
-       * A common reason for cancellation is that the
-       * parent took ownership of a horizontal drag.
-       */
-      suppressClickRef.current = true;
-    };
+        if (target !== currentTarget) {
+          return;
+        }
+        activateClip();
+      },
+      {
+        pointer: {capture: false, buttons: -1, keys: false},
+      },
+    );
 
     /*
      * Browsers may synthesize a click after pointerup.
@@ -253,9 +239,7 @@ export const Clip = memo(
           clip.vEnd,
         )}`}
         onClick={handleClick}
-        onPointerDown={handlePointerDown}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerCancel}
+        {...bindClip()}
       >
         {label}
       </div>

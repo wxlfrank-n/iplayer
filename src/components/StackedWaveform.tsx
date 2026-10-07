@@ -12,6 +12,7 @@
  */
 
 import {memo, useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {useDrag} from '@use-gesture/react';
 
 import {StackRow, type StackedRow} from './StackRow';
 
@@ -67,14 +68,8 @@ type StackedRowEntry = {
 };
 
 interface PageDrag {
-  pointerId: number;
-
-  startX: number;
-  startY: number;
-
   startScrollLeft: number;
-
-  dragging: boolean;
+  locked: boolean;
 }
 
 export const StackedWaveform = memo(
@@ -398,7 +393,9 @@ export const StackedWaveform = memo(
      * The parent observes every pointer gesture, including
      * gestures that START on a clip.
      *
-     * It does not capture immediately.
+     * The pointer is never captured on pointer-down
+     * (`pointer: {capture: false}`); the library tracks the whole
+     * gesture through window listeners instead.
      *
      * First we determine direction:
      *
@@ -409,61 +406,41 @@ export const StackedWaveform = memo(
      * =========================================================
      */
 
-    const handlePointerDown = useCallback(
-      (e: React.PointerEvent<HTMLDivElement>) => {
-        if (e.pointerType === 'mouse' && e.button !== 0) {
-          return;
-        }
-
+    const bindPageDrag = useDrag(
+      ({first, last, event, initial}) => {
         const el = scrollerRef.current;
 
         if (!el) return;
 
-        dragRef.current = {
-          pointerId: e.pointerId,
+        if (first) {
+          dragRef.current = {
+            startScrollLeft: el.scrollLeft,
+            locked: false,
+          };
 
-          startX: e.clientX,
-          startY: e.clientY,
+          return;
+        }
 
-          startScrollLeft: el.scrollLeft,
-
-          dragging: false,
-        };
-      },
-      [],
-    );
-
-    const handlePointerMove = useCallback(
-      (e: React.PointerEvent<HTMLDivElement>) => {
         const drag = dragRef.current;
 
-        const el = scrollerRef.current;
-
-        if (!drag || !el || drag.pointerId !== e.pointerId) {
-          return;
-        }
+        if (!drag) return;
 
         /*
-         * A move with no button held cannot be a gesture: it is the pointer
-         * gliding over the scroller, possibly right after a clip tap whose
-         * pointerup was consumed by Clip and never reached `finishPointerDrag`
-         * (so `dragRef` is still set). Abandon the gesture so this stray move
-         * cannot be mistaken for a horizontal page drag.
+         * Use the pointer position of the current event rather than the
+         * accumulated `movement`: a fast gesture may deliver its releasing
+         * event at a new position without an intermediate pointermove, and
+         * use-gesture accumulates movement only on pointermove.
          */
-        if (e.buttons === 0) {
-          dragRef.current = null;
+        const pointer = event as PointerEvent;
 
-          return;
-        }
+        const dx = pointer.clientX - initial[0];
 
-        const dx = e.clientX - drag.startX;
-
-        const dy = e.clientY - drag.startY;
+        const dy = pointer.clientY - initial[1];
 
         /*
          * Direction has not yet been decided.
          */
-        if (!drag.dragging) {
+        if (!drag.locked) {
           if (
             Math.abs(dx) < HORIZONTAL_DRAG_THRESHOLD &&
             Math.abs(dy) < HORIZONTAL_DRAG_THRESHOLD
@@ -478,15 +455,14 @@ export const StackedWaveform = memo(
            * swipe-up / swipe-down.
            */
           if (Math.abs(dy) >= Math.abs(dx)) {
+            if (last) {
+              dragRef.current = null;
+            }
+
             return;
           }
 
-          /*
-           * Horizontal gesture.
-           *
-           * From this point the page scroller owns it.
-           */
-          drag.dragging = true;
+          drag.locked = true;
 
           suppressRowClickRef.current = true;
 
@@ -495,19 +471,7 @@ export const StackedWaveform = memo(
           if (playingRef.current) {
             manualOverrideRef.current = true;
           }
-
-          /*
-           * Capture only AFTER direction has
-           * been identified as horizontal.
-           */
-          try {
-            e.currentTarget.setPointerCapture(e.pointerId);
-          } catch {
-            // Some browsers may already have lost it.
-          }
         }
-
-        e.preventDefault();
 
         /*
          * Natural touch paging:
@@ -518,33 +482,12 @@ export const StackedWaveform = memo(
          * finger moves right -> previous page
          */
         el.scrollLeft = drag.startScrollLeft - dx;
-      },
-      [],
-    );
 
-    const finishPointerDrag = useCallback(
-      (e: React.PointerEvent<HTMLDivElement>) => {
-        const drag = dragRef.current;
-
-        const el = scrollerRef.current;
-
-        if (!drag || !el || drag.pointerId !== e.pointerId) {
+        if (!last) {
           return;
         }
 
         dragRef.current = null;
-
-        if (!drag.dragging) {
-          return;
-        }
-
-        try {
-          if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-            e.currentTarget.releasePointerCapture(e.pointerId);
-          }
-        } catch {
-          // Ignore capture cleanup failures.
-        }
 
         const pageWidth = Math.max(1, el.clientWidth);
 
@@ -572,7 +515,9 @@ export const StackedWaveform = memo(
           setUserScrolling(false);
         }, 500);
       },
-      [clampPage],
+      {
+        pointer: {capture: false, keys: false},
+      },
     );
 
     /*
@@ -790,14 +735,7 @@ export const StackedWaveform = memo(
      */
 
     return (
-      <div
-        className="stacked-waveform"
-        ref={scrollerRef}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={finishPointerDrag}
-        onPointerCancel={finishPointerDrag}
-      >
+      <div className="stacked-waveform" ref={scrollerRef} {...bindPageDrag()}>
         {pagedRows.length > 0 && (
           <div className="stacked-waveform__pageno">
             {Math.min(viewPage + 1, pagedRows.length)} / {pagedRows.length}

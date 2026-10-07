@@ -10,8 +10,7 @@
  * The strip is invisible and reserves no layout space, so the collapsed
  * waveform keeps its full height.
  */
-import {useRef} from 'react';
-import type {PointerEvent} from 'react';
+import {useDrag} from '@use-gesture/react';
 
 import {TOOLBAR_SWIPE_THRESHOLD_PX} from './ClipToolbar';
 
@@ -22,11 +21,6 @@ import './ClipToolbar.css';
 
 export function ClipToolbarCollapsedHit() {
   const dispatch = useAppDispatch();
-
-  /*
-   * Pointer start for the swipe-down gesture that re-expands the toolbar.
-   */
-  const pointerStartRef = useRef<{x: number; y: number} | null>(null);
 
   const expand = () => {
     dispatch(
@@ -40,45 +34,38 @@ export function ClipToolbarCollapsedHit() {
     expand();
   };
 
-  const handlePointerDown = (e: PointerEvent<HTMLDivElement>) => {
-    pointerStartRef.current = {
-      x: e.clientX,
-      y: e.clientY,
-    };
-  };
+  /*
+   * Swipe down expands the toolbar.
+   */
+  const bindHit = useDrag(
+    ({last, event, initial}) => {
+      if (!last) return;
 
-  const handlePointerUp = (e: PointerEvent<HTMLDivElement>) => {
-    const start = pointerStartRef.current;
+      /*
+       * Use the pointer position of the releasing event rather than the
+       * accumulated `movement`: a fast gesture may deliver pointerup at a new
+       * position without an intermediate pointermove.
+       */
+      const pointer = event as PointerEvent;
 
-    pointerStartRef.current = null;
+      const dy = pointer.clientY - initial[1];
+      const absY = Math.abs(dy);
+      const absX = Math.abs(pointer.clientX - initial[0]);
 
-    if (!start) {
-      return;
-    }
-
-    const dy = e.clientY - start.y;
-    const absY = Math.abs(dy);
-    const absX = Math.abs(e.clientX - start.x);
-
-    /*
-     * Swipe down expands the toolbar.
-     */
-    if (absY >= TOOLBAR_SWIPE_THRESHOLD_PX && absY > absX && dy > 0) {
-      expand();
-    }
-  };
-
-  const handlePointerCancel = () => {
-    pointerStartRef.current = null;
-  };
+      if (absY >= TOOLBAR_SWIPE_THRESHOLD_PX && absY > absX && dy > 0) {
+        expand();
+      }
+    },
+    {
+      pointer: {capture: false, buttons: -1, keys: false},
+    },
+  );
 
   return (
     <div
       className="clip-toolbar__collapsed-hit"
       onDoubleClick={handleDoubleClick}
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerCancel}
+      {...bindHit()}
     />
   );
 }
