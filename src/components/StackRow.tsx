@@ -18,7 +18,7 @@ import {WaveformCanvas} from './Waveform';
 import {WaveformCursor} from './WaveformCursor';
 import {useConfig} from '../hooks/useConfig';
 
-import type {WaveformData} from '../types';
+import type {SwipeDirection, WaveformData} from '../types';
 import type {Clip as InitClipData} from '../utils/clips';
 
 /** Virtual buffer width the waveform canvas draws at. */
@@ -58,7 +58,7 @@ export interface StackRowProps {
   repetitions: number;
   onStopPlayback?: () => void;
   onActivate: (idx: number) => void;
-  onSwipeClip?: (idx: number, direction: 'up' | 'down') => void;
+  onSwipeClip?: (idx: number, direction: SwipeDirection) => void;
   onPlayRange: (start: number, end: number, repetitions: number) => void;
   onSeek: (time: number) => void;
   getCurrentTime: () => number;

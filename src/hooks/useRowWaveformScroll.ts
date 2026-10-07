@@ -29,6 +29,7 @@ import {
 import {calculateWheelChange} from '../utils/rowHandler';
 import type {Clip} from '../utils/clips';
 import {panTarget} from '../utils/pan';
+import {clipPinchState} from '../components/clipPinch';
 import {startFrameLoop} from '../utils/raf';
 import {addListener, addListeners} from '../utils/listener';
 
@@ -466,6 +467,13 @@ export function useRowWaveformScroll({
       if (downTarget.closest('.clip-label, .stacked-clip-label')) {
         return;
       }
+      /*
+       * Two fingers are already on clips (a pinch merge in progress): do not
+       * start a pan.
+       */
+      if (clipPinchState.active) {
+        return;
+      }
       if (dragRef.current?.pointerId === e.pointerId) {
         return;
       }
@@ -482,6 +490,13 @@ export function useRowWaveformScroll({
       draggingRef.current = true;
       const onMove = (ev: PointerEvent) => {
         if (ev.pointerId !== drag.pointerId) {
+          return;
+        }
+        /*
+         * A second finger landed on a clip (pinch merge in progress): stand
+         * down so the squeeze is not mistaken for a pan.
+         */
+        if (clipPinchState.active) {
           return;
         }
         const dx = ev.clientX - drag.startX;

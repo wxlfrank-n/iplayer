@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Main progress and waveform visualization component.
  *
  * Shows the decoded waveform (stacked or horizontal view), the silence-split
@@ -35,10 +35,10 @@ import {updateConfig} from '../store/configSlice';
 
 import {mergeClipsByGap} from '../utils/clips';
 import type {Clip as InitClipData} from '../utils/clips';
-import type {ClipPlayRequest} from '../types';
+import type {ClipPlayRequest, SwipeDirection} from '../types';
 import './ProgressBar.css';
 
-import {splitClip, mergeClips} from '../utils/swipe';
+import {splitClip, mergeClips, mergeClipRange} from '../utils/swipe';
 
 interface ProgressBarProps {
   /** Seek to an absolute track time (seconds). */
@@ -251,7 +251,7 @@ export function ProgressBar({
    */
 
   const handleClipSwipe = useCallback(
-    (idx: number, direction: 'up' | 'down') => {
+    (idx: number, direction: SwipeDirection) => {
       /*
        * Swipe down:
        * merge this clip with an adjacent clip.
@@ -323,6 +323,83 @@ export function ProgressBar({
       }
     },
     [clips, displayClips, mergeScope, minSplitPieceSec, requestClipPlayback],
+  );
+
+  /*
+   * Fuse every displayClip from `low` to `high` (inclusive) into one group and
+   * publish the post-merge playback request. Shared by the pinch merge and the
+   * diagonal swipes.
+   */
+  const applyRangeMerge = useCallback(
+    (low: number, high: number) => {
+      const result = mergeClipRange(clips, displayClips, low, high, mergeScope);
+
+      if (!result) {
+        return;
+      }
+
+      setMergeGap(result.mergeGap);
+
+      if (mergeScope === 'clip') {
+        setScopedClips(result.clips ?? null);
+      }
+
+      setActiveClip(result.activeClip);
+
+      const newActiveClip = result.clips?.[result.activeClip];
+
+      if (newActiveClip) {
+        requestClipPlayback(newActiveClip);
+      }
+    },
+    [clips, displayClips, mergeScope, requestClipPlayback],
+  );
+
+  const handleClipSwipeDiagonal = useCallback(
+    (idx: number, direction: 'up-right' | 'down-right') => {
+      /*
+       * Diagonal swipe:
+       * swipe down-right -> merge with the clip to the right
+       * swipe up-right   -> merge with the clip to the left
+       */
+      let low = idx;
+      let high = idx + 1;
+
+      if (direction === 'up-right') {
+        low = idx - 1;
+        high = idx;
+      }
+
+      if (low < 0 || high >= displayClips.length) {
+        return;
+      }
+
+      applyRangeMerge(low, high);
+    },
+    [applyRangeMerge, displayClips.length],
+  );
+
+  /*
+   * Two clips pinched together fuse the whole range between them, mirroring the
+   * swipe-down merge but across many clips at once. "clip" scope replaces just
+   * that range; "global" scope sets the threshold to the largest silence inside
+   * the range and regroups the whole track.
+   */
+  const handleClipPinchMerge = useCallback(
+    (low: number, high: number) => applyRangeMerge(low, high),
+    [applyRangeMerge],
+  );
+
+  const handleClipSwipeGesture = useCallback(
+    (idx: number, direction: SwipeDirection) => {
+      if (direction === 'up-right' || direction === 'down-right') {
+        handleClipSwipeDiagonal(idx, direction);
+        return;
+      }
+
+      handleClipSwipe(idx, direction);
+    },
+    [handleClipSwipe, handleClipSwipeDiagonal],
   );
 
   /*
@@ -398,7 +475,8 @@ export function ProgressBar({
               repetitions={repetitions}
               activeClip={activeClip}
               onActiveClipChange={handleActiveClipChange}
-              onSwipeClip={playing ? undefined : handleClipSwipe}
+              onSwipeClip={playing ? undefined : handleClipSwipeGesture}
+              onPinchMergeClip={playing ? undefined : handleClipPinchMerge}
               getAnalyser={getAnalyser}
               getCurrentTime={getCurrentTime}
               playing={playing}
@@ -415,7 +493,8 @@ export function ProgressBar({
               playing={playing}
               activeClip={activeClip}
               repetitions={repetitions}
-              onSwipeClip={playing ? undefined : handleClipSwipe}
+              onSwipeClip={playing ? undefined : handleClipSwipeGesture}
+              onPinchMergeClip={playing ? undefined : handleClipPinchMerge}
               onSeek={onSeek}
               onPlayRange={onPlayRange}
               onStopPlayback={onStopPlayback}

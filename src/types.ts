@@ -56,6 +56,17 @@ export type WaveformView = 'stacked' | 'horizontal';
 export type MergeScope = 'global' | 'clip';
 
 /**
+ * Direction of a swipe gesture on a clip.
+ *
+ * - "up"/"down": vertical, splits / merges with the nearest neighbor.
+ * - "down-right": diagonal 35-55 deg below horizontal, merges with the clip to
+ *   the right.
+ * - "up-right": diagonal 35-55 deg above horizontal, merges with the clip to
+ *   the left.
+ */
+export type SwipeDirection = 'up' | 'down' | 'up-right' | 'down-right';
+
+/**
  * Consolidated state for the currently played audio. Owned by the app root so
  * every view (waveform, clip toolbar, player controls) reads the same record
  * instead of deriving it independently.

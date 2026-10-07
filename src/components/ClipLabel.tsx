@@ -18,6 +18,7 @@ import {
   splitClipAtLargestGap,
   type Clip,
 } from '../utils/clips';
+import type {SwipeDirection} from '../types';
 import './ClipLabel.css';
 
 export interface ClipLabelProps {
@@ -42,7 +43,7 @@ interface ClipLabelState {
   /** Smallest piece a split may leave alone (defaults to MIN_SPLIT_PIECE_SEC). */
   minPieceSec?: number;
   /** Swipe handler; absent (or undefined) disables the split/merge actions. */
-  onSwipeClip?: (idx: number, direction: 'up' | 'down') => void;
+  onSwipeClip?: (idx: number, direction: SwipeDirection) => void;
 }
 
 /**

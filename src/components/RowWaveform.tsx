@@ -7,9 +7,10 @@ import {WaveformCanvas} from './Waveform';
 import {type WaveformData} from '../hooks/useWaveform';
 import {useRowWaveformScroll, VB_W, VB_H} from '../hooks/useRowWaveformScroll';
 import {useClipPlayRequest} from '../hooks/useClipPlayRequest';
+import {useClipPinchMerge} from '../hooks/useClipPinchMerge';
 import {useConfig} from '../hooks/useConfig';
 import type {Clip as InitClipData} from '../utils/clips';
-import type {ClipPlayRequest} from '../types';
+import type {ClipPlayRequest, SwipeDirection} from '../types';
 import './RowWaveform.css';
 
 const PAD = 4;
@@ -29,7 +30,9 @@ export interface RowWaveformProps {
   onStopPlayback?: () => void;
   activeClip: number;
   onActiveClipChange: (idx: number) => void;
-  onSwipeClip?: (idx: number, direction: 'up' | 'down') => void;
+  onSwipeClip?: (idx: number, direction: SwipeDirection) => void;
+  /** Pinching two clips together merges the clip range between them. */
+  onPinchMergeClip?: (lowIndex: number, highIndex: number) => void;
   getAnalyser?: (resume: boolean) => AnalyserNode | null;
   getCurrentTime: () => number;
   playing: boolean;
@@ -51,6 +54,7 @@ export const RowWaveform = memo(
     activeClip,
     onActiveClipChange,
     onSwipeClip,
+    onPinchMergeClip,
     getAnalyser,
     getCurrentTime,
     playing,
@@ -104,6 +108,14 @@ export const RowWaveform = memo(
      */
     useClipPlayRequest(clipPlayRequest, playClip);
 
+    /*
+     * Two-finger pinch merge (two clips squeezed together => merge the clip
+     * range between them), detected on the track element that contains every
+     * clip. The horizontal pan stands down via `clipPinchState`.
+     */
+    const {onPointerDown: onPinchPointerDown} =
+      useClipPinchMerge(onPinchMergeClip);
+
     const bufferLen = bufferLengthRef.current;
     const bufferScale = bufferLen > 0 ? hsWinLenRef.current / bufferLen : 1;
     const vbW = VB_W * bufferScale;
@@ -141,6 +153,7 @@ export const RowWaveform = memo(
             className="row-waveform__track"
             ref={trackRef}
             onClick={onWaveformClick}
+            onPointerDown={onPinchPointerDown}
           >
             <WaveformCanvas
               className="row-waveform__svg"

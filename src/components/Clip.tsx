@@ -22,11 +22,13 @@
  * navigation, so the waveform parent must keep observing the pointer too.
  */
 
-import {memo, useRef, type ReactNode} from 'react';
+import {memo, useEffect, useRef, type ReactNode} from 'react';
 import {useDrag} from '@use-gesture/react';
 
+import {clipGestureLedger} from './clipPinch';
+
 import type {Clip as InitClipData} from '../utils/clips';
-import type {WaveWindow} from '../types';
+import type {SwipeDirection, WaveWindow} from '../types';
 
 import {formatTimePrecise} from '../utils/time';
 import './Clip.css';
@@ -53,11 +55,19 @@ export interface ClipProps {
 
   onActivate: (idx: number) => void;
 
-  onSwipe?: (idx: number, direction: 'up' | 'down') => void;
+  onSwipe?: (idx: number, direction: SwipeDirection) => void;
 }
 
 const SWIPE_THRESHOLD_PX = 24;
 const TAP_THRESHOLD_PX = 8;
+
+/*
+ * 35 to 55 degrees from the horizontal, expressed as the slope of |dy|/|dx|
+ * (tan of the angle). A rightward swipe inside this band is the diagonal merge
+ * gesture; steeper swipes stay vertical, shallower ones stay horizontal.
+ */
+const DIAGONAL_MIN_TAN = Math.tan((35 * Math.PI) / 180);
+const DIAGONAL_MAX_TAN = Math.tan((55 * Math.PI) / 180);
 
 export const Clip = memo(
   ({
@@ -76,6 +86,31 @@ export const Clip = memo(
     const {windowStartSec, windowLen, innerH, vbH} = window;
 
     const suppressClickRef = useRef(false);
+
+    /*
+     * True when another clip pointer was already down when this one landed.
+     * Such a pointer can never become a tap, whatever it does afterwards.
+     */
+    const multiPointerRef = useRef(false);
+
+    /*
+     * Pointers this component registered in the shared ledger. If the clip
+     * unmounts mid-gesture (e.g. a pinch merge replaces the clips while the
+     * second finger is still down), `last` never runs for that pointer, so the
+     * entry must be cleaned here or every later tap would be suppressed.
+     */
+    const pointerIdsRef = useRef<Set<number>>(new Set());
+    useEffect(
+      () => () => {
+        for (const pointerId of pointerIdsRef.current) {
+          clipGestureLedger.active.delete(pointerId);
+        }
+        if (clipGestureLedger.active.size === 0) {
+          clipGestureLedger.multi = false;
+        }
+      },
+      [],
+    );
 
     /*
      * Clip band occupies the middle half of the
@@ -120,6 +155,22 @@ export const Clip = memo(
         if (first) {
           suppressClickRef.current = false;
 
+          const pointerId = (event as PointerEvent).pointerId;
+
+          multiPointerRef.current = clipGestureLedger.active.size > 0;
+          if (multiPointerRef.current) {
+            /*
+             * A second finger landing on another clip is part of a multi-finger
+             * gesture (e.g. the pinch merge): it must never be read as a tap.
+             */
+            suppressClickRef.current = true;
+          }
+          clipGestureLedger.active.add(pointerId);
+          pointerIdsRef.current.add(pointerId);
+          if (clipGestureLedger.active.size > 1) {
+            clipGestureLedger.multi = true;
+          }
+
           return;
         }
 
@@ -127,7 +178,29 @@ export const Clip = memo(
           return;
         }
 
+        const pointer = event as PointerEvent;
+
+        /*
+         * Whatever ends the gesture, this pointer is no longer down.
+         */
+        pointerIdsRef.current.delete(pointer.pointerId);
+        clipGestureLedger.active.delete(pointer.pointerId);
+        if (clipGestureLedger.active.size === 0) {
+          clipGestureLedger.multi = false;
+        }
+
         if (event.type === 'pointercancel') {
+          suppressClickRef.current = true;
+
+          return;
+        }
+
+        /*
+         * A tap is only a tap when this pointer never overlapped another clip
+         * pointer. `multi` covers sessions that started (and ended) here; the
+         * ref covers the case where this pointer joined late.
+         */
+        if (multiPointerRef.current || clipGestureLedger.multi) {
           suppressClickRef.current = true;
 
           return;
@@ -139,8 +212,6 @@ export const Clip = memo(
          * new position without an intermediate pointermove, and use-gesture
          * accumulates movement only on pointermove.
          */
-        const pointer = event as PointerEvent;
-
         const dx = pointer.clientX - initial[0];
 
         const dy = pointer.clientY - initial[1];
@@ -148,6 +219,30 @@ export const Clip = memo(
         const absX = Math.abs(dx);
 
         const absY = Math.abs(dy);
+
+        /*
+         * Diagonal swipe to the right (35-55 degrees from the horizontal):
+         *
+         *   down-right -> merge with the clip to the right
+         *   up-right   -> merge with the clip to the left
+         *
+         * Clip owns this gesture, like the vertical swipe. Checked before the
+         * vertical band so the 35-55 deg slice never falls through to one of
+         * the plain up/down swipes.
+         */
+        const ratio = absX > 0 ? absY / absX : Infinity;
+        if (
+          dx > 0 &&
+          Math.hypot(dx, dy) >= SWIPE_THRESHOLD_PX &&
+          ratio >= DIAGONAL_MIN_TAN &&
+          ratio <= DIAGONAL_MAX_TAN
+        ) {
+          suppressClickRef.current = true;
+
+          onSwipe?.(id, dy > 0 ? 'down-right' : 'up-right');
+
+          return;
+        }
 
         /*
          * Vertical swipe:
@@ -229,6 +324,7 @@ export const Clip = memo(
     return (
       <div
         className={`waveform-clip ${active ? 'waveform-clip--active' : ''}`}
+        data-clip-idx={id}
         style={{
           left: `${leftPct}%`,
           top: `${topPct}%`,

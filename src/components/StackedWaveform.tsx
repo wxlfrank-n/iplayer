@@ -15,12 +15,18 @@ import {memo, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {useDrag} from '@use-gesture/react';
 
 import {StackRow, type StackedRow} from './StackRow';
+import {clipPinchState} from './clipPinch';
 
-import {type ClipPlayRequest, type WaveformData} from '../types';
+import {
+  type ClipPlayRequest,
+  type SwipeDirection,
+  type WaveformData,
+} from '../types';
 import type {Clip as InitClipData} from '../utils/clips';
 import {startFrameLoop} from '../utils/raf';
 import {addListener} from '../utils/listener';
 import {useClipPlayRequest} from '../hooks/useClipPlayRequest';
+import {useClipPinchMerge} from '../hooks/useClipPinchMerge';
 import './StackedWaveform.css';
 import {getWindowSecs} from '../utils/rowWaveform';
 
@@ -44,7 +50,13 @@ interface StackedWaveformProps {
 
   onStopPlayback?: () => void;
 
-  onSwipeClip?: (idx: number, direction: 'up' | 'down') => void;
+  onSwipeClip?: (idx: number, direction: SwipeDirection) => void;
+
+  /**
+   * Two clips pinched together (fingers squeeze inward across the range) merges
+   * every clip between them. Reports the two global clip indices, ordered.
+   */
+  onPinchMergeClip?: (lowIndex: number, highIndex: number) => void;
 
   onSeek: (time: number) => void;
 
@@ -82,6 +94,7 @@ export const StackedWaveform = memo(
     repetitions,
     onStopPlayback,
     onSwipeClip,
+    onPinchMergeClip,
     onSeek,
     onActiveClipChange,
     onPlayRange,
@@ -406,11 +419,29 @@ export const StackedWaveform = memo(
      * =========================================================
      */
 
+    /*
+     * Two-finger pinch merge (two clips squeezed together => merge the clip
+     * range between them). Detected on the scroller so it can span rows; it
+     * stands the page drag down via `clipPinchState`.
+     */
+    const pinchBind = useClipPinchMerge(onPinchMergeClip);
+
     const bindPageDrag = useDrag(
       ({first, last, event, initial}) => {
         const el = scrollerRef.current;
 
         if (!el) return;
+
+        /*
+         * A two-finger clip pinch is in progress: stand down so the squeeze is
+         * not mistaken for horizontal navigation. Whatever the drag had
+         * recorded is abandoned.
+         */
+        if (clipPinchState.active) {
+          dragRef.current = null;
+
+          return;
+        }
 
         if (first) {
           dragRef.current = {
@@ -519,6 +550,14 @@ export const StackedWaveform = memo(
         pointer: {capture: false, keys: false},
       },
     );
+
+    /*
+     * The page drag binds `onPointerDown` on the scroller; the pinch needs the
+     * same event, so resolve both handlers here and merge them in the JSX.
+     */
+    const pageDragBind = bindPageDrag();
+
+    const {onPointerDown: pageDragPointerDown, ...pageDragRest} = pageDragBind;
 
     /*
      * =========================================================
@@ -735,7 +774,15 @@ export const StackedWaveform = memo(
      */
 
     return (
-      <div className="stacked-waveform" ref={scrollerRef} {...bindPageDrag()}>
+      <div
+        className="stacked-waveform"
+        ref={scrollerRef}
+        onPointerDown={e => {
+          pinchBind.onPointerDown(e);
+          pageDragPointerDown?.(e);
+        }}
+        {...pageDragRest}
+      >
         {pagedRows.length > 0 && (
           <div className="stacked-waveform__pageno">
             {Math.min(viewPage + 1, pagedRows.length)} / {pagedRows.length}

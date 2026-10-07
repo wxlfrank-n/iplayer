@@ -159,3 +159,65 @@ export function mergeClips(
 
   return {clips: result, activeClip, mergeGap};
 }
+
+export interface ClipRangeMergeResult {
+  /** The full clip list after fusing the range. */
+  clips?: Clip[];
+  /** Index of the fused range in `clips`. */
+  activeClip: number;
+  /** The largest silence inside the fused range. */
+  mergeGap: number;
+}
+
+/**
+ * Pinch merge: fuse every clip from `low` to `high` (inclusive) into one group.
+ *
+ * "clip" scope replaces exactly that range with a single parent and leaves
+ * every other group untouched. "global" scope instead sets the merge gap to the
+ * largest silence inside the range and regroups the whole track, so clips
+ * across the range fuse (and other clips can fuse in as well, like the swipe
+ * merge). Both scopes report that largest internal silence as `mergeGap`.
+ */
+export function mergeClipRange(
+  clips: Clip[],
+  displayClips: Clip[],
+  low: number,
+  high: number,
+  scope: MergeScope = 'clip',
+): ClipRangeMergeResult | null {
+  const first = displayClips[low];
+  if (!first || low >= high) return null;
+
+  let mergeGap = 0;
+  for (let i = low; i < high; i++) {
+    const gap = displayClips[i + 1].start - displayClips[i].end;
+    if (gap > mergeGap) mergeGap = gap;
+  }
+
+  if (scope === 'clip') {
+    let merged = first;
+    for (let i = low + 1; i <= high; i++) {
+      merged = mergeClipPair(merged, displayClips[i]);
+    }
+
+    return {
+      clips: [
+        ...displayClips.slice(0, low),
+        merged,
+        ...displayClips.slice(high + 1),
+      ],
+      mergeGap,
+      activeClip: low,
+    };
+  }
+
+  const result = mergeClipsByGap(clips, mergeGap);
+
+  /*
+   * The fused range starts at `first.start`, so the enclosing group is the last
+   * group starting at or before it.
+   */
+  const activeClip = groupEnclosing(result, first);
+
+  return {clips: result, activeClip, mergeGap};
+}

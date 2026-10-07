@@ -19,7 +19,7 @@
 import {memo, type ReactNode} from 'react';
 
 import type {Clip as InitClipData} from '../utils/clips';
-import type {WaveWindow} from '../types';
+import type {SwipeDirection, WaveWindow} from '../types';
 
 import {Clip} from './Clip';
 
@@ -40,7 +40,7 @@ interface ClipsProps {
 
   onActivate: (idx: number) => void;
 
-  onSwipe?: (idx: number, direction: 'up' | 'down') => void;
+  onSwipe?: (idx: number, direction: SwipeDirection) => void;
 
   /**
    * Maps a clip's local position in `clips` to its global

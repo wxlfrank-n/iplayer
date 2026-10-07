@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest';
 import {mergeClipsByGap, type Clip} from './clips';
-import {mergeClips, splitClip} from './swipe';
+import {mergeClips, mergeClipRange, splitClip} from './swipe';
 
 const mk = (start: number, end: number): Clip => ({
   start,
@@ -421,5 +421,109 @@ describe('mergeClips', () => {
     const displayClips = mergeClipsByGap(clips, 0.1);
 
     expect(mergeClips(clips, displayClips, 0)).toBeNull();
+  });
+});
+
+describe('mergeClipRange', () => {
+  it('fuses the whole range into one group in clip scope', () => {
+    const clips = [mk(0, 1), mk(1.2, 2), mk(2.5, 3), mk(4, 5), mk(8, 9)];
+    const displayClips = mergeClipsByGap(clips, 0.1);
+
+    const result = mergeClipRange(clips, displayClips, 1, 3, 'clip')!;
+
+    expect(bounds(result.clips!)).toEqual([
+      [0, 1],
+      [1.2, 5],
+      [8, 9],
+    ]);
+    expect(result.clips![1].children).toEqual([
+      displayClips[1],
+      displayClips[2],
+      displayClips[3],
+    ]);
+    expect(result.activeClip).toBe(1);
+    // Largest silence inside 1..3: 1.2s-2s end 2 .. 2.5 start gap 0.5? 0.5 vs 1? bounded below by... the 3 gaps: 0.2, 0.5, 1 → max 1.
+    expect(result.mergeGap).toBeCloseTo(1);
+  });
+
+  it('returns null for a degenerate range', () => {
+    const clips = [mk(0, 1), mk(2, 3)];
+    const displayClips = mergeClipsByGap(clips, 0.1);
+
+    expect(mergeClipRange(clips, displayClips, 0, 0)).toBeNull();
+  });
+
+  it('regroups the whole track in global scope at the largest range gap', () => {
+    /*
+     * Gaps: 0.2 (a-b), 0.5 (b-c), 1 (c-d), 3 (d-e). Pinching c and e sets the
+     * threshold to the largest in-range gap (3), fusing every boundary up to
+     * and including it, so the whole track becomes one group.
+     */
+    const clips = [mk(0, 1), mk(1.2, 2), mk(2.5, 3), mk(4, 5), mk(8, 9)];
+    const displayClips = mergeClipsByGap(clips, 0.1);
+
+    const result = mergeClipRange(clips, displayClips, 2, 4, 'global');
+
+    expect(result?.mergeGap).toBeCloseTo(3);
+    expect(bounds(result!.clips!)).toEqual([[0, 9]]);
+    expect(result!.activeClip).toBe(0);
+  });
+
+  it('keeps earlier groups intact when the range fuse does not reach them', () => {
+    const clips = [mk(0, 1), mk(5, 6), mk(7, 8), mk(9, 10), mk(14, 15)];
+    const displayClips = mergeClipsByGap(clips, 0.1);
+
+    const result = mergeClipRange(clips, displayClips, 1, 3, 'clip')!;
+
+    expect(bounds(result.clips!)).toEqual([
+      [0, 1],
+      [5, 10],
+      [14, 15],
+    ]);
+    expect(result.activeClip).toBe(1);
+  });
+
+  it('fuses exactly the right neighbor regardless of the gap on the other side', () => {
+    /*
+     * The down-right swipe must pick the RIGHT clip even when the LEFT gap is
+     * smaller: the range (1, 2) is forced, not nearest-neighbor.
+     */
+    const clips = [mk(0, 1), mk(1.2, 2), mk(4, 5), mk(10, 12)];
+    const displayClips = mergeClipsByGap(clips, 0.1);
+
+    const result = mergeClipRange(clips, displayClips, 1, 2, 'clip')!;
+
+    expect(bounds(result.clips)).toEqual([
+      [0, 1],
+      [1.2, 5],
+      [10, 12],
+    ]);
+    expect(result.clips[1].children).toEqual([
+      displayClips[1],
+      displayClips[2],
+    ]);
+    expect(result.activeClip).toBe(1);
+  });
+
+  it('fuses exactly the left neighbor regardless of the gap on the other side', () => {
+    /*
+     * The up-right swipe must pick the LEFT clip: the range (0, 1) fuses a with
+     * b although the gap to c on the right (0.3) is the smaller one.
+     */
+    const clips = [mk(0, 1), mk(1.5, 2), mk(2.3, 3), mk(10, 12)];
+    const displayClips = mergeClipsByGap(clips, 0.1);
+
+    const result = mergeClipRange(clips, displayClips, 0, 1, 'clip')!;
+
+    expect(bounds(result.clips)).toEqual([
+      [0, 2],
+      [2.3, 3],
+      [10, 12],
+    ]);
+    expect(result.clips[0].children).toEqual([
+      displayClips[0],
+      displayClips[1],
+    ]);
+    expect(result.activeClip).toBe(0);
   });
 });
