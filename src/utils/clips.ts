@@ -263,6 +263,43 @@ export const MIN_SPLIT_PIECE_SEC = 0.1;
  *   3. the right clip is sub-minimum and the accumulated piece from it through
  *      the last child is still short.
  */
+/**
+ * Whether the gap between children `i - 1` and `i` is a viable split boundary.
+ *
+ * The boundary is skipped when either resulting side would be shorter than
+ * `minPieceSec`:
+ *   1. both bordering clips are sub-minimum,
+ *   2. the left clip is sub-minimum and the accumulated piece from the first
+ *      child through it is still short,
+ *   3. the right clip is sub-minimum and the accumulated piece from it through
+ *      the last child is still short.
+ */
+const isSplittableBoundary = (
+  children: Clip[],
+  i: number,
+  minPieceSec: number,
+): boolean => {
+  if (minPieceSec <= 0) return true;
+
+  const left = children[i - 1];
+  const right = children[i];
+  const first = children[0];
+  const last = children[children.length - 1];
+
+  const longEnough = (child: Clip) => child.end - child.start >= minPieceSec;
+
+  const leftStranded =
+    !longEnough(left) && left.end - first.start < minPieceSec;
+  const rightStranded =
+    !longEnough(right) && last.end - right.start < minPieceSec;
+
+  return !(
+    (!longEnough(left) && !longEnough(right)) ||
+    leftStranded ||
+    rightStranded
+  );
+};
+
 export function splitClipAtLargestGap(
   clip: Clip,
   minPieceSec = 0,
@@ -271,30 +308,11 @@ export function splitClipAtLargestGap(
 
   if (children.length < 2) return null;
 
-  const longEnough = (child: Clip) => child.end - child.start >= minPieceSec;
-
   let splitAt = -1;
   let largestGap = -Infinity;
 
   for (let i = 1; i < children.length; i++) {
-    if (minPieceSec > 0) {
-      const left = children[i - 1];
-      const right = children[i];
-      const last = children[children.length - 1];
-
-      const leftStranded =
-        !longEnough(left) && left.end - children[0].start < minPieceSec;
-      const rightStranded =
-        !longEnough(right) && last.end - right.start < minPieceSec;
-
-      if (
-        (!longEnough(left) && !longEnough(right)) ||
-        leftStranded ||
-        rightStranded
-      ) {
-        continue;
-      }
-    }
+    if (!isSplittableBoundary(children, i, minPieceSec)) continue;
 
     const gap = children[i].start - children[i - 1].end;
 
@@ -313,6 +331,54 @@ export function splitClipAtLargestGap(
       asGroup(children.slice(splitAt)),
     ],
     gap: largestGap,
+  };
+}
+
+/**
+ * Directional variant of `splitClipAtLargestGap`: pick the boundary closest to
+ * the requested end of the group instead of the largest gap.
+ *
+ * "right" scans from the last gap inward, "left" from the first. Either picks
+ * the smallest valid piece on that side: a short child is absorbed into its
+ * neighbours until the accumulated end-piece clears `minPieceSec`, so the
+ * detached part is always "longer than the minimum".
+ */
+export function splitClipAtEnd(
+  clip: Clip,
+  side: 'left' | 'right',
+  minPieceSec = 0,
+): {pieces: Clip[]; gap: number} | null {
+  const children = clip.children ?? [];
+  const count = children.length;
+
+  if (count < 2) return null;
+
+  let splitAt = -1;
+
+  if (side === 'right') {
+    for (let i = count - 1; i >= 1; i--) {
+      if (isSplittableBoundary(children, i, minPieceSec)) {
+        splitAt = i;
+        break;
+      }
+    }
+  } else {
+    for (let i = 1; i < count; i++) {
+      if (isSplittableBoundary(children, i, minPieceSec)) {
+        splitAt = i;
+        break;
+      }
+    }
+  }
+
+  if (splitAt === -1) return null;
+
+  return {
+    pieces: [
+      asGroup(children.slice(0, splitAt)),
+      asGroup(children.slice(splitAt)),
+    ],
+    gap: children[splitAt].start - children[splitAt - 1].end,
   };
 }
 
@@ -497,9 +563,10 @@ export function mergeClipsByConfig(
 }
 
 /**
- * Merge two adjacent clips into one group, flattening whatever children they
- * already had into the new parent's `children`. The result is always a merged
- * clip with at least two children, so it can be split again.
+ * Merge two adjacent clips into one group. The two clips become the group's
+ * direct children as-is, keeping their own children (and any expansion)
+ * nested inside them. The result is always a merged clip with exactly these
+ * two children, so it can be split again.
  */
 export function mergeClipPair(left: Clip, right: Clip): Clip {
   return {
@@ -508,6 +575,6 @@ export function mergeClipPair(left: Clip, right: Clip): Clip {
     vStart: left.vStart,
     vEnd: right.vEnd,
 
-    children: [...(left.children ?? [left]), ...(right.children ?? [right])],
+    children: [left, right],
   };
 }

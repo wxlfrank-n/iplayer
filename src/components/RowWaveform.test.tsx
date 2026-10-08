@@ -203,6 +203,32 @@ describe('RowWaveform clip dragging', () => {
     expect(viewportStart()).toBe(0);
   });
 
+  it('does not scroll horizontally for a 15-75 degree diagonal clip swipe', () => {
+    const {clip, viewportStart} = renderRow();
+
+    // 35 degrees above the horizontal (ratio 0.7), inside the diagonal band.
+    fireEvent.pointerDown(clip, {
+      pointerId: 9,
+      pointerType: 'touch',
+      clientX: 100,
+      clientY: 50,
+    });
+    act(() => {
+      fireEvent.pointerMove(window, {
+        pointerId: 9,
+        clientX: 150,
+        clientY: 15,
+      });
+      fireEvent.pointerMove(window, {
+        pointerId: 9,
+        clientX: 160,
+        clientY: 10,
+      });
+    });
+
+    expect(viewportStart()).toBe(0);
+  });
+
   it('starts scrolling from the row viewport even when the track is transformed', () => {
     const {track, viewportStart} = renderRow();
 

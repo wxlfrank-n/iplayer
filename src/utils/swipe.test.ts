@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest';
 import {mergeClipsByGap, type Clip} from './clips';
-import {mergeClips, mergeClipRange, splitClip} from './swipe';
+import {mergeClips, mergeClipRange, splitClip, splitClipEnd} from './swipe';
 
 const mk = (start: number, end: number): Clip => ({
   start,
@@ -303,6 +303,206 @@ describe('splitClip', () => {
   });
 });
 
+describe('splitClipEnd', () => {
+  it('returns null for clips without children', () => {
+    const clips = [mk(0, 1)];
+    expect(splitClipEnd(clips, clips, 0, 'right')).toBeNull();
+    expect(splitClipEnd(clips, clips, 0, 'left')).toBeNull();
+  });
+
+  it('detaches the rightmost child in clip scope', () => {
+    const clip: Clip = {
+      start: 0,
+      end: 5,
+      vStart: 0,
+      vEnd: 5,
+      children: [mk(0, 1), mk(2, 3), mk(4, 5)],
+    };
+
+    const result = splitClipEnd([clip], [clip], 0, 'right', 'clip')!;
+
+    expect(bounds(result.clips!)).toEqual([
+      [0, 3],
+      [4, 5],
+    ]);
+    expect(result.clips![0].children).toEqual([
+      clip.children![0],
+      clip.children![1],
+    ]);
+    expect(result.clips![1]).toEqual(clip.children![2]);
+    expect(result.activeClip).toBe(0);
+    // The silence the rightmost part was cut at.
+    expect(result.mergeGap).toBeCloseTo(1);
+  });
+
+  it('detaches the leftmost child in clip scope', () => {
+    const clip: Clip = {
+      start: 0,
+      end: 5,
+      vStart: 0,
+      vEnd: 5,
+      children: [mk(0, 1), mk(2, 3), mk(4, 5)],
+    };
+
+    const result = splitClipEnd([clip], [clip], 0, 'left', 'clip')!;
+
+    expect(bounds(result.clips!)).toEqual([
+      [0, 1],
+      [2, 5],
+    ]);
+    expect(result.clips![0]).toEqual(clip.children![0]);
+    expect(result.clips![1].children).toEqual([
+      clip.children![1],
+      clip.children![2],
+    ]);
+    expect(result.activeClip).toBe(0);
+  });
+
+  it('right side absorbs a sub-minimum trailing child into the detached part', () => {
+    /*
+     * The last child (0.01s) cannot stand alone, so the rightmost valid
+     * boundary moves in and detaches it together with the child before it.
+     */
+    const clip: Clip = {
+      start: 0,
+      end: 5,
+      vStart: 0,
+      vEnd: 5,
+      children: [mk(0, 1), mk(2, 3), mk(3.02, 3.03)],
+    };
+
+    const result = splitClipEnd([clip], [clip], 0, 'right', 'clip')!;
+
+    expect(bounds(result.clips!)).toEqual([
+      [0, 1],
+      [2, 3.03],
+    ]);
+    expect(result.clips![1].children).toEqual([
+      clip.children![1],
+      clip.children![2],
+    ]);
+  });
+
+  it('left side absorbs a sub-minimum leading child into the detached part', () => {
+    const clip: Clip = {
+      start: 0,
+      end: 5,
+      vStart: 0,
+      vEnd: 5,
+      children: [mk(0, 0.03), mk(0.07, 1), mk(2, 3), mk(4, 5)],
+    };
+
+    const result = splitClipEnd([clip], [clip], 0, 'left', 'clip')!;
+
+    // The 0.03s leading clip strands alone, so the boundary moves onward.
+    expect(bounds(result.clips!)).toEqual([
+      [0, 1],
+      [2, 5],
+    ]);
+    expect(result.clips![0].children).toEqual([
+      clip.children![0],
+      clip.children![1],
+    ]);
+  });
+
+  it('right side cuts at its own end gap, not the largest one', () => {
+    /*
+     * All three gaps are valid, but the rightmost boundary wins over the
+     * largest silence at the other end of the group.
+     */
+    const clip: Clip = {
+      start: 0,
+      end: 5.5,
+      vStart: 0,
+      vEnd: 5.5,
+      children: [mk(0, 1), mk(3, 4), mk(4.05, 5), mk(5.1, 5.5)],
+    };
+
+    const result = splitClipEnd([clip], [clip], 0, 'right', 'clip')!;
+
+    expect(bounds(result.clips!)).toEqual([
+      [0, 5],
+      [5.1, 5.5],
+    ]);
+    expect(result.mergeGap).toBeCloseTo(0.1);
+  });
+
+  it('left side cuts at its own leading gap', () => {
+    const clip: Clip = {
+      start: 0,
+      end: 5.5,
+      vStart: 0,
+      vEnd: 5.5,
+      children: [mk(0, 1), mk(1.05, 2), mk(3, 4), mk(4.5, 5.5)],
+    };
+
+    const result = splitClipEnd([clip], [clip], 0, 'left', 'clip')!;
+
+    expect(bounds(result.clips!)).toEqual([
+      [0, 1],
+      [1.05, 5.5],
+    ]);
+  });
+
+  it('leaves unrelated groups intact when splitting in clip scope', () => {
+    const clips = [
+      mk(0, 1),
+      mk(1.15, 2),
+      mk(6, 7),
+      mk(7.15, 8),
+      mk(12, 13),
+      mk(13.15, 14),
+    ];
+    const displayClips = mergeClipsByGap(clips, 0.2);
+
+    const result = splitClipEnd(clips, displayClips, 1, 'right', 'clip')!;
+
+    // c-d peels its rightmost child off; a-b and e-f stay merged.
+    expect(bounds(result.clips)).toEqual([
+      [0, 2],
+      [6, 7],
+      [7.15, 8],
+      [12, 14],
+    ]);
+    expect(result.clips![0].children).toEqual([clips[0], clips[1]]);
+    expect(result.clips![3].children).toEqual([clips[4], clips[5]]);
+    expect(result.activeClip).toBe(1);
+  });
+
+  it('sets the global merge gap just below the detached end gap', () => {
+    const clips = [mk(0, 1), mk(1.2, 2), mk(2.5, 3), mk(5, 6)];
+    const displayClips = mergeClipsByGap(clips, 0.6);
+
+    const result = splitClipEnd(clips, displayClips, 0, 'right', 'global')!;
+
+    /*
+     * The group {c0,c1,c2} is split at its trailing gap (0.5), so the whole
+     * track re-thresholds just below it: c1-c2 no longer fuses, a-b still does.
+     */
+    expect(result.mergeGap).toBeCloseTo(0.499999);
+    expect(bounds(mergeClipsByGap(clips, result.mergeGap))).toEqual([
+      [0, 2],
+      [2.5, 3],
+      [5, 6],
+    ]);
+    expect(result.activeClip).toBe(0);
+  });
+
+  it('returns null when the chosen end holds no valid boundary', () => {
+    const clip: Clip = {
+      start: 0,
+      end: 3,
+      vStart: 0,
+      vEnd: 3,
+      children: [mk(0, 0.05), mk(2, 3)],
+    };
+
+    // The single gap strands the 0.05s leading clip on both sides.
+    expect(splitClipEnd([clip], [clip], 0, 'right', 'clip')).toBeNull();
+    expect(splitClipEnd([clip], [clip], 0, 'left', 'clip')).toBeNull();
+  });
+});
+
 describe('mergeClips', () => {
   it('merges only the clip and tracks its nearest silence', () => {
     const clips = [mk(0, 1), mk(1.2, 2), mk(2.5, 3), mk(5, 6)];
@@ -437,8 +637,11 @@ describe('mergeClipRange', () => {
       [8, 9],
     ]);
     expect(result.clips![1].children).toEqual([
-      displayClips[1],
-      displayClips[2],
+      expect.objectContaining({
+        start: 1.2,
+        end: 3,
+        children: [displayClips[1], displayClips[2]],
+      }),
       displayClips[3],
     ]);
     expect(result.activeClip).toBe(1);
@@ -507,8 +710,8 @@ describe('mergeClipRange', () => {
 
   it('fuses exactly the left neighbor regardless of the gap on the other side', () => {
     /*
-     * The up-right swipe must pick the LEFT clip: the range (0, 1) fuses a with
-     * b although the gap to c on the right (0.3) is the smaller one.
+     * The range (0, 1) fuses a with b although the gap to c on the right (0.3)
+     * is the smaller one -- the range is forced, not nearest-neighbor.
      */
     const clips = [mk(0, 1), mk(1.5, 2), mk(2.3, 3), mk(10, 12)];
     const displayClips = mergeClipsByGap(clips, 0.1);

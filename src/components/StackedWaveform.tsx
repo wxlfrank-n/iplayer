@@ -16,6 +16,7 @@ import {useDrag} from '@use-gesture/react';
 
 import {StackRow, type StackedRow} from './StackRow';
 import {clipPinchState} from './clipPinch';
+import {DIAGONAL_MIN_TAN} from './Clip';
 
 import {
   type ClipPlayRequest,
@@ -480,12 +481,12 @@ export const StackedWaveform = memo(
           }
 
           /*
-           * Vertical gesture.
+           * Clip gesture: vertical swipe, or a diagonal 15-75 degree swipe.
            *
-           * Leave it alone so Clip can interpret
-           * swipe-up / swipe-down.
+           * Leave it alone so Clip can interpret it. Page dragging only
+           * engages for gestures staying within 15 degrees of the horizontal.
            */
-          if (Math.abs(dy) >= Math.abs(dx)) {
+          if (Math.abs(dy) >= DIAGONAL_MIN_TAN * Math.abs(dx)) {
             if (last) {
               dragRef.current = null;
             }

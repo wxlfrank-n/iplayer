@@ -10,6 +10,11 @@
  * vertical swipe
  *   -> split / merge
  *
+ * diagonal swipe (35-55 deg)
+ *   -> down-right: merge with the clip to the right
+ *   -> up-right: split the rightmost part of the merged clip
+ *   -> up-left: split the leftmost part of the merged clip
+ *
  * horizontal drag
  *   -> NOT handled here
  *   -> observed by the waveform container
@@ -62,12 +67,23 @@ const SWIPE_THRESHOLD_PX = 24;
 const TAP_THRESHOLD_PX = 8;
 
 /*
- * 35 to 55 degrees from the horizontal, expressed as the slope of |dy|/|dx|
- * (tan of the angle). A rightward swipe inside this band is the diagonal merge
- * gesture; steeper swipes stay vertical, shallower ones stay horizontal.
+ * Diagonal band boundaries, expressed as the slope of |dy|/|dx| (tan of the
+ * angle from the horizontal):
+ *
+ *   |dy|/|dx| <                 tan(15 deg) -> horizontal scroll (parent owns)
+ *   tan(15 deg) <= |dy|/|dx| <= tan(75 deg) -> diagonal clip gesture
+ *   |dy|/|dx| >                 tan(75 deg) -> vertical swipe
+ *
+ * Each gesture direction is a 60-degree slice:
+ *
+ *   0-15 / 345-360 -> right scroll, 165-195 -> left scroll
+ *   15-75          -> up-right, 105-165 -> up-left
+ *   75-105         -> up / split, 255-285 -> down / merge
+ *   105-165        -> up-left, 195-255 -> down-left
+ *   285-345        -> down-right
  */
-const DIAGONAL_MIN_TAN = Math.tan((35 * Math.PI) / 180);
-const DIAGONAL_MAX_TAN = Math.tan((55 * Math.PI) / 180);
+export const DIAGONAL_MIN_TAN = Math.tan((15 * Math.PI) / 180);
+export const DIAGONAL_MAX_TAN = Math.tan((75 * Math.PI) / 180);
 
 export const Clip = memo(
   ({
@@ -221,14 +237,16 @@ export const Clip = memo(
         const absY = Math.abs(dy);
 
         /*
-         * Diagonal swipe to the right (35-55 degrees from the horizontal):
+         * Diagonal swipes (15-75 degrees from the horizontal):
          *
          *   down-right -> merge with the clip to the right
-         *   up-right   -> merge with the clip to the left
+         *   down-left  -> merge with the clip to the left
+         *   up-right   -> split the rightmost part of the merged clip
+         *   up-left    -> split the leftmost part of the merged clip
          *
-         * Clip owns this gesture, like the vertical swipe. Checked before the
-         * vertical band so the 35-55 deg slice never falls through to one of
-         * the plain up/down swipes.
+         * Clip owns these gestures, like the vertical swipe. Checked before
+         * the vertical band so the 15-75 deg slice never falls through to one
+         * of the plain up/down swipes.
          */
         const ratio = absX > 0 ? absY / absX : Infinity;
         if (
@@ -244,12 +262,40 @@ export const Clip = memo(
           return;
         }
 
+        if (
+          dx < 0 &&
+          dy > 0 &&
+          Math.hypot(dx, dy) >= SWIPE_THRESHOLD_PX &&
+          ratio >= DIAGONAL_MIN_TAN &&
+          ratio <= DIAGONAL_MAX_TAN
+        ) {
+          suppressClickRef.current = true;
+
+          onSwipe?.(id, 'down-left');
+
+          return;
+        }
+
+        if (
+          dx < 0 &&
+          dy < 0 &&
+          Math.hypot(dx, dy) >= SWIPE_THRESHOLD_PX &&
+          ratio >= DIAGONAL_MIN_TAN &&
+          ratio <= DIAGONAL_MAX_TAN
+        ) {
+          suppressClickRef.current = true;
+
+          onSwipe?.(id, 'up-left');
+
+          return;
+        }
+
         /*
          * Vertical swipe:
          *
          * Clip owns this gesture.
          */
-        if (absY >= SWIPE_THRESHOLD_PX && absY > absX) {
+        if (absY >= SWIPE_THRESHOLD_PX && ratio > DIAGONAL_MAX_TAN) {
           suppressClickRef.current = true;
 
           onSwipe?.(id, dy < 0 ? 'up' : 'down');

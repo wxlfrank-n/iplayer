@@ -28,6 +28,7 @@ import {
 } from '../utils/waveform';
 import {calculateWheelChange} from '../utils/rowHandler';
 import type {Clip} from '../utils/clips';
+import {DIAGONAL_MIN_TAN} from '../components/Clip';
 import {panTarget} from '../utils/pan';
 import {clipPinchState} from '../components/clipPinch';
 import {startFrameLoop} from '../utils/raf';
@@ -508,7 +509,12 @@ export function useRowWaveformScroll({
           ) {
             return;
           }
-          if (Math.abs(dy) >= Math.abs(dx)) {
+          /*
+           * Clip gesture: vertical swipe, or a diagonal 15-75 degree swipe.
+           * Stand down so Clip can interpret it. Panning only engages for
+           * gestures staying within 15 degrees of the horizontal.
+           */
+          if (Math.abs(dy) >= DIAGONAL_MIN_TAN * Math.abs(dx)) {
             return;
           }
         }

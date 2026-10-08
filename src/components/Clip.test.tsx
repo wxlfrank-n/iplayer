@@ -162,7 +162,7 @@ describe('Clip gestures', () => {
     expect(onPlayRange).not.toHaveBeenCalled();
   });
 
-  it('reports an up-right diagonal swipe (merge left)', () => {
+  it('reports an up-right diagonal swipe (split rightmost)', () => {
     const onSwipe = vi.fn();
     const {rect} = renderClip({onSwipe});
 
@@ -183,7 +183,7 @@ describe('Clip gestures', () => {
     expect(onSwipe).toHaveBeenCalledWith(0, 'up-right');
   });
 
-  it('classifies diagonals by band: 35..55 deg is diagonal, steeper stays vertical', () => {
+  it('classifies diagonal swipes by band: 15..75 deg is diagonal, steeper vertical, shallower horizontal', () => {
     const onSwipe = vi.fn();
     const {rect} = renderClip({onSwipe});
     const swipe = (id: number, dx: number, dy: number) => {
@@ -201,44 +201,117 @@ describe('Clip gestures', () => {
       });
     };
 
-    // 36 deg (ratio 0.73 in band) -> down-right.
-    swipe(6, 60, 43);
+    // 45 deg (ratio 1.0, in band) -> down-right.
+    swipe(6, 40, 40);
     expect(onSwipe).toHaveBeenLastCalledWith(0, 'down-right');
 
-    // 54 deg (ratio 1.38 in band) -> down-right.
-    swipe(7, 40, 55);
+    // 36 deg (ratio 0.73, in band) -> down-right.
+    swipe(7, 60, 43);
     expect(onSwipe).toHaveBeenLastCalledWith(0, 'down-right');
 
-    // 60 deg (ratio 1.73, above the band) -> plain vertical down.
-    swipe(8, 30, 52);
+    // 70 deg (ratio 2.75, in band) -> down-right.
+    swipe(8, 20, 55);
+    expect(onSwipe).toHaveBeenLastCalledWith(0, 'down-right');
+
+    // 80 deg (ratio 5.67, above the band) -> plain vertical down.
+    swipe(9, 10, 57);
     expect(onSwipe).toHaveBeenLastCalledWith(0, 'down');
 
-    // 30 deg (ratio 0.58, below the band) -> treated as horizontal, no clip
-    // gesture.
-    swipe(9, 60, 34);
-    expect(onSwipe).toHaveBeenCalledTimes(3);
+    // 10 deg (ratio 0.18, below the band) -> horizontal, no clip gesture.
+    swipe(10, 80, 14);
+    expect(onSwipe).toHaveBeenCalledTimes(4);
   });
 
-  it('keeps leftward diagonals as vertical swipes', () => {
+  it('reports an up-left diagonal swipe (split leftmost)', () => {
     const onSwipe = vi.fn();
     const {rect} = renderClip({onSwipe});
 
-    // Steep upper-left diagonal must stay a vertical up/UP swipe, not the
-    // rightward merge gesture.
+    // 45 degrees above the horizontal: dx=-30, dy=-30.
     fireEvent.pointerDown(rect, {
-      pointerId: 10,
+      pointerId: 11,
       pointerType: 'touch',
       clientX: 100,
       clientY: 100,
     });
     fireEvent.pointerUp(rect, {
-      pointerId: 10,
+      pointerId: 11,
       pointerType: 'touch',
       clientX: 70,
-      clientY: 60,
+      clientY: 70,
     });
 
-    expect(onSwipe).toHaveBeenCalledWith(0, 'up');
+    expect(onSwipe).toHaveBeenCalledWith(0, 'up-left');
+  });
+
+  it('classifies down-left diagonal swipes by band', () => {
+    const onSwipe = vi.fn();
+    const {rect} = renderClip({onSwipe});
+    const swipe = (id: number, dx: number, dy: number) => {
+      fireEvent.pointerDown(rect, {
+        pointerId: id,
+        pointerType: 'touch',
+        clientX: 100,
+        clientY: 100,
+      });
+      fireEvent.pointerUp(rect, {
+        pointerId: id,
+        pointerType: 'touch',
+        clientX: 100 + dx,
+        clientY: 100 + dy,
+      });
+    };
+
+    // 45 deg (ratio 1.0, in band) -> down-left.
+    swipe(13, -30, 30);
+    expect(onSwipe).toHaveBeenLastCalledWith(0, 'down-left');
+
+    // 70 deg (ratio 2.75, in band) -> down-left.
+    swipe(14, -20, 55);
+    expect(onSwipe).toHaveBeenLastCalledWith(0, 'down-left');
+
+    // 80 deg (ratio 5.67, above the band) -> plain vertical down (merge).
+    swipe(15, -10, 57);
+    expect(onSwipe).toHaveBeenLastCalledWith(0, 'down');
+
+    // 10 deg (ratio 0.18, below the band) -> horizontal, no clip gesture.
+    swipe(16, -80, 14);
+    expect(onSwipe).toHaveBeenCalledTimes(3);
+  });
+
+  it('classifies up-left diagonals by band and keeps steep ones vertical', () => {
+    const onSwipe = vi.fn();
+    const {rect} = renderClip({onSwipe});
+    const swipe = (id: number, dx: number, dy: number) => {
+      fireEvent.pointerDown(rect, {
+        pointerId: id,
+        pointerType: 'touch',
+        clientX: 100,
+        clientY: 100,
+      });
+      fireEvent.pointerUp(rect, {
+        pointerId: id,
+        pointerType: 'touch',
+        clientX: 100 + dx,
+        clientY: 100 + dy,
+      });
+    };
+
+    // 36 deg (ratio 0.73, in band) -> up-left.
+    swipe(20, -60, -43);
+    expect(onSwipe).toHaveBeenLastCalledWith(0, 'up-left');
+
+    // 70 deg (ratio 2.75, in band) -> up-left.
+    swipe(21, -20, -55);
+    expect(onSwipe).toHaveBeenLastCalledWith(0, 'up-left');
+
+    // 80 deg (ratio 5.67, above the band) -> plain vertical up.
+    swipe(22, -10, -57);
+    expect(onSwipe).toHaveBeenLastCalledWith(0, 'up');
+
+    // 10 deg (ratio 0.18, below the band, absY < absX) -> horizontal, no clip
+    // gesture.
+    swipe(23, -80, -14);
+    expect(onSwipe).toHaveBeenCalledTimes(3);
   });
 
   it('marks the clip rectangle active and renders its label', () => {

@@ -59,12 +59,17 @@ export type MergeScope = 'global' | 'clip';
  * Direction of a swipe gesture on a clip.
  *
  * - "up"/"down": vertical, splits / merges with the nearest neighbor.
- * - "down-right": diagonal 35-55 deg below horizontal, merges with the clip to
+ * - "down-right": diagonal 15-75 deg below horizontal, merges with the clip to
  *   the right.
- * - "up-right": diagonal 35-55 deg above horizontal, merges with the clip to
+ * - "down-left": diagonal 15-75 deg below horizontal, merges with the clip to
  *   the left.
+ * - "up-right": diagonal 15-75 deg above horizontal, splits the rightmost part
+ *   of the merged clip.
+ * - "up-left": diagonal 15-75 deg above horizontal, splits the leftmost part of
+ *   the merged clip.
  */
-export type SwipeDirection = 'up' | 'down' | 'up-right' | 'down-right';
+export type SwipeDirection =
+  'up' | 'down' | 'up-right' | 'down-right' | 'up-left' | 'down-left';
 
 /**
  * Consolidated state for the currently played audio. Owned by the app root so

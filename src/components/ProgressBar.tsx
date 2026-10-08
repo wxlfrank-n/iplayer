@@ -38,7 +38,13 @@ import type {Clip as InitClipData} from '../utils/clips';
 import type {ClipPlayRequest, SwipeDirection} from '../types';
 import './ProgressBar.css';
 
-import {splitClip, mergeClips, mergeClipRange} from '../utils/swipe';
+import {
+  splitClip,
+  splitClipEnd,
+  mergeClips,
+  mergeClipRange,
+  type ClipSplitResult,
+} from '../utils/swipe';
 
 interface ProgressBarProps {
   /** Seek to an absolute track time (seconds). */
@@ -250,6 +256,36 @@ export function ProgressBar({
    * ---------------------------------------------------------
    */
 
+  /*
+   * Publish the outcome of a split gesture.
+   *
+   * `displayClips` still describes the pre-split grouping here, so the new clip
+   * has to be re-derived from the raw clips at the new merge gap. Indexing the
+   * stale list would replay the pre-split clip's range.
+   */
+  const publishSplit = useCallback(
+    (result: ClipSplitResult | null) => {
+      if (!result) {
+        return;
+      }
+
+      setMergeGap(result.mergeGap);
+
+      if (mergeScope === 'clip') {
+        setScopedClips(result.clips ?? null);
+      }
+
+      setActiveClip(result.activeClip);
+
+      const newActiveClip = result.clips?.[result.activeClip];
+
+      if (newActiveClip) {
+        requestClipPlayback(newActiveClip);
+      }
+    },
+    [mergeScope, requestClipPlayback],
+  );
+
   const handleClipSwipe = useCallback(
     (idx: number, direction: SwipeDirection) => {
       /*
@@ -289,40 +325,18 @@ export function ProgressBar({
        * Swipe up:
        * split/unpack a virtually merged clip.
        */
-      const result = splitClip(
-        clips,
-        displayClips,
-        idx,
-        mergeScope,
-        minSplitPieceSec,
+      publishSplit(
+        splitClip(clips, displayClips, idx, mergeScope, minSplitPieceSec),
       );
-
-      if (!result) {
-        return;
-      }
-
-      setMergeGap(result.mergeGap);
-
-      if (mergeScope === 'clip') {
-        setScopedClips(result.clips ?? null);
-      }
-
-      setActiveClip(result.activeClip);
-
-      /*
-       * Play the clip that is active AFTER the split.
-       *
-       * `displayClips` still describes the pre-split grouping here, so the new
-       * clip has to be re-derived from the raw clips at the new merge gap.
-       * Indexing the stale list would replay the pre-split clip's range.
-       */
-      const newActiveClip = result.clips?.[result.activeClip];
-
-      if (newActiveClip) {
-        requestClipPlayback(newActiveClip);
-      }
     },
-    [clips, displayClips, mergeScope, minSplitPieceSec, requestClipPlayback],
+    [
+      clips,
+      displayClips,
+      mergeScope,
+      minSplitPieceSec,
+      publishSplit,
+      requestClipPlayback,
+    ],
   );
 
   /*
@@ -355,28 +369,45 @@ export function ProgressBar({
     [clips, displayClips, mergeScope, requestClipPlayback],
   );
 
-  const handleClipSwipeDiagonal = useCallback(
-    (idx: number, direction: 'up-right' | 'down-right') => {
-      /*
-       * Diagonal swipe:
-       * swipe down-right -> merge with the clip to the right
-       * swipe up-right   -> merge with the clip to the left
-       */
-      let low = idx;
-      let high = idx + 1;
-
-      if (direction === 'up-right') {
-        low = idx - 1;
-        high = idx;
-      }
-
-      if (low < 0 || high >= displayClips.length) {
+  /*
+   * Downward diagonal swipe: merge this clip with an adjacent one. Down-right
+   * merges with the clip to the right, down-left with the clip to the left.
+   */
+  const handleClipSwipeDiagonalMerge = useCallback(
+    (idx: number, dir: 'left' | 'right') => {
+      if (dir === 'right') {
+        if (idx + 1 < displayClips.length) {
+          applyRangeMerge(idx, idx + 1);
+        }
         return;
       }
 
-      applyRangeMerge(low, high);
+      if (idx > 0) {
+        applyRangeMerge(idx - 1, idx);
+      }
     },
     [applyRangeMerge, displayClips.length],
+  );
+
+  /*
+   * Upward diagonal swipes split the merged clip from the end the swipe is
+   * pointing at: up-right detaches the rightmost part, up-left the leftmost.
+   * The detached part is always at least `minSplitPieceSec`.
+   */
+  const handleClipSwipeSplitEnd = useCallback(
+    (idx: number, side: 'left' | 'right') => {
+      publishSplit(
+        splitClipEnd(
+          clips,
+          displayClips,
+          idx,
+          side,
+          mergeScope,
+          minSplitPieceSec,
+        ),
+      );
+    },
+    [clips, displayClips, mergeScope, minSplitPieceSec, publishSplit],
   );
 
   /*
@@ -392,14 +423,25 @@ export function ProgressBar({
 
   const handleClipSwipeGesture = useCallback(
     (idx: number, direction: SwipeDirection) => {
-      if (direction === 'up-right' || direction === 'down-right') {
-        handleClipSwipeDiagonal(idx, direction);
+      if (direction === 'down-right' || direction === 'down-left') {
+        handleClipSwipeDiagonalMerge(
+          idx,
+          direction === 'down-right' ? 'right' : 'left',
+        );
+        return;
+      }
+
+      if (direction === 'up-right' || direction === 'up-left') {
+        handleClipSwipeSplitEnd(
+          idx,
+          direction === 'up-right' ? 'right' : 'left',
+        );
         return;
       }
 
       handleClipSwipe(idx, direction);
     },
-    [handleClipSwipe, handleClipSwipeDiagonal],
+    [handleClipSwipe, handleClipSwipeDiagonalMerge, handleClipSwipeSplitEnd],
   );
 
   /*

@@ -268,6 +268,66 @@ describe('stacked waveform paged auto-advance', () => {
     expect(onSeek).not.toHaveBeenCalled();
   });
 
+  it('pages on a horizontal drag but not on a diagonal clip swipe', () => {
+    const {scrollTo, scroller} = setup(0);
+
+    // Horizontal drag: finger moves left, content moves left.
+    fireEvent.pointerDown(scroller, {
+      pointerId: 9,
+      pointerType: 'touch',
+      button: 0,
+      buttons: 1,
+      clientX: 100,
+      clientY: 50,
+    });
+    fireEvent.pointerMove(scroller, {
+      pointerId: 9,
+      pointerType: 'touch',
+      buttons: 1,
+      clientX: 0,
+      clientY: 50,
+    });
+    fireEvent.pointerUp(scroller, {
+      pointerId: 9,
+      pointerType: 'touch',
+      buttons: 0,
+      clientX: 0,
+      clientY: 50,
+    });
+
+    expect(scrollTo).toHaveBeenCalled();
+    expect(scroller.scrollLeft).toBe(100);
+
+    scrollTo.mockClear();
+
+    // Diagonal 15-75 degree swipe (35 deg here): must not page-drag.
+    fireEvent.pointerDown(scroller, {
+      pointerId: 10,
+      pointerType: 'touch',
+      button: 0,
+      buttons: 1,
+      clientX: 100,
+      clientY: 50,
+    });
+    fireEvent.pointerMove(scroller, {
+      pointerId: 10,
+      pointerType: 'touch',
+      buttons: 1,
+      clientX: 150,
+      clientY: 15,
+    });
+    fireEvent.pointerUp(scroller, {
+      pointerId: 10,
+      pointerType: 'touch',
+      buttons: 0,
+      clientX: 150,
+      clientY: 15,
+    });
+
+    expect(scrollTo).not.toHaveBeenCalled();
+    expect(scroller.scrollLeft).toBe(100);
+  });
+
   it('does not start a page drag from a buttonless move after a clip tap', () => {
     const {scrollTo, setPointerCapture, scroller} = setup(0);
 

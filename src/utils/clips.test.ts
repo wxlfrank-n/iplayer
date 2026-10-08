@@ -6,6 +6,7 @@ import {
   mergeClipsByGap,
   mergeClipsByGapScoped,
   getInitClipData,
+  mergeClipPair,
   splitClipAtLargestGap,
   type Clip,
 } from './clips';
@@ -402,5 +403,59 @@ describe('getClipGaps', () => {
     // first gap is 0.005 (skipped), second gap is 1 (kept)
     const clips = [mk(0, 1), mk(1.005, 2), mk(3, 4)];
     expect(getClipGaps(clips)).toEqual([1]);
+  });
+});
+
+describe('mergeClipPair', () => {
+  it('nests the two merged clips as direct children', () => {
+    const a = mk(0, 1);
+    const b = mk(2, 3);
+    const group = {...mk(0, 3), children: [a, b]};
+    const c = mk(4, 5);
+
+    const merged = mergeClipPair(group, c);
+
+    expect(merged.children).toEqual([group, c]);
+  });
+
+  it('keeps an expanded nested group intact instead of flattening it', () => {
+    /*
+     * A subgroup expanded into the surrounding silence must survive the merge
+     * unflattened (same object reference), otherwise its expansion (vStart/
+     * vEnd) is lost. Nesting keeps the whole parent as one child, so nothing
+     * is torn apart at all.
+     */
+    const a = {...mk(0, 1), vStart: 0, vEnd: 1.2, expanded: true};
+    const b = mk(1, 1.5);
+    const c = mk(1.5, 2);
+    const bc = {
+      start: 1,
+      end: 2,
+      vStart: 0.9,
+      vEnd: 2.1,
+      expanded: true,
+      children: [b, c],
+    };
+    const parent = {...mk(0, 2), children: [a, bc]};
+    const d = mk(3, 4);
+
+    const merged = mergeClipPair(parent, d);
+
+    expect(merged.children).toEqual([parent, d]);
+    expect(merged.children[0]).toBe(parent);
+    expect(merged.children[0].children[1].vEnd).toBeCloseTo(2.1, 6);
+  });
+
+  it('keeps a single expanded leaf whole', () => {
+    const a = {...mk(0, 1), vStart: 0, vEnd: 1.2, expanded: true};
+    const b = {...mk(2, 3), vStart: 1.9, vEnd: 3.1, expanded: true};
+
+    const merged = mergeClipPair(a, b);
+
+    expect(merged.start).toBe(0);
+    expect(merged.end).toBe(3);
+    expect(merged.vStart).toBe(0);
+    expect(merged.vEnd).toBe(3.1);
+    expect(merged.children).toEqual([a, b]);
   });
 });
