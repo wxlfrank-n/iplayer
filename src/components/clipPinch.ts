@@ -1,6 +1,7 @@
 /**
- * Coordination shared between the two-finger clip "snip" gesture and the single
- * pointer gestures that live beside it.
+ * Coordination shared between the two-finger clip "snip" gestures (squeeze to
+ * merge across clips, spread to split a single clip) and the single pointer
+ * gestures that live beside them.
  *
  * These are module singletons on purpose: the pinch is detected above the clips
  * (on the waveform container), while Clip instances and the horizontal
@@ -12,11 +13,15 @@
 /** Inward squeeze (px) that counts as a merge before the fingers release. */
 export const PINCH_MERGE_THRESHOLD_PX = 40;
 
+/** Outward spread (px) that counts as a split before the fingers release. */
+export const PINCH_SPLIT_THRESHOLD_PX = 40;
+
 /**
- * True while two fingers are down on two clips.
+ * True while two fingers are down on clips.
  *
  * RowWaveform's horizontal pan and StackedWaveform's page drag must stand down
- * while it is set, so the squeeze is not mistaken for horizontal navigation.
+ * while it is set, so the squeeze (or spread) is not mistaken for horizontal
+ * navigation.
  */
 export const clipPinchState = {active: false};
 

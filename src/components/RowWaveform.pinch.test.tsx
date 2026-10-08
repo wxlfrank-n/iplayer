@@ -60,6 +60,7 @@ const clips: InitClipData[] = [
 
 function renderRow() {
   const onPinchMergeClip = vi.fn();
+  const onPinchSplitClip = vi.fn();
   const onActiveClipChange = vi.fn();
   const onPlayRange = vi.fn();
 
@@ -85,6 +86,7 @@ function renderRow() {
         setScrolling={vi.fn()}
         scrollTimeoutRef={{current: undefined}}
         onPinchMergeClip={overrides.onPinchMergeClip ?? onPinchMergeClip}
+        onPinchSplitClip={onPinchSplitClip}
       />
     </Provider>
   );
@@ -107,6 +109,7 @@ function renderRow() {
     tree,
     clipsEls,
     onPinchMergeClip,
+    onPinchSplitClip,
     onActiveClipChange,
     onPlayRange,
   };
@@ -317,5 +320,148 @@ describe('RowWaveform clip pinch merge', () => {
     });
     fireEvent.pointerUp(window, {pointerId: 83, clientX: 62, clientY: 52});
     expect(onActiveClipChange).toHaveBeenCalledWith(0);
+  });
+});
+
+describe('RowWaveform clip pinch split (anti-snip)', () => {
+  it('splits the clip under two fingers that spread apart', () => {
+    const {clipsEls, onPinchSplitClip, onPinchMergeClip} = renderRow();
+    const clip = clipsEls[1];
+
+    fireEvent.pointerDown(clip, {
+      pointerId: 101,
+      pointerType: 'touch',
+      clientX: 240,
+      clientY: 40,
+    });
+    fireEvent.pointerDown(clip, {
+      pointerId: 102,
+      pointerType: 'touch',
+      clientX: 280,
+      clientY: 40,
+    });
+
+    // Spread from 40px to 240px before either finger lifts.
+    act(() => {
+      fireEvent.pointerMove(window, {
+        pointerId: 101,
+        clientX: 160,
+        clientY: 40,
+      });
+      fireEvent.pointerMove(window, {
+        pointerId: 102,
+        clientX: 400,
+        clientY: 40,
+      });
+    });
+
+    fireEvent.pointerUp(window, {pointerId: 101, clientX: 160, clientY: 40});
+    fireEvent.pointerUp(window, {pointerId: 102, clientX: 400, clientY: 40});
+
+    expect(onPinchSplitClip).toHaveBeenCalledTimes(1);
+    expect(onPinchSplitClip).toHaveBeenCalledWith(1);
+    expect(onPinchMergeClip).not.toHaveBeenCalled();
+  });
+
+  it('does not split when two fingers on one clip squeeze together', () => {
+    const {clipsEls, onPinchSplitClip, onPinchMergeClip} = renderRow();
+    const clip = clipsEls[1];
+
+    fireEvent.pointerDown(clip, {
+      pointerId: 111,
+      pointerType: 'touch',
+      clientX: 160,
+      clientY: 40,
+    });
+    fireEvent.pointerDown(clip, {
+      pointerId: 112,
+      pointerType: 'touch',
+      clientX: 400,
+      clientY: 40,
+    });
+    act(() => {
+      fireEvent.pointerMove(window, {
+        pointerId: 111,
+        clientX: 240,
+        clientY: 40,
+      });
+      fireEvent.pointerMove(window, {
+        pointerId: 112,
+        clientX: 280,
+        clientY: 40,
+      });
+    });
+    fireEvent.pointerUp(window, {pointerId: 111, clientX: 240, clientY: 40});
+    fireEvent.pointerUp(window, {pointerId: 112, clientX: 280, clientY: 40});
+
+    expect(onPinchSplitClip).not.toHaveBeenCalled();
+    expect(onPinchMergeClip).not.toHaveBeenCalled();
+  });
+
+  it('does not pan the viewport while two fingers spread on one clip', () => {
+    const {view, clipsEls} = renderRow();
+    const track = view.container.querySelector(
+      '.row-waveform__track',
+    ) as HTMLElement;
+    const clip = clipsEls[1];
+
+    fireEvent.pointerDown(clip, {
+      pointerId: 121,
+      pointerType: 'touch',
+      clientX: 240,
+      clientY: 40,
+    });
+    fireEvent.pointerDown(clip, {
+      pointerId: 122,
+      pointerType: 'touch',
+      clientX: 280,
+      clientY: 40,
+    });
+    act(() => {
+      fireEvent.pointerMove(window, {
+        pointerId: 121,
+        clientX: 160,
+        clientY: 40,
+      });
+      fireEvent.pointerMove(window, {
+        pointerId: 122,
+        clientX: 400,
+        clientY: 40,
+      });
+    });
+    fireEvent.pointerUp(window, {pointerId: 121, clientX: 160, clientY: 40});
+    fireEvent.pointerUp(window, {pointerId: 122, clientX: 400, clientY: 40});
+    act(() => flushRaf());
+
+    expect(panPx(track)).toBeCloseTo(0);
+  });
+
+  it('does not split when the two fingers land on different clips', () => {
+    const {clipsEls, onPinchSplitClip} = renderRow();
+
+    fireEvent.pointerDown(clipsEls[0], {
+      pointerId: 131,
+      pointerType: 'touch',
+      clientX: 100,
+      clientY: 40,
+    });
+    fireEvent.pointerDown(clipsEls[1], {
+      pointerId: 132,
+      pointerType: 'touch',
+      clientX: 140,
+      clientY: 40,
+    });
+    act(() => {
+      fireEvent.pointerMove(window, {pointerId: 131, clientX: 60, clientY: 40});
+      fireEvent.pointerMove(window, {
+        pointerId: 132,
+        clientX: 300,
+        clientY: 40,
+      });
+    });
+    fireEvent.pointerUp(window, {pointerId: 131, clientX: 60, clientY: 40});
+    fireEvent.pointerUp(window, {pointerId: 132, clientX: 300, clientY: 40});
+
+    expect(onPinchSplitClip).not.toHaveBeenCalled();
   });
 });

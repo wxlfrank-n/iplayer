@@ -421,6 +421,17 @@ export function ProgressBar({
     [applyRangeMerge],
   );
 
+  /*
+   * Two fingers spread apart on one clip: the anti-snip, which runs the same
+   * normal split as the swipe-up gesture.
+   */
+  const handleClipPinchSplit = useCallback(
+    (idx: number) => {
+      handleClipSwipe(idx, 'up');
+    },
+    [handleClipSwipe],
+  );
+
   const handleClipSwipeGesture = useCallback(
     (idx: number, direction: SwipeDirection) => {
       if (direction === 'down-right' || direction === 'down-left') {
@@ -519,6 +530,7 @@ export function ProgressBar({
               onActiveClipChange={handleActiveClipChange}
               onSwipeClip={playing ? undefined : handleClipSwipeGesture}
               onPinchMergeClip={playing ? undefined : handleClipPinchMerge}
+              onPinchSplitClip={playing ? undefined : handleClipPinchSplit}
               getAnalyser={getAnalyser}
               getCurrentTime={getCurrentTime}
               playing={playing}
@@ -537,6 +549,7 @@ export function ProgressBar({
               repetitions={repetitions}
               onSwipeClip={playing ? undefined : handleClipSwipeGesture}
               onPinchMergeClip={playing ? undefined : handleClipPinchMerge}
+              onPinchSplitClip={playing ? undefined : handleClipPinchSplit}
               onSeek={onSeek}
               onPlayRange={onPlayRange}
               onStopPlayback={onStopPlayback}

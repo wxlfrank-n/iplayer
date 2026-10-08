@@ -59,6 +59,12 @@ interface StackedWaveformProps {
    */
   onPinchMergeClip?: (lowIndex: number, highIndex: number) => void;
 
+  /**
+   * Two fingers spread apart on a single clip splits that clip normally.
+   * Reports the global clip index.
+   */
+  onPinchSplitClip?: (idx: number) => void;
+
   onSeek: (time: number) => void;
 
   onActiveClipChange: (idx: number) => void;
@@ -96,6 +102,7 @@ export const StackedWaveform = memo(
     onStopPlayback,
     onSwipeClip,
     onPinchMergeClip,
+    onPinchSplitClip,
     onSeek,
     onActiveClipChange,
     onPlayRange,
@@ -421,11 +428,12 @@ export const StackedWaveform = memo(
      */
 
     /*
-     * Two-finger pinch merge (two clips squeezed together => merge the clip
-     * range between them). Detected on the scroller so it can span rows; it
-     * stands the page drag down via `clipPinchState`.
+     * Two-finger "snip" gestures (two clips squeezed together merge the range
+     * between them; two fingers spread apart on one clip split it normally).
+     * Detected on the scroller so it can span rows; it stands the page drag
+     * down via `clipPinchState`.
      */
-    const pinchBind = useClipPinchMerge(onPinchMergeClip);
+    const pinchBind = useClipPinchMerge(onPinchMergeClip, onPinchSplitClip);
 
     const bindPageDrag = useDrag(
       ({first, last, event, initial}) => {

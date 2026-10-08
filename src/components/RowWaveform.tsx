@@ -33,6 +33,8 @@ export interface RowWaveformProps {
   onSwipeClip?: (idx: number, direction: SwipeDirection) => void;
   /** Pinching two clips together merges the clip range between them. */
   onPinchMergeClip?: (lowIndex: number, highIndex: number) => void;
+  /** Spreading two fingers apart on one clip splits that clip normally. */
+  onPinchSplitClip?: (idx: number) => void;
   getAnalyser?: (resume: boolean) => AnalyserNode | null;
   getCurrentTime: () => number;
   playing: boolean;
@@ -55,6 +57,7 @@ export const RowWaveform = memo(
     onActiveClipChange,
     onSwipeClip,
     onPinchMergeClip,
+    onPinchSplitClip,
     getAnalyser,
     getCurrentTime,
     playing,
@@ -109,12 +112,15 @@ export const RowWaveform = memo(
     useClipPlayRequest(clipPlayRequest, playClip);
 
     /*
-     * Two-finger pinch merge (two clips squeezed together => merge the clip
-     * range between them), detected on the track element that contains every
-     * clip. The horizontal pan stands down via `clipPinchState`.
+     * Two-finger "snip" gestures, detected on the track element that contains
+     * every clip: two clips squeezed together merge the range between them,
+     * two fingers spread apart on one clip split it normally. The horizontal
+     * pan stands down via `clipPinchState`.
      */
-    const {onPointerDown: onPinchPointerDown} =
-      useClipPinchMerge(onPinchMergeClip);
+    const {onPointerDown: onPinchPointerDown} = useClipPinchMerge(
+      onPinchMergeClip,
+      onPinchSplitClip,
+    );
 
     const bufferLen = bufferLengthRef.current;
     const bufferScale = bufferLen > 0 ? hsWinLenRef.current / bufferLen : 1;

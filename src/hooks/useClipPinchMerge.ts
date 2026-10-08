@@ -1,13 +1,18 @@
 /**
- * Two-finger "snip" across clips.
+ * Two-finger "snip" across clips, and its opposite on a single clip.
  *
  * When two pointers land on two different clips, the clips between them (both
  * ends included) merge if the fingers squeeze together -- the distance between
  * the pointers shrinks by at least PINCH_MERGE_THRESHOLD_PX -- before either
  * pointer is released.
  *
- * The merge is decided on release (the finger lift that ends the two-pointer
- * phase), never mid-gesture, so a glance at the distance at the end is enough.
+ * When two pointers land on the SAME clip, the gesture is an anti-snip: if the
+ * fingers spread apart -- the distance grows by at least
+ * PINCH_SPLIT_THRESHOLD_PX -- the clip performs its normal split.
+ *
+ * Both outcomes are decided on release (the finger lift that ends the
+ * two-pointer phase), never mid-gesture, so a glance at the distance at the end
+ * is enough.
  *
  * Detection lives on the waveform container (the element binding must contain
  * all clips): pointer events from both fingers bubble there, and the element
@@ -16,7 +21,7 @@
  * background does not form a candidate.
  *
  * While a pair is live, `clipPinchState.active` is set so the horizontal pan /
- * page drag stand down. Inward displacement is measured against the last known
+ * page drag stand down. Displacement is measured against the last known
  * position of the surviving pointer, tracked through window listeners.
  */
 
@@ -25,6 +30,7 @@ import type {PointerEvent as ReactPointerEvent} from 'react';
 
 import {
   PINCH_MERGE_THRESHOLD_PX,
+  PINCH_SPLIT_THRESHOLD_PX,
   clipPinchState,
 } from '../components/clipPinch';
 
@@ -45,6 +51,15 @@ interface MergeCandidate {
   fired: boolean;
 }
 
+interface SplitCandidate {
+  a: number;
+  b: number;
+  /** Global clip index shared by both pointers. */
+  idx: number;
+  startDist: number;
+  fired: boolean;
+}
+
 const distance = (a: ActivePointer, b: ActivePointer) =>
   Math.hypot(a.x - b.x, a.y - b.y);
 
@@ -61,49 +76,77 @@ const clipIndexAt = (target: EventTarget | null) => {
 
 export function useClipPinchMerge(
   onMerge?: (lowIndex: number, highIndex: number) => void,
+  onSplit?: (clipIndex: number) => void,
 ) {
   /*
-   * Latest callback without re-binding the window listeners, which should live
+   * Latest callbacks without re-binding the window listeners, which should live
    * as long as the container does.
    */
   const onMergeRef = useRef(onMerge);
   onMergeRef.current = onMerge;
 
+  const onSplitRef = useRef(onSplit);
+  onSplitRef.current = onSplit;
+
   const pointersRef = useRef<Map<number, ActivePointer>>(new Map());
-  const candidateRef = useRef<MergeCandidate | null>(null);
+  const mergeCandidateRef = useRef<MergeCandidate | null>(null);
+  const splitCandidateRef = useRef<SplitCandidate | null>(null);
 
   const handlePointerEnd = useCallback((e: PointerEvent) => {
     const map = pointersRef.current;
-    const candidate = candidateRef.current;
+    const merge = mergeCandidateRef.current;
+    const split = splitCandidateRef.current;
     const pointer = map.get(e.pointerId);
 
     if (
-      candidate &&
+      split &&
       pointer &&
-      (candidate.a === pointer.pointerId || candidate.b === pointer.pointerId)
+      (split.a === pointer.pointerId || split.b === pointer.pointerId)
     ) {
-      const otherId =
-        candidate.a === pointer.pointerId ? candidate.b : candidate.a;
+      const otherId = split.a === pointer.pointerId ? split.b : split.a;
       const other = map.get(otherId);
       const finalDist = other
         ? Math.hypot(e.clientX - other.x, e.clientY - other.y)
-        : candidate.startDist;
+        : split.startDist;
 
       if (
         e.type !== 'pointercancel' &&
-        !candidate.fired &&
-        finalDist <= candidate.startDist &&
-        candidate.startDist - finalDist >= PINCH_MERGE_THRESHOLD_PX
+        !split.fired &&
+        other &&
+        finalDist - split.startDist >= PINCH_SPLIT_THRESHOLD_PX
       ) {
-        candidate.fired = true;
-        onMergeRef.current?.(candidate.low, candidate.high);
+        split.fired = true;
+        onSplitRef.current?.(split.idx);
+      }
+    }
+
+    if (
+      merge &&
+      pointer &&
+      (merge.a === pointer.pointerId || merge.b === pointer.pointerId)
+    ) {
+      const otherId = merge.a === pointer.pointerId ? merge.b : merge.a;
+      const other = map.get(otherId);
+      const finalDist = other
+        ? Math.hypot(e.clientX - other.x, e.clientY - other.y)
+        : merge.startDist;
+
+      if (
+        e.type !== 'pointercancel' &&
+        !merge.fired &&
+        finalDist <= merge.startDist &&
+        merge.startDist - finalDist >= PINCH_MERGE_THRESHOLD_PX
+      ) {
+        merge.fired = true;
+        onMergeRef.current?.(merge.low, merge.high);
       }
     }
 
     map.delete(pointer?.pointerId ?? e.pointerId);
 
     if (map.size < 2) {
-      candidateRef.current = null;
+      mergeCandidateRef.current = null;
+      splitCandidateRef.current = null;
       clipPinchState.active = false;
     }
   }, []);
@@ -126,17 +169,18 @@ export function useClipPinchMerge(
       window.removeEventListener('pointerup', handlePointerEnd);
       window.removeEventListener('pointercancel', handlePointerEnd);
       pointersRef.current.clear();
-      candidateRef.current = null;
+      mergeCandidateRef.current = null;
+      splitCandidateRef.current = null;
       clipPinchState.active = false;
     };
   }, [handlePointerEnd]);
 
   const handlePointerDown = useCallback((e: ReactPointerEvent<HTMLElement>) => {
     /*
-     * Disabled while there is nothing to merge (e.g. while playing), so the
-     * horizontal pan / page drag keep full control then.
+     * Disabled while there is nothing to merge/split (e.g. while playing), so
+     * the horizontal pan / page drag keep full control then.
      */
-    if (!onMergeRef.current) return;
+    if (!onMergeRef.current && !onSplitRef.current) return;
 
     if (e.pointerType === 'mouse' && e.button !== 0) {
       return;
@@ -153,16 +197,30 @@ export function useClipPinchMerge(
       y: e.clientY,
     });
 
-    if (map.size === 2 && !candidateRef.current) {
+    if (
+      map.size === 2 &&
+      !mergeCandidateRef.current &&
+      !splitCandidateRef.current
+    ) {
       const [a, b] = [...map.values()];
-      candidateRef.current = {
-        a: a.pointerId,
-        b: b.pointerId,
-        low: Math.min(a.clipIndex, b.clipIndex),
-        high: Math.max(a.clipIndex, b.clipIndex),
-        startDist: distance(a, b),
-        fired: false,
-      };
+      if (a.clipIndex === b.clipIndex) {
+        splitCandidateRef.current = {
+          a: a.pointerId,
+          b: b.pointerId,
+          idx: a.clipIndex,
+          startDist: distance(a, b),
+          fired: false,
+        };
+      } else {
+        mergeCandidateRef.current = {
+          a: a.pointerId,
+          b: b.pointerId,
+          low: Math.min(a.clipIndex, b.clipIndex),
+          high: Math.max(a.clipIndex, b.clipIndex),
+          startDist: distance(a, b),
+          fired: false,
+        };
+      }
       clipPinchState.active = true;
     }
   }, []);
