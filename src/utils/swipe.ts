@@ -39,6 +39,12 @@ export interface ClipSplitResult {
   mergeGap: number;
   activeClip: number;
   clips?: Clip[];
+
+  /**
+   * The two groups the selected clip was cut into. Available in both scopes so
+   * the UI can highlight exactly what the split produced.
+   */
+  pieces: Clip[];
 }
 
 /**
@@ -66,6 +72,7 @@ function finishSplit(
       ],
       mergeGap: split.gap,
       activeClip: idx,
+      pieces: split.pieces,
     };
   }
 
@@ -82,6 +89,7 @@ function finishSplit(
         clips: nextClips,
         mergeGap,
         activeClip: activeClip === -1 ? 0 : activeClip,
+        pieces: split.pieces,
       }
     : null;
 }

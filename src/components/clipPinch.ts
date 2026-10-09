@@ -33,4 +33,12 @@ export const clipGestureLedger = {
   active: new Set<number>(),
   /** True once (during a session) two clip pointers were down at once. */
   multi: false,
+
+  /**
+   * True while a single clip pointer has latched into a swipe direction.
+   * From that moment the gesture belongs to the clip: the horizontal pan /
+   * page drag must stand down, or the live preview would be stolen by
+   * viewport movement mid-swipe. Cleared on release/cancel.
+   */
+  clipSwipeLocked: false,
 };

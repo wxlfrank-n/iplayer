@@ -3,7 +3,12 @@
   cursor: pointer;
   background: rgba(var(--accent-rgb), 0.32);
   border-radius: 4px;
-  touch-action: pan-y;
+  /* JS owns every clip gesture: vertical/diagonal swipes split/merge, and the
+     waveform container observes horizontal moves itself. If the browser is
+     allowed to pan natively here (e.g. the old `pan-y`), a vertical swipe is
+     stolen as a scroll on touch devices, firing pointercancel and killing the
+     swipe commit. */
+  touch-action: none;
   transition:
     background 0.15s ease,
     box-shadow 0.2s ease;

@@ -16,6 +16,7 @@ import {useDrag} from '@use-gesture/react';
 
 import {StackRow, type StackedRow} from './StackRow';
 import {clipPinchState} from './clipPinch';
+import {clipGestureLedger} from './clipPinch';
 import {DIAGONAL_MIN_TAN} from './Clip';
 
 import {
@@ -448,6 +449,20 @@ export const StackedWaveform = memo(
          */
         if (clipPinchState.active) {
           dragRef.current = null;
+
+          return;
+        }
+
+        /*
+         * The clip latched a swipe direction: the page drag must stand down so
+         * the viewport cannot scroll away while the clip gesture is in
+         * progress. The drag state is dropped, so a later release cannot snap
+         * the page.
+         */
+        if (clipGestureLedger.clipSwipeLocked) {
+          if (last) {
+            dragRef.current = null;
+          }
 
           return;
         }

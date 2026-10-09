@@ -61,8 +61,10 @@ const clips: InitClipData[] = [
 function renderRow() {
   const onPinchMergeClip = vi.fn();
   const onPinchSplitClip = vi.fn();
+  const onSwipeClip = vi.fn();
   const onActiveClipChange = vi.fn();
   const onPlayRange = vi.fn();
+  const setScrolling = vi.fn();
 
   const tree = (
     overrides: {
@@ -83,8 +85,9 @@ function renderRow() {
         getCurrentTime={() => 0}
         playing={false}
         scrolling={false}
-        setScrolling={vi.fn()}
+        setScrolling={setScrolling}
         scrollTimeoutRef={{current: undefined}}
+        onSwipeClip={onSwipeClip}
         onPinchMergeClip={overrides.onPinchMergeClip ?? onPinchMergeClip}
         onPinchSplitClip={onPinchSplitClip}
       />
@@ -110,8 +113,10 @@ function renderRow() {
     clipsEls,
     onPinchMergeClip,
     onPinchSplitClip,
+    onSwipeClip,
     onActiveClipChange,
     onPlayRange,
+    setScrolling,
   };
 }
 
@@ -130,6 +135,7 @@ const panPx = (track: HTMLElement) => {
 beforeEach(() => {
   clipGestureLedger.active.clear();
   clipGestureLedger.multi = false;
+  clipGestureLedger.clipSwipeLocked = false;
   clipPinchState.active = false;
   (
     globalThis as unknown as {ResizeObserver: typeof ResizeObserver}
@@ -463,5 +469,104 @@ describe('RowWaveform clip pinch split (anti-snip)', () => {
     fireEvent.pointerUp(window, {pointerId: 132, clientX: 300, clientY: 40});
 
     expect(onPinchSplitClip).not.toHaveBeenCalled();
+  });
+});
+
+describe('RowWaveform clip swipe scroll lock', () => {
+  /*
+   * A single virtually merged clip whose up-split produces two pieces, so an
+   * 'up' swipe has a real gesture to latch.
+   */
+  const merged: InitClipData = {
+    start: 1,
+    end: 9,
+    vStart: 1,
+    vEnd: 9,
+    children: [
+      {start: 1, end: 3, vStart: 1, vEnd: 3},
+      {start: 4, end: 6, vStart: 4, vEnd: 6},
+      {start: 7, end: 9, vStart: 7, vEnd: 9},
+    ],
+  };
+
+  it('latches the gesture to the clip so the waveform cannot pan', () => {
+    const {view, tree, setScrolling, onSwipeClip} = renderRow();
+
+    view.rerender(
+      tree({
+        displayClips: [merged],
+      }),
+    );
+
+    fireEvent.pointerDown(
+      view.container.querySelector('[data-clip-idx="0"]') as HTMLElement,
+      {
+        pointerId: 203,
+        pointerType: 'touch',
+        clientX: 100,
+        clientY: 40,
+      },
+    );
+    act(() => {
+      fireEvent.pointerMove(window, {pointerId: 203, clientX: 100, clientY: 0});
+    });
+
+    // The clip decided this is a swipe: it owns the gesture now, so the
+    // waveform's horizontal pan must stand down even if the finger drifts.
+    expect(clipGestureLedger.clipSwipeLocked).toBe(true);
+
+    // A mostly-horizontal move that would normally pan must not engage it.
+    act(() => {
+      fireEvent.pointerMove(window, {
+        pointerId: 203,
+        clientX: 260,
+        clientY: 0,
+      });
+    });
+
+    expect(setScrolling).not.toHaveBeenCalled();
+
+    // Releasing on the original vertical line still commits the split and
+    // unlocks the ledger.
+    fireEvent.pointerUp(window, {pointerId: 203, clientX: 100, clientY: -20});
+
+    expect(onSwipeClip).toHaveBeenCalledWith(0, 'up');
+    expect(clipGestureLedger.clipSwipeLocked).toBe(false);
+  });
+
+  it('leaves horizontal navigation alone when no clip gesture latched', () => {
+    const {view, tree, setScrolling, onSwipeClip} = renderRow();
+
+    view.rerender(
+      tree({
+        displayClips: [merged],
+      }),
+    );
+
+    fireEvent.pointerDown(
+      view.container.querySelector('[data-clip-idx="0"]') as HTMLElement,
+      {
+        pointerId: 204,
+        pointerType: 'touch',
+        clientX: 100,
+        clientY: 40,
+      },
+    );
+
+    // Back-and-forth horizontal move, well within 15 degrees of horizontal:
+    // never a clip swipe, so the waveform pans as before.
+    act(() => {
+      fireEvent.pointerMove(window, {
+        pointerId: 204,
+        clientX: 260,
+        clientY: 42,
+      });
+    });
+
+    expect(clipGestureLedger.clipSwipeLocked).toBe(false);
+    expect(setScrolling).toHaveBeenCalled();
+    expect(onSwipeClip).not.toHaveBeenCalled();
+
+    fireEvent.pointerUp(window, {pointerId: 204, clientX: 260, clientY: 42});
   });
 });

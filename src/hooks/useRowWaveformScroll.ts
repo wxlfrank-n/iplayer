@@ -31,6 +31,7 @@ import type {Clip} from '../utils/clips';
 import {DIAGONAL_MIN_TAN} from '../components/Clip';
 import {panTarget} from '../utils/pan';
 import {clipPinchState} from '../components/clipPinch';
+import {clipGestureLedger} from '../components/clipPinch';
 import {startFrameLoop} from '../utils/raf';
 import {addListener, addListeners} from '../utils/listener';
 
@@ -500,6 +501,15 @@ export function useRowWaveformScroll({
         if (clipPinchState.active) {
           return;
         }
+
+        /*
+         * The clip latched a swipe direction: the gesture belongs to the clip,
+         * so the waveform must not pan away from its live preview.
+         */
+        if (clipGestureLedger.clipSwipeLocked) {
+          return;
+        }
+
         const dx = ev.clientX - drag.startX;
         const dy = ev.clientY - drag.startY;
         if (!drag.panned) {

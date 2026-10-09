@@ -730,3 +730,52 @@ describe('mergeClipRange', () => {
     expect(result.activeClip).toBe(0);
   });
 });
+
+describe('ClipSplitResult.pieces', () => {
+  it('exposes the two split pieces for the split animation', () => {
+    const clip: Clip = {
+      start: 0,
+      end: 3,
+      vStart: 0,
+      vEnd: 3,
+      children: [mk(0, 0.5), mk(0.8, 1.3), mk(2, 2.5)],
+    };
+
+    const result = splitClip([clip], [clip], 0, 'clip')!;
+
+    // largest child gap (0.7) cuts between the last two children
+    expect(bounds(result.pieces)).toEqual([
+      [0, 1.3],
+      [2, 2.5],
+    ]);
+  });
+
+  it('detaches the leftmost piece while the remainder keeps its own range', () => {
+    const clip: Clip = {
+      start: 0,
+      end: 3,
+      vStart: 0,
+      vEnd: 3,
+      children: [mk(0, 0.5), mk(0.8, 1.3), mk(2, 2.5)],
+    };
+
+    const result = splitClipEnd([clip], [clip], 0, 'left', 'clip')!;
+
+    expect(bounds(result.pieces)).toEqual([
+      [0, 0.5],
+      [0.8, 2.5],
+    ]);
+  });
+
+  it('exposes the pieces in global scope too', () => {
+    const clips = [mk(0, 0.5), mk(0.8, 1.3), mk(2, 2.5)];
+    const displayClips = mergeClipsByGap(clips, 0.9);
+
+    const result = splitClip(clips, displayClips, 0, 'global')!;
+
+    expect(bounds(result.pieces)).toEqual([
+      [0, 1.3],
+      [2, 2.5],
+    ]);
+  });
+});

@@ -55,6 +55,7 @@ beforeAll(() => {
 beforeEach(() => {
   clipGestureLedger.active.clear();
   clipGestureLedger.multi = false;
+  clipGestureLedger.clipSwipeLocked = false;
   clipPinchState.active = false;
 });
 

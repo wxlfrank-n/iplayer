@@ -10,8 +10,9 @@
  * vertical swipe
  *   -> split / merge
  *
- * diagonal swipe (35-55 deg)
+ * diagonal swipe (15-75 deg)
  *   -> down-right: merge with the clip to the right
+ *   -> down-left: merge with the clip to the left
  *   -> up-right: split the rightmost part of the merged clip
  *   -> up-left: split the leftmost part of the merged clip
  *
@@ -85,6 +86,69 @@ const TAP_THRESHOLD_PX = 8;
 export const DIAGONAL_MIN_TAN = Math.tan((15 * Math.PI) / 180);
 export const DIAGONAL_MAX_TAN = Math.tan((75 * Math.PI) / 180);
 
+/**
+ * Decide which clip gesture (if any) a displacement describes. Mirrors the
+ * swipe rules used on release, so a mid-drag read always matches what its
+ * commit will do.
+ */
+const classifyClipSwipe = (dx: number, dy: number): SwipeDirection | null => {
+  const absX = Math.abs(dx);
+  const absY = Math.abs(dy);
+  const ratio = absX > 0 ? absY / absX : Infinity;
+
+  /*
+   * Diagonal swipes (15-75 degrees from the horizontal):
+   *
+   *   down-right -> merge with the clip to the right
+   *   down-left  -> merge with the clip to the left
+   *   up-right   -> split the rightmost part of the merged clip
+   *   up-left    -> split the leftmost part of the merged clip
+   *
+   * Clip owns these gestures, like the vertical swipe. Checked before the
+   * vertical band so the 15-75 deg slice never falls through to one of the
+   * plain up/down swipes.
+   */
+  if (
+    dx > 0 &&
+    Math.hypot(dx, dy) >= SWIPE_THRESHOLD_PX &&
+    ratio >= DIAGONAL_MIN_TAN &&
+    ratio <= DIAGONAL_MAX_TAN
+  ) {
+    return dy > 0 ? 'down-right' : 'up-right';
+  }
+
+  if (
+    dx < 0 &&
+    dy > 0 &&
+    Math.hypot(dx, dy) >= SWIPE_THRESHOLD_PX &&
+    ratio >= DIAGONAL_MIN_TAN &&
+    ratio <= DIAGONAL_MAX_TAN
+  ) {
+    return 'down-left';
+  }
+
+  if (
+    dx < 0 &&
+    dy < 0 &&
+    Math.hypot(dx, dy) >= SWIPE_THRESHOLD_PX &&
+    ratio >= DIAGONAL_MIN_TAN &&
+    ratio <= DIAGONAL_MAX_TAN
+  ) {
+    return 'up-left';
+  }
+
+  /*
+   * Vertical swipe:
+   *
+   * Clip owns this gesture.
+   */
+  if (absY >= SWIPE_THRESHOLD_PX && ratio > DIAGONAL_MAX_TAN) {
+    return dy < 0 ? 'up' : 'down';
+  }
+
+  return null;
+};
+
 export const Clip = memo(
   ({
     clip,
@@ -123,6 +187,7 @@ export const Clip = memo(
         }
         if (clipGestureLedger.active.size === 0) {
           clipGestureLedger.multi = false;
+          clipGestureLedger.clipSwipeLocked = false;
         }
       },
       [],
@@ -180,6 +245,13 @@ export const Clip = memo(
              * gesture (e.g. the pinch merge): it must never be read as a tap.
              */
             suppressClickRef.current = true;
+          } else {
+            /*
+             * First pointer of a fresh session: no clip gesture is latched yet,
+             * so the parent pan/page drag may observe the movement until this
+             * clip decides it owns the gesture.
+             */
+            clipGestureLedger.clipSwipeLocked = false;
           }
           clipGestureLedger.active.add(pointerId);
           pointerIdsRef.current.add(pointerId);
@@ -190,11 +262,31 @@ export const Clip = memo(
           return;
         }
 
+        /*
+         * Use the pointer position of the current event rather than the
+         * accumulated `movement`: a fast gesture may deliver its releasing
+         * event at a new position without an intermediate pointermove, and
+         * use-gesture accumulates movement only on pointermove.
+         */
+        const pointer = event as PointerEvent;
+
+        const dx = pointer.clientX - initial[0];
+
+        const dy = pointer.clientY - initial[1];
+
         if (!last) {
+          /*
+           * Once a move clearly reads as a clip gesture, the clip owns the
+           * pointer: stand the parent's horizontal pan/page drag down so it
+           * cannot scroll the viewport while this finger is still dragging.
+           * The lock is only cleared when the gesture ends (see below).
+           */
+          if (classifyClipSwipe(dx, dy)) {
+            clipGestureLedger.clipSwipeLocked = true;
+          }
+
           return;
         }
-
-        const pointer = event as PointerEvent;
 
         /*
          * Whatever ends the gesture, this pointer is no longer down.
@@ -203,6 +295,12 @@ export const Clip = memo(
         clipGestureLedger.active.delete(pointer.pointerId);
         if (clipGestureLedger.active.size === 0) {
           clipGestureLedger.multi = false;
+
+          /*
+           * Last pointer up/cancelled: the clip no longer owns any gesture, so
+           * the parent pan/page drag may take the next drag as it always did.
+           */
+          clipGestureLedger.clipSwipeLocked = false;
         }
 
         if (event.type === 'pointercancel') {
@@ -222,86 +320,19 @@ export const Clip = memo(
           return;
         }
 
-        /*
-         * Use the pointer position of the releasing event rather than the
-         * accumulated `movement`: a fast gesture may deliver pointerup at a
-         * new position without an intermediate pointermove, and use-gesture
-         * accumulates movement only on pointermove.
-         */
-        const dx = pointer.clientX - initial[0];
+        const direction = classifyClipSwipe(dx, dy);
 
-        const dy = pointer.clientY - initial[1];
+        if (direction) {
+          suppressClickRef.current = true;
+
+          onSwipe?.(id, direction);
+
+          return;
+        }
 
         const absX = Math.abs(dx);
 
         const absY = Math.abs(dy);
-
-        /*
-         * Diagonal swipes (15-75 degrees from the horizontal):
-         *
-         *   down-right -> merge with the clip to the right
-         *   down-left  -> merge with the clip to the left
-         *   up-right   -> split the rightmost part of the merged clip
-         *   up-left    -> split the leftmost part of the merged clip
-         *
-         * Clip owns these gestures, like the vertical swipe. Checked before
-         * the vertical band so the 15-75 deg slice never falls through to one
-         * of the plain up/down swipes.
-         */
-        const ratio = absX > 0 ? absY / absX : Infinity;
-        if (
-          dx > 0 &&
-          Math.hypot(dx, dy) >= SWIPE_THRESHOLD_PX &&
-          ratio >= DIAGONAL_MIN_TAN &&
-          ratio <= DIAGONAL_MAX_TAN
-        ) {
-          suppressClickRef.current = true;
-
-          onSwipe?.(id, dy > 0 ? 'down-right' : 'up-right');
-
-          return;
-        }
-
-        if (
-          dx < 0 &&
-          dy > 0 &&
-          Math.hypot(dx, dy) >= SWIPE_THRESHOLD_PX &&
-          ratio >= DIAGONAL_MIN_TAN &&
-          ratio <= DIAGONAL_MAX_TAN
-        ) {
-          suppressClickRef.current = true;
-
-          onSwipe?.(id, 'down-left');
-
-          return;
-        }
-
-        if (
-          dx < 0 &&
-          dy < 0 &&
-          Math.hypot(dx, dy) >= SWIPE_THRESHOLD_PX &&
-          ratio >= DIAGONAL_MIN_TAN &&
-          ratio <= DIAGONAL_MAX_TAN
-        ) {
-          suppressClickRef.current = true;
-
-          onSwipe?.(id, 'up-left');
-
-          return;
-        }
-
-        /*
-         * Vertical swipe:
-         *
-         * Clip owns this gesture.
-         */
-        if (absY >= SWIPE_THRESHOLD_PX && ratio > DIAGONAL_MAX_TAN) {
-          suppressClickRef.current = true;
-
-          onSwipe?.(id, dy < 0 ? 'up' : 'down');
-
-          return;
-        }
 
         /*
          * Horizontal movement:
