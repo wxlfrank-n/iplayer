@@ -826,7 +826,6 @@ export const StackedWaveform = memo(
                   currentTime={currentTime}
                   playing={playing}
                   clipPlayActive={clipPlayActive}
-                  clipCount={displayClips.length}
                   activeClip={activeClip}
                   repetitions={repetitions}
                   onStopPlayback={onStopPlayback}

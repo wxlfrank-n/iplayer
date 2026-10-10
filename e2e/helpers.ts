@@ -158,11 +158,11 @@ export function clipCount(page: Page): Promise<number> {
 }
 
 /**
- * Make a clip the active one so its split/merge actions become available.
+ * Activate the clip at `index`, then stop the playback the click started.
  *
  * Clicking a clip both activates and plays it, and clip gestures are disabled
- * while playing (`onSwipeClip` is withheld), so playback has to be stopped
- * before the actions appear.
+ * while playing (`onSwipeClip` is withheld), so playback has to be stopped for
+ * the clip to be idle again.
  */
 export async function activateClip(page: Page, index: number): Promise<void> {
   await page.locator('.waveform-clip').nth(index).click();
@@ -186,31 +186,33 @@ export async function stopPlayback(page: Page): Promise<void> {
 }
 
 /**
- * Click a clip's split or merge action, activating clips until one offers it.
+ * Split or merge the clip at `index` by swiping it.
  *
- * Availability depends on the clip (only a group can be split, and the last
- * remaining clip has nothing to merge with), so the first clip offering the
- * action is used rather than a hardcoded index. Returns the index used.
+ * Editing is gesture-only (there are no action buttons), so tests drive the
+ * same pointer sequence a finger would: press the clip, drag straight up
+ * (split) or down (merge) past the classifier threshold, then release.
  */
-export async function clickClipAction(
+export async function swipeClip(
   page: Page,
-  action: 'merge' | 'split',
-): Promise<number> {
-  const count = await clipCount(page);
+  index: number,
+  direction: 'up' | 'down',
+): Promise<void> {
+  const box = await page.locator('.waveform-clip').nth(index).boundingBox();
 
-  for (let index = 0; index < Math.min(count, 6); index++) {
-    await activateClip(page, index);
-
-    const button = page.locator(`.stacked-clip-action--${action}`);
-
-    if ((await button.count()) > 0) {
-      await button.click();
-
-      return index;
-    }
+  if (!box) {
+    throw new Error(`clip "${index}" is not visible`);
   }
 
-  throw new Error(`no clip offered a "${action}" action`);
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  const travel = 60;
+
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x, y + (direction === 'up' ? -travel : travel), {
+    steps: 10,
+  });
+  await page.mouse.up();
 }
 
 /** Absolute start/end times of a rendered clip, from the row view overlay. */

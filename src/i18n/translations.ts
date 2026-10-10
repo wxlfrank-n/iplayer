@@ -74,11 +74,6 @@ export const en = {
     clipCountPlural: '{count} clips',
   },
 
-  clipLabel: {
-    split: 'Split clip',
-    merge: 'Join with nearby clip',
-  },
-
   viewFlip: {
     toStacked: 'Switch to stacked view',
     toSingle: 'Switch to single-row view',
@@ -233,11 +228,6 @@ export const no: Messages = {
     rangeTitle: 'Klipp mindre enn {gap}s fra hverandre sl\u00e5s sammen',
     clipCount: '{count} klipp',
     clipCountPlural: '{count} klipp',
-  },
-
-  clipLabel: {
-    split: 'Del klipp',
-    merge: 'Sl\u00e5 sammen med naboklipp',
   },
 
   viewFlip: {
@@ -395,11 +385,6 @@ export const zh: Messages = {
     rangeTitle: '间隔少于 {gap} 秒的片段将自动合并',
     clipCount: '{count} 个片段',
     clipCountPlural: '{count} 个片段',
-  },
-
-  clipLabel: {
-    split: '拆分片段',
-    merge: '与相邻片段合并',
   },
 
   viewFlip: {

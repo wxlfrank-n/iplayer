@@ -52,8 +52,6 @@ export interface StackRowProps {
   playing: boolean;
   /** True while a clip is playing, which suppresses click-to-seek. */
   clipPlayActive: boolean;
-  /** Number of clips on the whole track, used to detect a lone clip. */
-  clipCount: number;
   activeClip: number;
   repetitions: number;
   onStopPlayback?: () => void;
@@ -78,7 +76,6 @@ export const StackRow = memo(
     currentTime,
     playing,
     clipPlayActive,
-    clipCount,
     activeClip,
     repetitions,
     onStopPlayback,
@@ -197,10 +194,6 @@ export const StackRow = memo(
                   id,
                   clip,
                   activeClip,
-                  clipCount,
-                  playing,
-                  minPieceSec: config.minSplitPieceSec,
-                  onSwipeClip,
                 })}
               />
             )}

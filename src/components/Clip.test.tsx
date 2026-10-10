@@ -315,6 +315,79 @@ describe('Clip gestures', () => {
     expect(onSwipe).toHaveBeenCalledTimes(3);
   });
 
+  it('shows the split icon while dragging up and hides it on release', () => {
+    const {rect} = renderClip();
+
+    fireEvent.pointerDown(rect, {
+      pointerId: 30,
+      pointerType: 'touch',
+      clientX: 100,
+      clientY: 100,
+    });
+    fireEvent.pointerMove(window, {
+      pointerId: 30,
+      pointerType: 'touch',
+      clientX: 100,
+      clientY: 60,
+    });
+
+    const swiping = rect;
+    expect(swiping.classList.contains('waveform-clip--swiping')).toBe(true);
+    expect(
+      rect.querySelector('.waveform-clip__swipe-hint')?.textContent,
+    ).toContain('✂');
+
+    fireEvent.pointerUp(window, {
+      pointerId: 30,
+      pointerType: 'touch',
+      clientX: 100,
+      clientY: 60,
+    });
+
+    expect(swiping.classList.contains('waveform-clip--swiping')).toBe(false);
+    expect(rect.querySelector('.waveform-clip__swipe-hint')).toBeNull();
+  });
+
+  it('shows the merge icon while dragging down', () => {
+    const {rect} = renderClip();
+
+    fireEvent.pointerDown(rect, {
+      pointerId: 31,
+      pointerType: 'touch',
+      clientX: 100,
+      clientY: 100,
+    });
+    fireEvent.pointerMove(window, {
+      pointerId: 31,
+      pointerType: 'touch',
+      clientX: 100,
+      clientY: 160,
+    });
+
+    expect(
+      rect.querySelector('.waveform-clip__swipe-hint')?.textContent,
+    ).toContain('🔗');
+  });
+
+  it('shows no swipe icon for a horizontal drag (parent owns it)', () => {
+    const {rect} = renderClip();
+
+    fireEvent.pointerDown(rect, {
+      pointerId: 32,
+      pointerType: 'touch',
+      clientX: 100,
+      clientY: 100,
+    });
+    fireEvent.pointerMove(window, {
+      pointerId: 32,
+      pointerType: 'touch',
+      clientX: 180,
+      clientY: 114,
+    });
+
+    expect(rect.querySelector('.waveform-clip__swipe-hint')).toBeNull();
+  });
+
   it('marks the clip rectangle active and renders its label', () => {
     const label = <span className="clip-label-marker">x</span>;
     const {container} = renderClip({id: 3, active: true, label});

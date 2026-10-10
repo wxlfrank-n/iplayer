@@ -9,6 +9,8 @@ import {
   mediaTime,
   playAndAdvance,
   playButton,
+  seedConfig,
+  swipeClip,
   waitForClips,
 } from './helpers';
 
@@ -146,9 +148,7 @@ test.describe('clip playback', () => {
     expect((await mediaTime(page))!).toBeLessThanOrEqual(stopped + 0.25);
   });
 
-  test('a clip can be activated for editing after playback stops', async ({
-    page,
-  }) => {
+  test('stopping playback leaves the clicked clip active', async ({page}) => {
     await page.goto('/');
     await waitForClips(page);
 
@@ -157,22 +157,29 @@ test.describe('clip playback', () => {
 
     await activateClip(page, index);
 
-    // Stopping leaves the clip active, so its actions are offered.
+    // Stopping leaves the clip active, highlighted by its label.
     await expect(page.locator('.stacked-clip-label--active')).toHaveCount(1);
-    await expect(page.locator('.stacked-clip-action--merge')).toHaveCount(1);
 
     expect(await clipCount(page)).toBe(before);
   });
 
-  test('clip actions are withheld while a clip is playing', async ({page}) => {
+  test('clip gestures are ignored while a clip is playing', async ({page}) => {
+    await seedConfig(page, {showAdvancedControls: true, mergeScope: 'global'});
     await page.goto('/');
     await waitForClips(page);
+
+    // The merge bubble reports the whole-track clip count, which stays put no
+    // matter which clips the row view has scrolled into view.
+    const bubble = page.locator('.clip-merge__bubble');
+    const before = ((await bubble.textContent()) ?? '').trim();
 
     await page.locator('.waveform-clip').nth(1).click();
     await expect(playButton(page)).toHaveAttribute('aria-label', 'Pause');
 
-    // Gestures are disabled during playback, so no editing actions are shown.
-    await expect(page.locator('.stacked-clip-action--merge')).toHaveCount(0);
-    await expect(page.locator('.stacked-clip-action--split')).toHaveCount(0);
+    await swipeClip(page, 1, 'down');
+    await swipeClip(page, 1, 'up');
+
+    // Neither swipe edited the track while playback owned the gestures.
+    await expect(bubble).toHaveText(before);
   });
 });

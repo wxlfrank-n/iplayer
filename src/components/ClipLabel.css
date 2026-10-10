@@ -29,70 +29,8 @@
   opacity: 0.9;
 }
 
-.stacked-clip-action {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border: none;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--clip-swipe);
-  cursor: pointer;
-  z-index: 3;
-  pointer-events: auto;
-  transition:
-    background 0.15s ease,
-    color 0.15s ease,
-    transform 0.15s ease;
-}
-
-.stacked-clip-action svg {
-  display: block;
-  width: 20px;
-  height: 26px;
-}
-
-/*
- * Press flash (replaces the former :hover state): flat at rest, the old tint
- * and scale flash while the button is held.
- */
-@keyframes clip-action-press {
-  from {
-    background: rgba(var(--accent-rgb), 0.16);
-    color: var(--accent);
-    transform: translateX(-50%) scale(1.12);
-  }
-}
-
-.stacked-clip-action:active {
-  animation: clip-action-press 0.3s ease-out;
-}
-
-.stacked-clip-action--split {
-  bottom: calc(100% + 2px);
-}
-
-.stacked-clip-action--merge {
-  top: calc(100% + 2px);
-}
 .stacked-clip-label--active {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
-}
-.merge-icon {
-  transform: rotate(45deg);
-}
-
-.split-icon,
-.merge-icon {
-  display: inline-block;
-  font-size: 18px;
-  line-height: 1;
 }

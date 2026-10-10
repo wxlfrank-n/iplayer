@@ -1,10 +1,10 @@
 import {expect, test} from '@playwright/test';
 
 import {
-  clickClipAction,
   clipCount,
   seedConfig,
   stopPlayback,
+  swipeClip,
   waitForClips,
 } from './helpers';
 
@@ -15,17 +15,49 @@ async function totalClipSeconds(page: import('@playwright/test').Page) {
   return labels.reduce((sum, text) => sum + Number.parseFloat(text), 0);
 }
 
+/**
+ * Split the first clip that can be split, returning its index.
+ *
+ * Only a merged group can be split and a leaf ignores the up-swipe, so the
+ * leading clips are tried until a swipe actually adds a clip. A successful
+ * split starts playing the new piece, and gestures are disabled while playing,
+ * so playback is stopped before returning to leave the track editable.
+ */
+async function splitAnyClip(
+  page: import('@playwright/test').Page,
+): Promise<number> {
+  const before = await clipCount(page);
+
+  for (let index = 0; index < 8; index++) {
+    await swipeClip(page, index, 'up');
+
+    const split = await expect
+      .poll(() => clipCount(page), {timeout: 2000})
+      .toBeGreaterThan(before)
+      .then(
+        () => true,
+        () => false,
+      );
+
+    if (split) {
+      await stopPlayback(page);
+
+      return index;
+    }
+  }
+
+  throw new Error('no clip could be split');
+}
+
 test.describe('merging clips', () => {
-  test('merging the active clip with its neighbour drops one clip', async ({
-    page,
-  }) => {
+  test('merging a clip with its neighbour drops one clip', async ({page}) => {
     await page.goto('/');
     await waitForClips(page);
 
     const before = await clipCount(page);
     const secondsBefore = await totalClipSeconds(page);
 
-    await clickClipAction(page, 'merge');
+    await swipeClip(page, 1, 'down');
 
     await expect.poll(() => clipCount(page)).toBe(before - 1);
 
@@ -64,14 +96,14 @@ test.describe('merging clips', () => {
 });
 
 test.describe('splitting clips', () => {
-  test('splitting the active clip adds one clip', async ({page}) => {
+  test('splitting a merged clip adds one clip', async ({page}) => {
     await page.goto('/');
     await waitForClips(page);
 
     const before = await clipCount(page);
     const secondsBefore = await totalClipSeconds(page);
 
-    await clickClipAction(page, 'split');
+    await splitAnyClip(page);
 
     await expect.poll(() => clipCount(page)).toBe(before + 1);
 
@@ -88,13 +120,12 @@ test.describe('splitting clips', () => {
 
     const before = await clipCount(page);
 
-    await clickClipAction(page, 'split');
+    const index = await splitAnyClip(page);
     await expect.poll(() => clipCount(page)).toBe(before + 1);
 
-    // Stop before editing so the actions are offered again.
-    await stopPlayback(page);
-
-    await clickClipAction(page, 'merge');
+    // Merging is also gesture-only, so the swipe that created the pair reverses
+    // it.
+    await swipeClip(page, index, 'down');
     await expect.poll(() => clipCount(page)).toBe(before);
   });
 });

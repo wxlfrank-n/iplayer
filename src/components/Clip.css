@@ -37,3 +37,34 @@
 .waveform-clip:not(.waveform-clip--active):active {
   animation: clip-press 0.3s ease-out;
 }
+
+/*
+ * Swipe affordance: while a drag is classified as a clip gesture the label
+ * gives way to the action icon (scissors = split, link = merge). The icon only
+ * exists during the gesture, so it never becomes a dead tap target.
+ */
+.waveform-clip--swiping .stacked-clip-label {
+  opacity: 0;
+}
+
+.waveform-clip__swipe-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  z-index: 3;
+  animation: clip-swipe-hint 0.12s ease-out;
+}
+
+@keyframes clip-swipe-hint {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+}

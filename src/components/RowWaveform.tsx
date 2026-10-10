@@ -225,10 +225,6 @@ export const RowWaveform = memo(
                         id,
                         clip: c,
                         activeClip,
-                        clipCount: displayClips.length,
-                        playing,
-                        minPieceSec: config.minSplitPieceSec,
-                        onSwipeClip,
                       })}
                     />
                   </div>

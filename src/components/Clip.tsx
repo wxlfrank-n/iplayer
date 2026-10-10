@@ -28,7 +28,7 @@
  * navigation, so the waveform parent must keep observing the pointer too.
  */
 
-import {memo, useEffect, useRef, type ReactNode} from 'react';
+import {memo, useEffect, useRef, useState, type ReactNode} from 'react';
 import {useDrag} from '@use-gesture/react';
 
 import {clipGestureLedger} from './clipPinch';
@@ -168,6 +168,13 @@ export const Clip = memo(
     const suppressClickRef = useRef(false);
 
     /*
+     * Gesture the current drag has been classified as (up -> split, down ->
+     * merge), or null when no clip gesture is in progress. Drives the action
+     * icon shown while swiping; it is cleared as soon as the pointer lifts.
+     */
+    const [swipeDir, setSwipeDir] = useState<SwipeDirection | null>(null);
+
+    /*
      * True when another clip pointer was already down when this one landed.
      * Such a pointer can never become a tap, whatever it does afterwards.
      */
@@ -236,6 +243,8 @@ export const Clip = memo(
         if (first) {
           suppressClickRef.current = false;
 
+          setSwipeDir(null);
+
           const pointerId = (event as PointerEvent).pointerId;
 
           multiPointerRef.current = clipGestureLedger.active.size > 0;
@@ -281,8 +290,11 @@ export const Clip = memo(
            * cannot scroll the viewport while this finger is still dragging.
            * The lock is only cleared when the gesture ends (see below).
            */
-          if (classifyClipSwipe(dx, dy)) {
+          const dir = classifyClipSwipe(dx, dy);
+
+          if (dir) {
             clipGestureLedger.clipSwipeLocked = true;
+            setSwipeDir(prev => (prev === dir ? prev : dir));
           }
 
           return;
@@ -302,6 +314,8 @@ export const Clip = memo(
            */
           clipGestureLedger.clipSwipeLocked = false;
         }
+
+        setSwipeDir(null);
 
         if (event.type === 'pointercancel') {
           suppressClickRef.current = true;
@@ -398,9 +412,22 @@ export const Clip = memo(
       activateClip();
     };
 
+    /*
+     * Action icon shown while the drag is classified as a clip gesture. Named
+     * after the gesture's effect, so a diagonal still reads as its split/merge
+     * meaning.
+     */
+    const swipeAction = swipeDir?.startsWith('up')
+      ? 'split'
+      : swipeDir
+        ? 'merge'
+        : null;
+
     return (
       <div
-        className={`waveform-clip ${active ? 'waveform-clip--active' : ''}`}
+        className={`waveform-clip ${active ? 'waveform-clip--active' : ''} ${
+          swipeAction ? 'waveform-clip--swiping' : ''
+        }`}
         data-clip-idx={id}
         style={{
           left: `${leftPct}%`,
@@ -414,6 +441,12 @@ export const Clip = memo(
         onClick={handleClick}
         {...bindClip()}
       >
+        {swipeAction && (
+          <span className="waveform-clip__swipe-hint" aria-hidden="true">
+            {swipeAction === 'split' ? '✂️' : '🔗'}
+          </span>
+        )}
+
         {label}
       </div>
     );
