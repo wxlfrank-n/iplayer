@@ -197,7 +197,13 @@ export async function swipeClip(
   index: number,
   direction: 'up' | 'down',
 ): Promise<void> {
-  const box = await page.locator('.waveform-clip').nth(index).boundingBox();
+  const locator = page.locator('.waveform-clip').nth(index);
+
+  // The stacked view pages horizontally, so the target clip may start off
+  // screen; bring it into view before reading a viewport-relative box.
+  await locator.scrollIntoViewIfNeeded();
+
+  const box = await locator.boundingBox();
 
   if (!box) {
     throw new Error(`clip "${index}" is not visible`);

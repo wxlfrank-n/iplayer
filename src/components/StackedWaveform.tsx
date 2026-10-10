@@ -29,6 +29,8 @@ import {startFrameLoop} from '../utils/raf';
 import {addListener} from '../utils/listener';
 import {useClipPlayRequest} from '../hooks/useClipPlayRequest';
 import {useClipPinchMerge} from '../hooks/useClipPinchMerge';
+import {useAppSelector} from '../store/hooks';
+import {selectMergeScope} from '../store/selectors';
 import './StackedWaveform.css';
 import {getWindowSecs} from '../utils/rowWaveform';
 
@@ -112,6 +114,7 @@ export const StackedWaveform = memo(
   }: StackedWaveformProps) => {
     const scrollerRef = useRef<HTMLDivElement>(null);
     const [scrollerWidth, setScrollerWidth] = useState(0);
+    const mergeScope = useAppSelector(selectMergeScope);
     /*
      * =========================================================
      * ROWS
@@ -119,8 +122,12 @@ export const StackedWaveform = memo(
      */
 
     const windowSecs = useMemo(
-      () => getWindowSecs(scrollerWidth, displayClips, waveform.duration),
-      [scrollerWidth, displayClips, waveform.duration],
+      () =>
+        getWindowSecs(scrollerWidth, displayClips, waveform.duration, {
+          activeClip,
+          mergeScope,
+        }),
+      [scrollerWidth, displayClips, waveform.duration, activeClip, mergeScope],
     );
 
     const stackedRows = useMemo<StackedRow[]>(() => {

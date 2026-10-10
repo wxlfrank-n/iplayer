@@ -28,6 +28,7 @@ import {
 } from '../utils/waveform';
 import {calculateWheelChange} from '../utils/rowHandler';
 import type {Clip} from '../utils/clips';
+import type {MergeScope} from '../types';
 import {DIAGONAL_MIN_TAN} from '../components/Clip';
 import {panTarget} from '../utils/pan';
 import {clipPinchState} from '../components/clipPinch';
@@ -59,6 +60,8 @@ export interface UseRowWaveformScrollArgs {
   repetitions: number;
   onStopPlayback?: () => void;
   activeClip: number;
+  /** Merge scope, so the window can follow the selected clip in "clip" scope. */
+  mergeScope: MergeScope;
   onActiveClipChange: (idx: number) => void;
   onSwipeClip?: (idx: number, direction: 'up' | 'down') => void;
   getCurrentTime: () => number;
@@ -77,6 +80,8 @@ export function useRowWaveformScroll({
   currentTime,
   onSeek,
   onPlayRange,
+  activeClip,
+  mergeScope,
   onActiveClipChange,
   getCurrentTime,
   playing,
@@ -188,7 +193,10 @@ export function useRowWaveformScroll({
     (width: number) => {
       if (width <= 0 || waveformDuration <= 0) return;
       const nextWindowSecs = Math.min(
-        getWindowSecs(width, displayClips, waveformDuration),
+        getWindowSecs(width, displayClips, waveformDuration, {
+          activeClip,
+          mergeScope,
+        }),
         waveformDuration,
       );
       if (!Number.isFinite(nextWindowSecs) || nextWindowSecs <= 0) return;
@@ -213,8 +221,10 @@ export function useRowWaveformScroll({
       }
     },
     [
+      activeClip,
       displayClips,
       getCurrentTime,
+      mergeScope,
       setLiveAnchor,
       setViewportFollow,
       waveformDuration,

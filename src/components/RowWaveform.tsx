@@ -92,6 +92,7 @@ export const RowWaveform = memo(
       repetitions,
       onStopPlayback,
       activeClip,
+      mergeScope: config.mergeScope,
       onActiveClipChange,
       onSwipeClip,
       getCurrentTime,

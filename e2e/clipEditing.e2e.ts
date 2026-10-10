@@ -1,4 +1,4 @@
-import {expect, test} from '@playwright/test';
+import {expect, test, type Page} from '@playwright/test';
 
 import {
   clipCount,
@@ -7,6 +7,20 @@ import {
   swipeClip,
   waitForClips,
 } from './helpers';
+
+/**
+ * Open the app in the stacked view.
+ *
+ * Editing is asserted on clip counts. The stacked view keeps every clip in the
+ * DOM, so `.waveform-clip` is the whole-track total; the row view renders only
+ * the clips inside its window, which now follows the selected clip.
+ */
+async function gotoStacked(page: Page): Promise<void> {
+  await seedConfig(page, {waveformView: 'stacked'});
+
+  await page.goto('/');
+  await waitForClips(page);
+}
 
 /** Combined length of all rendered clips, in seconds. */
 async function totalClipSeconds(page: import('@playwright/test').Page) {
@@ -51,8 +65,7 @@ async function splitAnyClip(
 
 test.describe('merging clips', () => {
   test('merging a clip with its neighbour drops one clip', async ({page}) => {
-    await page.goto('/');
-    await waitForClips(page);
+    await gotoStacked(page);
 
     const before = await clipCount(page);
     const secondsBefore = await totalClipSeconds(page);
@@ -97,8 +110,7 @@ test.describe('merging clips', () => {
 
 test.describe('splitting clips', () => {
   test('splitting a merged clip adds one clip', async ({page}) => {
-    await page.goto('/');
-    await waitForClips(page);
+    await gotoStacked(page);
 
     const before = await clipCount(page);
     const secondsBefore = await totalClipSeconds(page);
@@ -115,8 +127,7 @@ test.describe('splitting clips', () => {
   });
 
   test('split and merge round-trip restores the clip count', async ({page}) => {
-    await page.goto('/');
-    await waitForClips(page);
+    await gotoStacked(page);
 
     const before = await clipCount(page);
 

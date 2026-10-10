@@ -7,6 +7,7 @@
  */
 
 import type {Clip} from './clips';
+import type {MergeScope} from '../types';
 
 export const HS_FOLLOW_FRAC = 0.8;
 export const HS_PAN_DECIDE_PX = 8;
@@ -35,10 +36,71 @@ export function getBaseWindowSecs(width: number): number {
   return 12;
 }
 
+export interface WindowSizingOptions {
+  /** Index of the selected clip (only consulted in "clip" scope). */
+  activeClip?: number;
+  /**
+   * Merge scope in effect. In "clip" scope the window sizes off the average
+   * duration of the clips around the selected one (a local neighbourhood),
+   * because editing works on a local stretch of the track. In "global" scope it
+   * sizes off the whole-track average, as before.
+   */
+  mergeScope?: MergeScope;
+}
+
+/**
+ * How many clips around the selected clip feed the clip-scope window average.
+ * Small enough to track a local stretch of the track, wide enough not to jump
+ * when a single clip's length changes.
+ */
+const WINDOW_NEIGHBOURHOOD_CLIPS = 10;
+
+/**
+ * Average clip duration across a run of clips.
+ *
+ * The total is the bounding span (`last.vEnd - first.vStart`), not the sum of
+ * the individual clips, so the silent gaps between them count too — the same
+ * way the whole-track average divides the full `waveformDuration` by the clip
+ * count.
+ */
+function averageClipDuration(clips: Clip[]): number {
+  if (clips.length === 0) {
+    return 0;
+  }
+
+  const first = clips[0];
+  const last = clips[clips.length - 1];
+
+  return (last.vEnd - first.vStart) / clips.length;
+}
+
+/**
+ * Average clip duration over up to `WINDOW_NEIGHBOURHOOD_CLIPS` clips centred on
+ * `activeClip`, clamped to the ends of the track. Returns 0 when there is no
+ * selected clip, so the caller falls back to the whole-track average.
+ */
+function neighbourhoodAverageDuration(
+  clips: Clip[],
+  activeClip: number,
+): number {
+  if (activeClip < 0 || activeClip >= clips.length) {
+    return 0;
+  }
+
+  const size = Math.min(WINDOW_NEIGHBOURHOOD_CLIPS, clips.length);
+  const start = Math.min(
+    Math.max(0, activeClip - Math.floor(size / 2)),
+    clips.length - size,
+  );
+
+  return averageClipDuration(clips.slice(start, start + size));
+}
+
 export function getWindowSecs(
   width: number,
   clips: Clip[] = [],
   waveformDuration: number,
+  {activeClip = -1, mergeScope = 'clip'}: WindowSizingOptions = {},
 ): number {
   const baseWindowSecs = getBaseWindowSecs(width);
 
@@ -46,7 +108,17 @@ export function getWindowSecs(
     return baseWindowSecs;
   }
 
-  const avgDuration = waveformDuration / clips.length;
+  /*
+   * Global scope sizes off the whole track; clip scope follows the local
+   * neighbourhood of the selected clip so a stretch of long merged clips (or a
+   * run of tiny ones) sizes the window for what is actually being edited.
+   */
+  const neighbourhoodAvgDuration =
+    mergeScope === 'clip' ? neighbourhoodAverageDuration(clips, activeClip) : 0;
+  const avgDuration =
+    neighbourhoodAvgDuration > 0
+      ? neighbourhoodAvgDuration
+      : waveformDuration / clips.length;
 
   /*
    * At windowSecs, a clip of duration D occupies:

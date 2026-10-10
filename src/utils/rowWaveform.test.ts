@@ -120,6 +120,108 @@ describe('getWindowSecs', () => {
     expect(getWindowSecs(600, clips(1), 1200)).toBeLessThanOrEqual(12);
     expect(getWindowSecs(1600, clips(1), 120)).toBeLessThanOrEqual(32);
   });
+
+  /*
+   * Clip scope sizes the window off the local neighbourhood around the selected
+   * clip instead of the whole track.
+   */
+  describe('clip scope neighbourhood', () => {
+    // Mirror of the documented density formula, for an explicit average.
+    const windowForAvg = (width: number, avg: number) => {
+      const base = getBaseWindowSecs(width);
+      const minWindowSecs = (0.1 * width) / 60;
+      const ratio = (width - 60) / (base - 0.1);
+      const densityWindowPx = (avg - 0.1) * ratio + 60;
+      const densityWindowSecs = (avg * width) / densityWindowPx;
+      return Math.max(minWindowSecs, Math.min(base, densityWindowSecs));
+    };
+
+    /*
+     * Lay clips out in time order with `gap` seconds of silence between them, so
+     * the bounding span a neighbourhood covers includes those gaps.
+     */
+    const spaced = (durations: number[], gap = 0): Clip[] => {
+      let time = 0;
+
+      return durations.map(duration => {
+        const start = time;
+        const end = time + duration;
+        time = end + gap;
+
+        return {start, end, vStart: start, vEnd: end};
+      });
+    };
+
+    // 30 one-second clips, half a second apart.
+    const track = () => spaced(Array(30).fill(1), 0.5);
+
+    it('averages the bounding span of the clips around the selected clip', () => {
+      const list = track();
+
+      // Neighbourhood is clips 5..14: spans 7.5s..22s, so 14.5s over 10 clips.
+      expect(
+        getWindowSecs(600, list, 120, {activeClip: 10, mergeScope: 'clip'}),
+      ).toBeCloseTo(windowForAvg(600, 1.45), 4);
+    });
+
+    it('ignores clips outside the neighbourhood', () => {
+      const list = track();
+      const expected = getWindowSecs(600, list, 120, {
+        activeClip: 10,
+        mergeScope: 'clip',
+      });
+
+      // A huge outlier far from the selection must not move the window.
+      list[0] = {start: 0, end: 100, vStart: 0, vEnd: 100};
+
+      expect(
+        getWindowSecs(600, list, 120, {activeClip: 10, mergeScope: 'clip'}),
+      ).toBe(expected);
+    });
+
+    it('clamps the neighbourhood at the start of the track', () => {
+      const list = track();
+
+      // Clip 3 has only clips 0..9 to its left, so the span is 0s..14.5s.
+      expect(
+        getWindowSecs(600, list, 120, {activeClip: 3, mergeScope: 'clip'}),
+      ).toBeCloseTo(windowForAvg(600, 1.45), 4);
+    });
+
+    it('uses the whole-track average in global scope', () => {
+      const list = track();
+
+      // Track average is 120 / 30 = 4s, independent of the selection.
+      expect(
+        getWindowSecs(600, list, 120, {activeClip: 10, mergeScope: 'global'}),
+      ).toBeCloseTo(windowForAvg(600, 4), 4);
+    });
+
+    it('falls back to the whole-track average without a selected clip', () => {
+      const list = track();
+      const plain = getWindowSecs(600, list, 120);
+
+      expect(
+        getWindowSecs(600, list, 120, {activeClip: -1, mergeScope: 'clip'}),
+      ).toBe(plain);
+      expect(
+        getWindowSecs(600, list, 120, {activeClip: 99, mergeScope: 'clip'}),
+      ).toBe(plain);
+    });
+
+    it('still caps the window at the base window', () => {
+      // Every clip is 20s, so the neighbourhood average is 20s and the density
+      // term wants more than the 12s base window at 600px.
+      const list = spaced(Array(30).fill(20));
+
+      expect(
+        getWindowSecs(600, list, 120, {activeClip: 5, mergeScope: 'clip'}),
+      ).toBe(windowForAvg(600, 20));
+      expect(
+        getWindowSecs(600, list, 120, {activeClip: 5, mergeScope: 'clip'}),
+      ).toBeLessThanOrEqual(12);
+    });
+  });
 });
 
 describe('clampWindowAnchor', () => {

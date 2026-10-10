@@ -93,6 +93,8 @@ function createHarness(options?: {
 
       activeClip: -1,
 
+      mergeScope: 'clip',
+
       onActiveClipChange,
 
       getCurrentTime,
