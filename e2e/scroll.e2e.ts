@@ -152,6 +152,10 @@ test.describe('auto-scroll during playback', () => {
   });
 
   test('keeps scrolling forward as playback continues', async ({page}) => {
+    // Playback must cross two page boundaries in real time (~50s on the bundled
+    // track), so the default 60s timeout is too tight under a loaded run.
+    test.slow();
+
     await hookMedia(page);
     await page.goto('/');
     await openStackedView(page);

@@ -529,6 +529,7 @@ export function ProgressBar({
               activeClip={activeClip}
               onActiveClipChange={handleActiveClipChange}
               onSwipeClip={playing ? undefined : handleClipSwipeGesture}
+              minSplitPieceSec={minSplitPieceSec}
               onPinchMergeClip={playing ? undefined : handleClipPinchMerge}
               onPinchSplitClip={playing ? undefined : handleClipPinchSplit}
               getAnalyser={getAnalyser}
@@ -548,6 +549,7 @@ export function ProgressBar({
               activeClip={activeClip}
               repetitions={repetitions}
               onSwipeClip={playing ? undefined : handleClipSwipeGesture}
+              minSplitPieceSec={minSplitPieceSec}
               onPinchMergeClip={playing ? undefined : handleClipPinchMerge}
               onPinchSplitClip={playing ? undefined : handleClipPinchSplit}
               onSeek={onSeek}

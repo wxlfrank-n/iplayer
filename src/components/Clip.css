@@ -15,6 +15,9 @@
 }
 
 .waveform-clip--active {
+  /* Lift the active clip (and its split affordance + label) above the other
+     clips so it is unambiguously the front-most one. */
+  z-index: 20;
   background: rgba(var(--accent-rgb), 0.65);
   box-shadow:
     0 0 6px rgba(var(--accent-rgb), 0.7),
@@ -47,24 +50,69 @@
   opacity: 0;
 }
 
+/*
+ * Action icon during a clip gesture. Portalled to <body> and fixed at the
+ * finger, offset above it, so the hand never hides the split/merge cue and no
+ * transformed waveform ancestor can clip or rescale it.
+ */
 .waveform-clip__swipe-hint {
-  position: absolute;
-  inset: 0;
+  position: fixed;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
+  font-size: 1.5rem;
   line-height: 1;
+  padding: 4px 6px;
+  border-radius: 10px;
+  background: rgba(20, 22, 26, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+  transform: translate(-50%, calc(-100% - 20px));
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
-  z-index: 3;
+  z-index: 2000;
   animation: clip-swipe-hint 0.12s ease-out;
 }
 
 @keyframes clip-swipe-hint {
   from {
     opacity: 0;
-    transform: scale(0.7);
+    transform: translate(-50%, calc(-100% - 20px)) scale(0.7);
+  }
+}
+
+/*
+ * Split affordance shown while an active clip can be split. It gets an opaque
+ * chip and a high z-index so it always reads as the front-most element, above
+ * the clip's label and any neighbouring clips. Clips with no viable split
+ * boundary show no icon at all.
+ */
+.waveform-clip__split-hint {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 7px;
+  background: rgba(20, 22, 26, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  z-index: 100;
+  animation: clip-split-hint 0.15s ease-out;
+}
+
+@keyframes clip-split-hint {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.7);
   }
 }

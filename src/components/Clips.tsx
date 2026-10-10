@@ -18,7 +18,11 @@
 
 import {memo, type ReactNode} from 'react';
 
-import type {Clip as InitClipData} from '../utils/clips';
+import {
+  MIN_SPLIT_PIECE_SEC,
+  splitClipAtLargestGap,
+  type Clip as InitClipData,
+} from '../utils/clips';
 import type {SwipeDirection, WaveWindow} from '../types';
 
 import {Clip} from './Clip';
@@ -41,6 +45,12 @@ interface ClipsProps {
   onActivate: (idx: number) => void;
 
   onSwipe?: (idx: number, direction: SwipeDirection) => void;
+
+  /**
+   * Floor a split must leave on each side. Clips with no viable boundary are
+   * rendered as unsplittable. Defaults to the shared minimum.
+   */
+  minSplitPieceSec?: number;
 
   /**
    * Maps a clip's local position in `clips` to its global
@@ -75,6 +85,7 @@ export const Clips = memo(
     activeClip,
     onActivate,
     onSwipe,
+    minSplitPieceSec = MIN_SPLIT_PIECE_SEC,
     getIdx,
     renderLabel,
   }: ClipsProps) => {
@@ -95,6 +106,9 @@ export const Clips = memo(
 
           const id = getIdx ? getIdx(clip, indexInArray) : indexInArray;
 
+          const canSplit =
+            splitClipAtLargestGap(clip, minSplitPieceSec) !== null;
+
           return (
             <Clip
               key={id}
@@ -102,6 +116,7 @@ export const Clips = memo(
               window={window}
               id={id}
               active={id === activeClip}
+              canSplit={canSplit}
               label={renderLabel?.(id, clip, indexInArray)}
               onPlayRange={onPlayRange}
               repetitions={repetitions}

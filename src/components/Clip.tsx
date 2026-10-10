@@ -29,6 +29,7 @@
  */
 
 import {memo, useEffect, useRef, useState, type ReactNode} from 'react';
+import {createPortal} from 'react-dom';
 import {useDrag} from '@use-gesture/react';
 
 import {clipGestureLedger} from './clipPinch';
@@ -48,6 +49,13 @@ export interface ClipProps {
   id: number;
 
   active: boolean;
+
+  /**
+   * Whether the clip can currently be split (it is a merged group with a
+   * boundary that cleaves off at least `minSplitPieceSec`). Drives the split
+   * affordance shown while the clip is active.
+   */
+  canSplit?: boolean;
 
   label?: ReactNode;
 
@@ -155,6 +163,7 @@ export const Clip = memo(
     window,
     id,
     active,
+    canSplit = true,
     label,
     onPlayRange,
     repetitions,
@@ -173,6 +182,13 @@ export const Clip = memo(
      * icon shown while swiping; it is cleared as soon as the pointer lifts.
      */
     const [swipeDir, setSwipeDir] = useState<SwipeDirection | null>(null);
+
+    /*
+     * Viewport coordinates of the finger during a clip gesture. The action icon
+     * is rendered here (above the fingertip) instead of centred on the clip, so
+     * the hand never covers it. Null when no gesture is classified.
+     */
+    const [hintPos, setHintPos] = useState<{x: number; y: number} | null>(null);
 
     /*
      * True when another clip pointer was already down when this one landed.
@@ -244,6 +260,7 @@ export const Clip = memo(
           suppressClickRef.current = false;
 
           setSwipeDir(null);
+          setHintPos(null);
 
           const pointerId = (event as PointerEvent).pointerId;
 
@@ -295,6 +312,7 @@ export const Clip = memo(
           if (dir) {
             clipGestureLedger.clipSwipeLocked = true;
             setSwipeDir(prev => (prev === dir ? prev : dir));
+            setHintPos({x: pointer.clientX, y: pointer.clientY});
           }
 
           return;
@@ -316,6 +334,7 @@ export const Clip = memo(
         }
 
         setSwipeDir(null);
+        setHintPos(null);
 
         if (event.type === 'pointercancel') {
           suppressClickRef.current = true;
@@ -441,11 +460,29 @@ export const Clip = memo(
         onClick={handleClick}
         {...bindClip()}
       >
-        {swipeAction && (
-          <span className="waveform-clip__swipe-hint" aria-hidden="true">
-            {swipeAction === 'split' ? '✂️' : '🔗'}
+        {active && canSplit && !swipeAction && (
+          <span
+            className="waveform-clip__split-hint"
+            role="img"
+            aria-label="Splittable"
+            title="Splittable"
+          >
+            ✂️
           </span>
         )}
+
+        {swipeAction &&
+          hintPos &&
+          createPortal(
+            <span
+              className="waveform-clip__swipe-hint"
+              style={{left: hintPos.x, top: hintPos.y}}
+              aria-hidden="true"
+            >
+              {swipeAction === 'split' ? '✂️' : '🔗'}
+            </span>,
+            document.body,
+          )}
 
         {label}
       </div>

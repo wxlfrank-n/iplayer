@@ -104,4 +104,37 @@ describe('Clips list', () => {
     expect(onStopPlayback).toHaveBeenCalledTimes(1);
     expect(onPlayRange).not.toHaveBeenCalled();
   });
+
+  it('shows the split affordance only for an active splittable clip', () => {
+    const merged: InitClipData = {
+      start: 1,
+      end: 5,
+      vStart: 1,
+      vEnd: 5,
+      children: [
+        {start: 1, end: 2, vStart: 1, vEnd: 2},
+        {start: 3, end: 5, vStart: 3, vEnd: 5},
+      ],
+    };
+    const single: InitClipData = {start: 6, end: 8, vStart: 6, vEnd: 8};
+
+    const hasSplitHint = (container: HTMLElement) =>
+      container.querySelector('.waveform-clip__split-hint') !== null;
+
+    const mergedView = renderClips({
+      clips: [merged, single],
+      activeClip: 0,
+    });
+
+    // The active merged clip has a boundary, so it shows the affordance.
+    expect(hasSplitHint(mergedView.container)).toBe(true);
+
+    const singleView = renderClips({
+      clips: [merged, single],
+      activeClip: 1,
+    });
+
+    // The active single clip has no boundary, so no affordance is shown.
+    expect(hasSplitHint(singleView.container)).toBe(false);
+  });
 });

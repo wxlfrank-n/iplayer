@@ -1,7 +1,15 @@
 // @vitest-environment jsdom
 
-import {fireEvent, render} from '@testing-library/react';
-import {beforeAll, beforeEach, describe, expect, it, vi} from 'vitest';
+import {cleanup, fireEvent, render} from '@testing-library/react';
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import {Clip} from './Clip';
 import {clipGestureLedger, clipPinchState} from './clipPinch';
 import type {WaveWindow} from '../types';
@@ -57,6 +65,14 @@ beforeEach(() => {
   clipGestureLedger.multi = false;
   clipGestureLedger.clipSwipeLocked = false;
   clipPinchState.active = false;
+});
+
+/*
+ * The swipe action icon is portalled into <body>, which RTL does not tear down
+ * on its own here (no global auto-cleanup), so reset between tests.
+ */
+afterEach(() => {
+  cleanup();
 });
 
 describe('Clip gestures', () => {
@@ -333,9 +349,14 @@ describe('Clip gestures', () => {
 
     const swiping = rect;
     expect(swiping.classList.contains('waveform-clip--swiping')).toBe(true);
-    expect(
-      rect.querySelector('.waveform-clip__swipe-hint')?.textContent,
-    ).toContain('✂');
+
+    const hint = document.body.querySelector(
+      '.waveform-clip__swipe-hint',
+    ) as HTMLElement;
+    expect(hint?.textContent).toContain('✂');
+    // The icon is portalled to the finger, so it clears the hand.
+    expect(hint.style.left).toBe('100px');
+    expect(hint.style.top).toBe('60px');
 
     fireEvent.pointerUp(window, {
       pointerId: 30,
@@ -345,7 +366,9 @@ describe('Clip gestures', () => {
     });
 
     expect(swiping.classList.contains('waveform-clip--swiping')).toBe(false);
-    expect(rect.querySelector('.waveform-clip__swipe-hint')).toBeNull();
+    expect(
+      document.body.querySelector('.waveform-clip__swipe-hint'),
+    ).toBeNull();
   });
 
   it('shows the merge icon while dragging down', () => {
@@ -365,7 +388,7 @@ describe('Clip gestures', () => {
     });
 
     expect(
-      rect.querySelector('.waveform-clip__swipe-hint')?.textContent,
+      document.body.querySelector('.waveform-clip__swipe-hint')?.textContent,
     ).toContain('🔗');
   });
 
@@ -385,7 +408,30 @@ describe('Clip gestures', () => {
       clientY: 114,
     });
 
-    expect(rect.querySelector('.waveform-clip__swipe-hint')).toBeNull();
+    expect(
+      document.body.querySelector('.waveform-clip__swipe-hint'),
+    ).toBeNull();
+  });
+
+  it('shows the split affordance on an active, splittable clip', () => {
+    const {rect} = renderClip({active: true, canSplit: true});
+
+    const hint = rect.querySelector('.waveform-clip__split-hint');
+
+    expect(hint).not.toBeNull();
+    expect(hint?.textContent).toContain('✂');
+  });
+
+  it('shows no split affordance on an active, unsplittable clip', () => {
+    const {rect} = renderClip({active: true, canSplit: false});
+
+    expect(rect.querySelector('.waveform-clip__split-hint')).toBeNull();
+  });
+
+  it('hides the split affordance when the clip is not active', () => {
+    const {rect} = renderClip({active: false});
+
+    expect(rect.querySelector('.waveform-clip__split-hint')).toBeNull();
   });
 
   it('marks the clip rectangle active and renders its label', () => {
