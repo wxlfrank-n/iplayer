@@ -72,8 +72,8 @@ export interface ClipProps {
   onSwipe?: (idx: number, direction: SwipeDirection) => void;
 }
 
-const SWIPE_THRESHOLD_PX = 16;
-const TAP_THRESHOLD_PX = 6;
+const SWIPE_THRESHOLD_PX = 10;
+const TAP_THRESHOLD_PX = 4;
 
 /*
  * Diagonal band boundaries, expressed as the slope of |dy|/|dx| (tan of the

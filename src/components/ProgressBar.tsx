@@ -528,10 +528,10 @@ export function ProgressBar({
               repetitions={repetitions}
               activeClip={activeClip}
               onActiveClipChange={handleActiveClipChange}
-              onSwipeClip={playing ? undefined : handleClipSwipeGesture}
+              onSwipeClip={handleClipSwipeGesture}
               minSplitPieceSec={minSplitPieceSec}
-              onPinchMergeClip={playing ? undefined : handleClipPinchMerge}
-              onPinchSplitClip={playing ? undefined : handleClipPinchSplit}
+              onPinchMergeClip={handleClipPinchMerge}
+              onPinchSplitClip={handleClipPinchSplit}
               getAnalyser={getAnalyser}
               getCurrentTime={getCurrentTime}
               playing={playing}
@@ -548,10 +548,10 @@ export function ProgressBar({
               playing={playing}
               activeClip={activeClip}
               repetitions={repetitions}
-              onSwipeClip={playing ? undefined : handleClipSwipeGesture}
+              onSwipeClip={handleClipSwipeGesture}
               minSplitPieceSec={minSplitPieceSec}
-              onPinchMergeClip={playing ? undefined : handleClipPinchMerge}
-              onPinchSplitClip={playing ? undefined : handleClipPinchSplit}
+              onPinchMergeClip={handleClipPinchMerge}
+              onPinchSplitClip={handleClipPinchSplit}
               onSeek={onSeek}
               onPlayRange={onPlayRange}
               onStopPlayback={onStopPlayback}
