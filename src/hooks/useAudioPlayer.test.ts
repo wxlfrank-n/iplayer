@@ -5,6 +5,11 @@ import {act, renderHook} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {useAudioPlayer} from './useAudioPlayer';
+import {
+  setCurrentTime,
+  setIsPlaying,
+  setCurrentTrackIndex,
+} from '../store/playerSlice';
 
 /*
  * ------------------------------------------------------------
@@ -26,17 +31,23 @@ vi.mock('../store/hooks', () => ({
   }),
 }));
 
+const playerState = vi.hoisted(() => ({
+  tracks: [] as Array<{
+    id: string;
+    title: string;
+    artist: string;
+    duration: number;
+    url: string;
+  }>,
+  currentTrackIndex: -1,
+  isPlaying: false,
+  currentTime: 0,
+  duration: 100,
+}));
+
 vi.mock('../store/store', () => ({
   store: {
-    getState: () => ({
-      player: {
-        tracks: [],
-        currentTrackIndex: -1,
-        isPlaying: false,
-        currentTime: 0,
-        duration: 100,
-      },
-    }),
+    getState: () => ({player: playerState}),
   },
 }));
 
@@ -457,5 +468,181 @@ describe('useAudioPlayer.playRange', () => {
     expect(audio.currentTime).toBe(100);
 
     expect(audio.paused).toBe(true);
+  });
+
+  /*
+   * ----------------------------------------------------------
+   * skip to end
+   * ----------------------------------------------------------
+   *
+   * First press: park at the end and stop (no auto-advance to the next track).
+   * Second press (already at the end): advance.
+   */
+  describe('skip to end', () => {
+    const track = {
+      id: 't1',
+      title: 'Track',
+      artist: 'Artist',
+      duration: 100,
+      url: 'blob:track',
+    };
+
+    beforeEach(() => {
+      playerState.tracks = [track];
+      playerState.currentTrackIndex = 0;
+    });
+
+    it('jumps to the end and pauses without advancing', () => {
+      const {result} = renderHook(() => useAudioPlayer(5));
+
+      audio.currentTime = 40;
+
+      act(() => {
+        result.current.next();
+      });
+
+      expect(audio.currentTime).toBe(100);
+      expect(audio.paused).toBe(true);
+      expect(dispatch).toHaveBeenCalledWith(setCurrentTime(100));
+      expect(dispatch).toHaveBeenCalledWith(setIsPlaying(false));
+      expect(dispatch).not.toHaveBeenCalledWith(setCurrentTrackIndex(0));
+    });
+
+    it('does not advance if the element still fires `ended`', () => {
+      const {result} = renderHook(() => useAudioPlayer(5));
+
+      audio.currentTime = 40;
+
+      act(() => {
+        result.current.next();
+      });
+
+      // The browser can still emit `ended` for a seek to the very end.
+      act(() => {
+        audio.dispatchEvent(new Event('ended'));
+      });
+
+      expect(dispatch).not.toHaveBeenCalledWith(setCurrentTrackIndex(0));
+    });
+
+    it('advances to the next track when already at the end', () => {
+      const {result} = renderHook(() => useAudioPlayer(5));
+
+      audio.currentTime = 100;
+
+      act(() => {
+        result.current.next();
+      });
+
+      expect(dispatch).toHaveBeenCalledWith(setCurrentTrackIndex(0));
+      expect(dispatch).toHaveBeenCalledWith(setCurrentTime(0));
+    });
+
+    it('advances on the second press after parking at the end', () => {
+      const {result} = renderHook(() => useAudioPlayer(5));
+
+      audio.currentTime = 40;
+
+      act(() => {
+        result.current.next();
+      });
+
+      expect(audio.paused).toBe(true);
+
+      act(() => {
+        result.current.next();
+      });
+
+      expect(dispatch).toHaveBeenCalledWith(setCurrentTrackIndex(0));
+    });
+
+    it('still advances when playback reaches the end on its own', () => {
+      renderHook(() => useAudioPlayer(5));
+
+      audio.currentTime = 100;
+
+      act(() => {
+        audio.dispatchEvent(new Event('ended'));
+      });
+
+      expect(dispatch).toHaveBeenCalledWith(setCurrentTrackIndex(0));
+    });
+  });
+
+  /*
+   * ----------------------------------------------------------
+   * skip to start
+   * ----------------------------------------------------------
+   *
+   * First press: park at the start and stop. Second press (already at the
+   * start): go to the previous track.
+   */
+  describe('skip to start', () => {
+    const track = {
+      id: 't1',
+      title: 'Track',
+      artist: 'Artist',
+      duration: 100,
+      url: 'blob:track',
+    };
+
+    beforeEach(() => {
+      playerState.tracks = [track];
+      playerState.currentTrackIndex = 0;
+    });
+
+    it('jumps to the start and pauses without changing track', () => {
+      const {result} = renderHook(() => useAudioPlayer(5));
+
+      audio.currentTime = 40;
+
+      act(() => {
+        result.current.prev();
+      });
+
+      expect(audio.currentTime).toBe(0);
+      expect(audio.paused).toBe(true);
+      expect(dispatch).toHaveBeenCalledWith(setCurrentTime(0));
+      expect(dispatch).toHaveBeenCalledWith(setIsPlaying(false));
+      expect(dispatch).not.toHaveBeenCalledWith(setCurrentTrackIndex(0));
+    });
+
+    it('goes to the previous track when already at the start', () => {
+      playerState.tracks = [track, {...track, id: 't2', url: 'blob:track2'}];
+      playerState.currentTrackIndex = 1;
+
+      const {result} = renderHook(() => useAudioPlayer(5));
+
+      audio.currentTime = 0;
+
+      act(() => {
+        result.current.prev();
+      });
+
+      expect(dispatch).toHaveBeenCalledWith(setCurrentTrackIndex(0));
+      expect(dispatch).toHaveBeenCalledWith(setCurrentTime(0));
+    });
+
+    it('goes to the previous track on the second press after parking at the start', () => {
+      playerState.tracks = [track, {...track, id: 't2', url: 'blob:track2'}];
+      playerState.currentTrackIndex = 1;
+
+      const {result} = renderHook(() => useAudioPlayer(5));
+
+      audio.currentTime = 40;
+
+      act(() => {
+        result.current.prev();
+      });
+
+      expect(audio.currentTime).toBe(0);
+      expect(audio.paused).toBe(true);
+
+      act(() => {
+        result.current.prev();
+      });
+
+      expect(dispatch).toHaveBeenCalledWith(setCurrentTrackIndex(0));
+    });
   });
 });

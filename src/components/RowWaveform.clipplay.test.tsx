@@ -394,6 +394,23 @@ describe('RowWaveform clip play follow', () => {
     expect(windowStart()).toBeCloseTo(2.4, 3);
   });
 
+  it('recenters on the start when the playhead is paused and jumps back outside the window', () => {
+    const {windowStart, rerender} = renderRow({playing: true, initialTime: 0});
+
+    // Play forward so the window follows away from the start.
+    for (let t = 0.5; t <= 12; t += 0.5) {
+      rerender({currentTime: t});
+      act(() => flushRaf());
+    }
+    expect(windowStart()).toBeCloseTo(2.4, 3);
+
+    // Skip to start: playback pauses and the playhead jumps to 0, which is
+    // outside the window. The view must show the start of the audio again.
+    rerender({playing: false, currentTime: 0});
+
+    expect(windowStart()).toBeCloseTo(0, 3);
+  });
+
   it('auto-scrolls while a long clip is playing near the window edge', () => {
     // One 30s clip starting at the window's left edge (anchor 0). Clicking it
     // arms 80% following; the window stays put until the playhead reaches the

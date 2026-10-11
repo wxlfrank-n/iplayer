@@ -23,6 +23,11 @@ const isIOS =
   /iP(hone|ad|od)/.test(navigator.userAgent) ||
   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
+// How close to a media edge counts as being at that edge. Used by the skip-to-end
+// and skip-to-start buttons to tell "jump to the edge and stop" apart from
+// "already there, go to the adjacent track".
+const EDGE_TOLERANCE_SEC = 0.05;
+
 // When playback starts after a seek, the browser may begin slightly past the
 // requested position (preroll/seek settling), skipping the very beginning.
 // Snap the playhead back to `time` once rendering actually starts.
@@ -45,6 +50,7 @@ export function useAudioPlayer(skipSeconds: number) {
 
   const audioRef = useRef<HTMLAudioElement>(new Audio());
   const nextRef = useRef<() => void>(() => {});
+  const prevRef = useRef<() => void>(() => {});
   const expectedRawUrlRef = useRef<string | null>(null);
   const trackLoadIdRef = useRef(0);
   const wavBlobCacheRef = useRef<Map<string, string>>(new Map());
@@ -53,6 +59,10 @@ export function useAudioPlayer(skipSeconds: number) {
   // the range restart must not publish isPlaying=false, or the waveform views
   // would see playback "stop" at every loop.
   const suppressRangePauseRef = useRef(false);
+  // Set when the skip-to-end button parks the playhead at the media end. While
+  // true the element's `ended` handler must not auto-advance to the next track;
+  // the same button pressed again advances instead.
+  const holdAtEndRef = useRef(false);
   // Lazily-created Web Audio graph wired through the audio element; feeding the
   // final music through the analyser lets the UI draw live dancing lines.
   const analyserRef = useRef<{
@@ -161,6 +171,7 @@ export function useAudioPlayer(skipSeconds: number) {
       getAnalyser();
       const loadId = ++trackLoadIdRef.current;
       audio.pause();
+      holdAtEndRef.current = false;
       dispatch(setIsPlaying(false));
       expectedRawUrlRef.current = url;
       try {
@@ -217,6 +228,23 @@ export function useAudioPlayer(skipSeconds: number) {
   });
 
   useEffect(() => {
+    prevRef.current = () => {
+      const s = getPlayer();
+      if (s.tracks.length === 0) return;
+      const prevIndex =
+        (s.currentTrackIndex - 1 + s.tracks.length) % s.tracks.length;
+      const track = s.tracks[prevIndex];
+      if (!track) return;
+      startTrack(audioRef.current, track.url).catch(err => {
+        console.error('Failed to start previous track:', err);
+      });
+      dispatch(setCurrentTrackIndex(prevIndex));
+      dispatch(setCurrentTime(0));
+      dispatch(setDuration(0));
+    };
+  });
+
+  useEffect(() => {
     const audio = audioRef.current;
 
     const onTimeUpdate = () => {
@@ -236,6 +264,12 @@ export function useAudioPlayer(skipSeconds: number) {
       // event — a clip ending exactly at the file end must not jump to the
       // next track mid-loop.
       if (audioRef.current.dataset.clipLoopActive === '1') return;
+      // Skip-to-end parked the playhead here; hold instead of advancing. The
+      // next press of the button advances (see `next`).
+      if (holdAtEndRef.current) {
+        holdAtEndRef.current = false;
+        return;
+      }
       nextRef.current();
     };
     const onError = () => {
@@ -279,6 +313,7 @@ export function useAudioPlayer(skipSeconds: number) {
     // Initialize shared AudioContext on first user gesture (play click)
     // This complies with browser autoplay policy and enables Web Audio features
     getAnalyser();
+    holdAtEndRef.current = false;
     audioRef.current
       .play()
       .then(() => dispatch(setIsPlaying(true)))
@@ -328,6 +363,7 @@ export function useAudioPlayer(skipSeconds: number) {
     }
     // Resume playback and initialize AudioContext (user gesture)
     getAnalyser();
+    holdAtEndRef.current = false;
     audio
       .play()
       .then(() => dispatch(setIsPlaying(true)))
@@ -336,23 +372,61 @@ export function useAudioPlayer(skipSeconds: number) {
       });
   }, [dispatch, getAnalyser, stopRangeMonitoring]);
 
+  /*
+   * The "skip to end" button works in two steps:
+   *  - Not at the end yet: jump to the end and stop there, holding playback so
+   *    the `ended` event does not roll on to the next track.
+   *  - Already at the end: advance to the next track.
+   */
   const next = useCallback(() => {
     const audio = audioRef.current;
     const duration = audio.duration;
     if (!Number.isFinite(duration) || duration <= 0) return;
+
+    const atEnd =
+      audio.ended || audio.currentTime >= duration - EDGE_TOLERANCE_SEC;
+
+    if (atEnd) {
+      holdAtEndRef.current = false;
+      nextRef.current();
+      return;
+    }
+
+    // Park at the end, paused. Pausing before the seek keeps the element from
+    // firing `ended`; the ref guards the case where it fires anyway.
+    stopRangeMonitoring();
+    holdAtEndRef.current = true;
+    audio.pause();
     audio.currentTime = duration;
     dispatch(setCurrentTime(duration));
-  }, [dispatch]);
+    dispatch(setIsPlaying(false));
+  }, [dispatch, stopRangeMonitoring]);
 
+  /*
+   * The "skip to start" button mirrors skip-to-end:
+   *  - Not at the start yet: jump to the start and stop there.
+   *  - Already at the start: go to the previous track.
+   */
   const prev = useCallback(() => {
     const audio = audioRef.current;
+    holdAtEndRef.current = false;
+
+    if (audio.currentTime <= EDGE_TOLERANCE_SEC) {
+      prevRef.current();
+      return;
+    }
+
+    stopRangeMonitoring();
+    audio.pause();
     audio.currentTime = 0;
     dispatch(setCurrentTime(0));
-  }, [dispatch]);
+    dispatch(setIsPlaying(false));
+  }, [dispatch, stopRangeMonitoring]);
 
   const seek = useCallback(
     (time: number) => {
       const audio = audioRef.current;
+      holdAtEndRef.current = false;
       if (audio.paused) snatchToStart(audio, time);
       audio.currentTime = time;
       console.debug('Seek to:', time);
@@ -447,6 +521,7 @@ export function useAudioPlayer(skipSeconds: number) {
 
   const skipForward = useCallback(() => {
     const audio = audioRef.current;
+    holdAtEndRef.current = false;
     const newTime = Math.min(
       audio.currentTime + skipSeconds,
       audio.duration || 0,
@@ -457,6 +532,7 @@ export function useAudioPlayer(skipSeconds: number) {
 
   const skipBackward = useCallback(() => {
     const audio = audioRef.current;
+    holdAtEndRef.current = false;
     const newTime = Math.max(audio.currentTime - skipSeconds, 0);
     audio.currentTime = newTime;
     dispatch(setCurrentTime(newTime));

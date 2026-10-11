@@ -344,25 +344,51 @@ export function useRowWaveformScroll({
     if (Math.abs(currentTime - previous) < 1e-6) {
       return;
     }
+    const windowLength = hsWinLenRef.current;
+    /*
+     * An explicit jump that lands outside the viewport — skip-to-start/end, or
+     * any seek away from a panned or clip-followed view — must bring the
+     * playhead back on screen. `resolveFollow` deliberately never moves the
+     * viewport backwards, so build a fresh follow epoch here (its `align` is set
+     * because the target is outside) rather than reusing the current context.
+     */
+    const jumpedOutside = !isTimeInViewport(currentTime);
     if (
-      viewportContextRef.current.type === 'clip-follow' ||
-      viewportContextRef.current.type === 'manual'
+      !jumpedOutside &&
+      (viewportContextRef.current.type === 'clip-follow' ||
+        viewportContextRef.current.type === 'manual')
     ) {
       renderFrame(currentTime, viewportAnchorRef.current);
       return;
     }
+    const context: ViewportContext = jumpedOutside
+      ? {
+          type: 'follow',
+          epoch: makeFollowEpoch(
+            viewportAnchorRef.current,
+            windowLength,
+            currentTime,
+          ),
+        }
+      : viewportContextRef.current;
     const next = resolveViewportAnchor(
-      viewportContextRef.current,
+      context,
       viewportAnchorRef.current,
       currentTime,
-      hsWinLenRef.current,
+      windowLength,
       hsMaxStartRef.current,
       performance.now(),
     );
     setLiveAnchor(next);
     setViewportFollow(currentTime);
     renderFrame(currentTime, next);
-  }, [currentTime, renderFrame, setLiveAnchor, setViewportFollow]);
+  }, [
+    currentTime,
+    isTimeInViewport,
+    renderFrame,
+    setLiveAnchor,
+    setViewportFollow,
+  ]);
   const completeClipPlayback = useCallback(
     (end: number) => {
       playbackContextRef.current = {type: 'idle'};

@@ -98,8 +98,82 @@ test.describe('playing audio', () => {
 
     await playAndAdvance(page);
 
-    // Playback continues forward rather than restarting from zero.
     expect((await mediaTime(page))!).toBeGreaterThan(paused);
+  });
+
+  test('skip to end jumps to the end and pauses', async ({page}) => {
+    await page.goto('/');
+    await waitForClips(page);
+
+    // Start playing and advance partway.
+    await playAndAdvance(page);
+
+    const before = await mediaTime(page);
+    const duration = await mediaDuration(page);
+    expect(duration).toBeGreaterThan(0);
+    expect(before).toBeLessThan(duration! - 0.5);
+
+    // Skip to end.
+    await page.getByRole('button', {name: 'Go to end'}).click();
+
+    // Should be very close to the end and paused.
+    await expect(playButton(page)).toHaveAttribute('aria-label', 'Play');
+    const atEnd = await mediaTime(page);
+    expect(atEnd).toBeGreaterThanOrEqual(duration! - 0.1);
+  });
+
+  test('skip to start jumps to the start and pauses', async ({page}) => {
+    await page.goto('/');
+    await waitForClips(page);
+
+    // Start playing and advance partway.
+    await playAndAdvance(page);
+
+    const before = await mediaTime(page);
+    expect(before).toBeGreaterThan(0.5);
+
+    // Skip to start.
+    await page.getByRole('button', {name: 'Go to start'}).click();
+
+    // Should be at or near the start and paused.
+    await expect(playButton(page)).toHaveAttribute('aria-label', 'Play');
+    const atStart = await mediaTime(page);
+    expect(atStart).toBeLessThanOrEqual(0.05);
+  });
+
+  test('skip to end twice advances to the next track', async ({page}) => {
+    await page.goto('/');
+    await waitForClips(page);
+
+    // Play partway then skip to end (parks and pauses).
+    await playAndAdvance(page);
+    const duration = await mediaDuration(page);
+    await page.getByRole('button', {name: 'Go to end'}).click();
+    await expect(playButton(page)).toHaveAttribute('aria-label', 'Play');
+    expect((await mediaTime(page))!).toBeGreaterThanOrEqual(duration! - 0.1);
+
+    // Second press should advance to the next track.
+    await page.getByRole('button', {name: 'Go to end'}).click();
+    // After advancing, a new track starts playing.
+    await expect(playButton(page)).toHaveAttribute('aria-label', 'Pause');
+    expect((await mediaTime(page))!).toBeLessThanOrEqual(0.05);
+  });
+
+  test('skip to start twice goes to the previous track', async ({page}) => {
+    await page.goto('/');
+    await waitForClips(page);
+
+    // Advance partway then skip to start (parks and pauses).
+    await playAndAdvance(page);
+    expect((await mediaTime(page))!).toBeGreaterThan(0.5);
+    await page.getByRole('button', {name: 'Go to start'}).click();
+    await expect(playButton(page)).toHaveAttribute('aria-label', 'Play');
+    expect((await mediaTime(page))!).toBeLessThanOrEqual(0.05);
+
+    // Second press should go to the previous track.
+    await page.getByRole('button', {name: 'Go to start'}).click();
+    await expect(playButton(page)).toHaveAttribute('aria-label', 'Pause');
+    expect((await mediaTime(page))!).toBeLessThanOrEqual(0.05);
   });
 });
 
