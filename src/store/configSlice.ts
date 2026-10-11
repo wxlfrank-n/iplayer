@@ -66,7 +66,7 @@ export const DEFAULT_CONFIG: ConfigState = {
   showAdvancedControls: false,
   mergeScope: 'clip',
   theme: DEFAULT_THEME,
-  language: 'en',
+  language: 'no',
 };
 
 /** Valid numeric ranges for each configurable value (drives the Settings UI). */

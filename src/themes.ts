@@ -341,7 +341,7 @@ export const THEMES: Record<ThemeId, Theme> = {
 
 export const THEME_IDS = Object.keys(THEMES) as ThemeId[];
 
-export const DEFAULT_THEME: ThemeId = 'dark';
+export const DEFAULT_THEME: ThemeId = 'midnight';
 
 /**
  * Applies the given theme to the document root as inline CSS custom
