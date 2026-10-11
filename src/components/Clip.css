@@ -83,8 +83,8 @@
   line-height: 1;
   padding: 2px 5px;
   border-radius: 8px;
-  background: rgba(20, 22, 26, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: var(--clip-label-bg);
+  border: 1px solid var(--clip-label-border);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
   pointer-events: none;
   user-select: none;
