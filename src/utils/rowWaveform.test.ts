@@ -158,10 +158,10 @@ describe('getWindowSecs', () => {
     it('averages the bounding span of the clips around the selected clip', () => {
       const list = track();
 
-      // Neighbourhood is clips 5..14: spans 7.5s..22s, so 14.5s over 10 clips.
+      // Neighbourhood is clips 6..13: spans 9s..20.5s, so 11.5s over 8 clips.
       expect(
         getWindowSecs(600, list, 120, {activeClip: 10, mergeScope: 'clip'}),
-      ).toBeCloseTo(windowForAvg(600, 1.45), 4);
+      ).toBeCloseTo(windowForAvg(600, 1.4375), 4);
     });
 
     it('ignores clips outside the neighbourhood', () => {
@@ -182,10 +182,10 @@ describe('getWindowSecs', () => {
     it('clamps the neighbourhood at the start of the track', () => {
       const list = track();
 
-      // Clip 3 has only clips 0..9 to its left, so the span is 0s..14.5s.
+      // Clip 1's neighbourhood clamps to clips 0..7, so the span is 0s..11.5s.
       expect(
-        getWindowSecs(600, list, 120, {activeClip: 3, mergeScope: 'clip'}),
-      ).toBeCloseTo(windowForAvg(600, 1.45), 4);
+        getWindowSecs(600, list, 120, {activeClip: 1, mergeScope: 'clip'}),
+      ).toBeCloseTo(windowForAvg(600, 1.4375), 4);
     });
 
     it('uses the whole-track average in global scope', () => {
@@ -220,6 +220,43 @@ describe('getWindowSecs', () => {
       expect(
         getWindowSecs(600, list, 120, {activeClip: 5, mergeScope: 'clip'}),
       ).toBeLessThanOrEqual(12);
+    });
+  });
+
+  /*
+   * Hysteresis: the length already on screen is sticky until the freshly
+   * computed one drifts more than `WINDOW_HYSTERESIS_SECS` (one second) away.
+   */
+  describe('previous window hysteresis', () => {
+    // 20 average-12s clips at 600px compute to 10.984615s.
+    const fresh = getWindowSecs(600, clips(20), 120);
+
+    it('keeps the previous window when the new one is within a second', () => {
+      expect(
+        getWindowSecs(600, clips(20), 120, {previousWindowSecs: fresh - 0.9}),
+      ).toBeCloseTo(fresh - 0.9, 4);
+    });
+
+    it('adopts the new window when it is more than a second away', () => {
+      expect(
+        getWindowSecs(600, clips(20), 120, {previousWindowSecs: fresh - 1.1}),
+      ).toBeCloseTo(fresh, 4);
+    });
+
+    it('treats a one-second difference as unchanged', () => {
+      expect(
+        getWindowSecs(600, clips(20), 120, {previousWindowSecs: fresh - 1}),
+      ).toBeCloseTo(fresh - 1, 4);
+      expect(
+        getWindowSecs(600, clips(20), 120, {previousWindowSecs: fresh + 1}),
+      ).toBeCloseTo(fresh + 1, 4);
+    });
+
+    it('applies the fresh window when there is no previous one', () => {
+      expect(getWindowSecs(600, clips(20), 120)).toBeCloseTo(fresh, 4);
+      expect(
+        getWindowSecs(600, clips(20), 120, {previousWindowSecs: 0}),
+      ).toBeCloseTo(fresh, 4);
     });
   });
 });

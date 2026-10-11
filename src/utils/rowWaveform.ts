@@ -46,14 +46,29 @@ export interface WindowSizingOptions {
    * sizes off the whole-track average, as before.
    */
   mergeScope?: MergeScope;
+  /**
+   * Window length currently shown by the viewport. When set, a freshly computed
+   * length is only adopted if it differs from this by more than
+   * `WINDOW_HYSTERESIS_SECS`; otherwise the previous value is kept. This stops
+   * the window from jittering as the selection moves between clips whose
+   * neighbourhood averages are close.
+   */
+  previousWindowSecs?: number;
 }
+
+/**
+ * How much the freshly computed window must differ from the one on screen before
+ * it is worth re-laying out. Smaller changes are ignored so the window is stable
+ * while tapping through clips.
+ */
+const WINDOW_HYSTERESIS_SECS = 1;
 
 /**
  * How many clips around the selected clip feed the clip-scope window average.
  * Small enough to track a local stretch of the track, wide enough not to jump
  * when a single clip's length changes.
  */
-const WINDOW_NEIGHBOURHOOD_CLIPS = 10;
+const WINDOW_NEIGHBOURHOOD_CLIPS = 8;
 
 /**
  * Average clip duration across a run of clips.
@@ -100,7 +115,11 @@ export function getWindowSecs(
   width: number,
   clips: Clip[] = [],
   waveformDuration: number,
-  {activeClip = -1, mergeScope = 'clip'}: WindowSizingOptions = {},
+  {
+    activeClip = -1,
+    mergeScope = 'clip',
+    previousWindowSecs,
+  }: WindowSizingOptions = {},
 ): number {
   const baseWindowSecs = getBaseWindowSecs(width);
 
@@ -142,7 +161,25 @@ export function getWindowSecs(
     (avgDuration - minSecond) * ratio + TARGET_CLIP_WIDTH_PX;
   const densityWindowSecs = (avgDuration * width) / densityWindowPx;
 
-  return Math.max(minWindowSecs, Math.min(baseWindowSecs, densityWindowSecs));
+  const result = Math.max(
+    minWindowSecs,
+    Math.min(baseWindowSecs, densityWindowSecs),
+  );
+
+  /*
+   * Hysteresis: keep the length already on screen unless the freshly computed
+   * one is further than WINDOW_HYSTERESIS_SECS away, so the window does not
+   * jitter on small changes (a new selection, a clip growing slightly).
+   */
+  if (
+    previousWindowSecs !== undefined &&
+    previousWindowSecs > 0 &&
+    Math.abs(result - previousWindowSecs) <= WINDOW_HYSTERESIS_SECS
+  ) {
+    return previousWindowSecs;
+  }
+
+  return result;
 }
 
 export function clampWindowAnchor(anchor: number, maxStart: number): number {

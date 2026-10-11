@@ -120,6 +120,11 @@ export const StackedWaveform = memo(
     const [scrollerWidth, setScrollerWidth] = useState(0);
     const mergeScope = useAppSelector(selectMergeScope);
     /*
+     * Last window length rendered. Fed back into getWindowSecs so small changes
+     * (a new selection, a clip growing slightly) do not re-paginate the rows.
+     */
+    const prevWindowSecsRef = useRef(0);
+    /*
      * =========================================================
      * ROWS
      * =========================================================
@@ -130,9 +135,14 @@ export const StackedWaveform = memo(
         getWindowSecs(scrollerWidth, displayClips, waveform.duration, {
           activeClip,
           mergeScope,
+          previousWindowSecs: prevWindowSecsRef.current,
         }),
       [scrollerWidth, displayClips, waveform.duration, activeClip, mergeScope],
     );
+
+    useEffect(() => {
+      prevWindowSecsRef.current = windowSecs;
+    }, [windowSecs]);
 
     const stackedRows = useMemo<StackedRow[]>(() => {
       const rows: StackedRow[] = [];

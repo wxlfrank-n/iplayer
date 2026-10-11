@@ -196,6 +196,7 @@ export function useRowWaveformScroll({
         getWindowSecs(width, displayClips, waveformDuration, {
           activeClip,
           mergeScope,
+          previousWindowSecs: hsWinLenRef.current,
         }),
         waveformDuration,
       );
