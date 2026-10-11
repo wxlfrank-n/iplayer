@@ -56,21 +56,10 @@
  * transformed waveform ancestor can clip or rescale it.
  */
 .waveform-clip__swipe-hint {
+  composes: waveform-clip__action-chip;
   position: fixed;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-  line-height: 1;
-  padding: 4px 6px;
-  border-radius: 10px;
-  background: rgba(20, 22, 26, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+  font-size: 0.8rem;
   transform: translate(-50%, calc(-100% - 20px));
-  pointer-events: none;
-  user-select: none;
-  -webkit-user-select: none;
   z-index: 2000;
   animation: clip-swipe-hint 0.12s ease-out;
 }
@@ -83,29 +72,37 @@
 }
 
 /*
- * Split affordance shown while an active clip can be split. It gets an opaque
- * chip and a high z-index so it always reads as the front-most element, above
- * the clip's label and any neighbouring clips. Clips with no viable split
- * boundary show no icon at all.
+ * Action chip (shared by static split affordance and the floating swipe hint).
+ * Same look, size and theme for both split indicators.
  */
-.waveform-clip__split-hint {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translate(-50%, -50%);
+.waveform-clip__action-chip {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   line-height: 1;
-  padding: 2px 4px;
-  border-radius: 7px;
+  padding: 2px 5px;
+  border-radius: 8px;
   background: rgba(20, 22, 26, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.22);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
+}
+
+/*
+ * Split affordance shown while an active clip can be split. It gets an opaque
+ * chip and a high z-index so it always reads as the front-most element, above
+ * the clip's label and any neighbouring clips. Clips with no viable split
+ * boundary show no icon at all.
+ */
+.waveform-clip__split-hint {
+  composes: waveform-clip__action-chip;
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -50%);
   z-index: 100;
   animation: clip-split-hint 0.15s ease-out;
 }

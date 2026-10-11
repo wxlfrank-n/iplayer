@@ -462,7 +462,7 @@ export const Clip = memo(
       >
         {active && canSplit && !swipeAction && (
           <span
-            className="waveform-clip__split-hint"
+            className="waveform-clip__split-hint waveform-clip__action-chip"
             role="img"
             aria-label="Splittable"
             title="Splittable"
@@ -475,7 +475,7 @@ export const Clip = memo(
           hintPos &&
           createPortal(
             <span
-              className="waveform-clip__swipe-hint"
+              className="waveform-clip__swipe-hint waveform-clip__action-chip"
               style={{left: hintPos.x, top: hintPos.y}}
               aria-hidden="true"
             >
