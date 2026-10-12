@@ -392,6 +392,49 @@ describe('Clip gestures', () => {
     ).toContain('🔗');
   });
 
+  it('shows no split icon while dragging up on an unsplittable clip', () => {
+    const {rect} = renderClip({canSplit: false});
+
+    fireEvent.pointerDown(rect, {
+      pointerId: 34,
+      pointerType: 'touch',
+      clientX: 100,
+      clientY: 100,
+    });
+    fireEvent.pointerMove(window, {
+      pointerId: 34,
+      pointerType: 'touch',
+      clientX: 100,
+      clientY: 60,
+    });
+
+    expect(
+      document.body.querySelector('.waveform-clip__swipe-hint'),
+    ).toBeNull();
+    expect(rect.classList.contains('waveform-clip--swiping')).toBe(false);
+  });
+
+  it('still shows the merge icon while dragging down on an unsplittable clip', () => {
+    const {rect} = renderClip({canSplit: false});
+
+    fireEvent.pointerDown(rect, {
+      pointerId: 35,
+      pointerType: 'touch',
+      clientX: 100,
+      clientY: 100,
+    });
+    fireEvent.pointerMove(window, {
+      pointerId: 35,
+      pointerType: 'touch',
+      clientX: 100,
+      clientY: 160,
+    });
+
+    expect(
+      document.body.querySelector('.waveform-clip__swipe-hint')?.textContent,
+    ).toContain('🔗');
+  });
+
   it('shows no swipe icon for a horizontal drag (parent owns it)', () => {
     const {rect} = renderClip();
 

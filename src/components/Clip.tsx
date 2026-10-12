@@ -52,7 +52,8 @@ export interface ClipProps {
   /**
    * Whether the clip can currently be split (it is a merged group with a
    * boundary that cleaves off at least `minSplitPieceSec`). Drives the split
-   * affordance shown while the clip is active.
+   * affordance shown while the clip is active, and whether an up-swipe shows
+   * the floating split icon.
    */
   canSplit?: boolean;
 
@@ -433,13 +434,16 @@ export const Clip = memo(
     /*
      * Action icon shown while the drag is classified as a clip gesture. Named
      * after the gesture's effect, so a diagonal still reads as its split/merge
-     * meaning.
+     * meaning. A split is only offered when the clip can actually be split, so
+     * an up-swipe on an unsplittable clip shows no icon (and no drag state).
      */
-    const swipeAction = swipeDir?.startsWith('up')
-      ? 'split'
-      : swipeDir
-        ? 'merge'
-        : null;
+    let swipeAction: 'split' | 'merge' | null = null;
+
+    if (swipeDir?.startsWith('up')) {
+      swipeAction = canSplit ? 'split' : null;
+    } else if (swipeDir) {
+      swipeAction = 'merge';
+    }
 
     return (
       <div
