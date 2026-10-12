@@ -5,7 +5,6 @@
  */
 
 import {memo, useEffect, useId, useRef, useState} from 'react';
-import type {KeyboardEvent} from 'react';
 import PlaylistIcon from '../assets/icons/playlist.svg?react';
 import SettingsIcon from '../assets/icons/settings.svg?react';
 import {useT} from '../i18n';
@@ -27,7 +26,6 @@ export const PlayerActions = memo(
     const [activeIndex, setActiveIndex] = useState(0);
     const rootRef = useRef<HTMLDivElement>(null);
     const menuId = useId();
-    const itemCount = MENU_LABELS.length;
 
     const openMenu = () => {
       setActiveIndex(0);
@@ -45,39 +43,6 @@ export const PlayerActions = memo(
       else onOpenSettings();
     };
 
-    const handleKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
-      if (!open) {
-        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-          e.preventDefault();
-          openMenu();
-        }
-        return;
-      }
-      switch (e.key) {
-        case 'ArrowDown':
-          e.preventDefault();
-          setActiveIndex(i => (i + 1) % itemCount);
-          break;
-        case 'ArrowUp':
-          e.preventDefault();
-          setActiveIndex(i => (i - 1 + itemCount) % itemCount);
-          break;
-        case 'Home':
-          e.preventDefault();
-          setActiveIndex(0);
-          break;
-        case 'End':
-          e.preventDefault();
-          setActiveIndex(itemCount - 1);
-          break;
-        case 'Enter':
-        case ' ':
-          e.preventDefault();
-          activate(activeIndex);
-          break;
-      }
-    };
-
     return (
       <div className="player-actions" ref={rootRef}>
         <button
@@ -91,7 +56,6 @@ export const PlayerActions = memo(
           aria-controls={menuId}
           aria-activedescendant={open ? `${menuId}-${activeIndex}` : undefined}
           onClick={() => (open ? setOpen(false) : openMenu())}
-          onKeyDown={handleKeyDown}
           title={t('actions.more')}
         >
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">

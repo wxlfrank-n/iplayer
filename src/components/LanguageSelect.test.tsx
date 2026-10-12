@@ -50,27 +50,6 @@ describe('LanguageSelect', () => {
     );
   });
 
-  it('moves the highlight with the arrow keys and selects on Enter', () => {
-    const onChange = vi.fn();
-    render(<LanguageSelect value="en" onChange={onChange} label="Language" />);
-    const button = screen.getByRole('button');
-    fireEvent.keyDown(button, {key: 'ArrowDown'}); // open
-    fireEvent.keyDown(button, {key: 'ArrowDown'}); // move to zh
-    fireEvent.keyDown(button, {key: 'Enter'});
-    expect(onChange).toHaveBeenCalledWith('zh');
-  });
-
-  it('moves highlight through all locales with arrow keys', () => {
-    const onChange = vi.fn();
-    render(<LanguageSelect value="en" onChange={onChange} label="Language" />);
-    const button = screen.getByRole('button');
-    fireEvent.keyDown(button, {key: 'ArrowDown'}); // open
-    fireEvent.keyDown(button, {key: 'ArrowDown'}); // zh
-    fireEvent.keyDown(button, {key: 'ArrowDown'}); // no
-    fireEvent.keyDown(button, {key: 'Enter'});
-    expect(onChange).toHaveBeenCalledWith('no');
-  });
-
   it('closes on Escape', () => {
     render(<LanguageSelect value="en" onChange={() => {}} label="Language" />);
     const button = screen.getByRole('button');

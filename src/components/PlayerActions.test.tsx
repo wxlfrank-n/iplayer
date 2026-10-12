@@ -64,28 +64,4 @@ describe('PlayerActions', () => {
     fireEvent.keyDown(button, {key: 'Escape'});
     expect(screen.queryByRole('menu')).toBeNull();
   });
-
-  it('moves the highlight with the arrow keys and activates on Enter', () => {
-    const {onOpenSettings, onTogglePlaylist} = setup();
-    const button = screen.getByRole('button');
-    fireEvent.keyDown(button, {key: 'ArrowDown'});
-    expect(screen.queryByRole('menu')).toBeTruthy();
-    fireEvent.keyDown(button, {key: 'Enter'});
-    expect(onTogglePlaylist).toHaveBeenCalledTimes(1);
-
-    // Reopening resets the highlight to the first item.
-    fireEvent.keyDown(button, {key: 'ArrowDown'});
-    fireEvent.keyDown(button, {key: 'ArrowDown'});
-    fireEvent.keyDown(button, {key: 'Enter'});
-    expect(onOpenSettings).toHaveBeenCalledTimes(1);
-
-    fireEvent.keyDown(button, {key: 'ArrowDown'});
-    fireEvent.keyDown(button, {key: 'Enter'});
-    expect(onTogglePlaylist).toHaveBeenCalledTimes(2);
-
-    fireEvent.keyDown(button, {key: 'ArrowDown'});
-    fireEvent.keyDown(button, {key: 'ArrowDown'});
-    fireEvent.keyDown(button, {key: 'Enter'});
-    expect(onOpenSettings).toHaveBeenCalledTimes(2);
-  });
 });

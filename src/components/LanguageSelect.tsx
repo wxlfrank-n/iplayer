@@ -50,39 +50,6 @@ export function LanguageSelect({value, onChange, label}: LanguageSelectProps) {
     setOpen(false);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
-    if (!open) {
-      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-        e.preventDefault();
-        openList();
-      }
-      return;
-    }
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault();
-        setActiveIndex(i => (i + 1) % LOCALE_IDS.length);
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        setActiveIndex(i => (i - 1 + LOCALE_IDS.length) % LOCALE_IDS.length);
-        break;
-      case 'Home':
-        e.preventDefault();
-        setActiveIndex(0);
-        break;
-      case 'End':
-        e.preventDefault();
-        setActiveIndex(LOCALE_IDS.length - 1);
-        break;
-      case 'Enter':
-      case ' ':
-        e.preventDefault();
-        select(LOCALE_IDS[activeIndex]);
-        break;
-    }
-  };
-
   const activeDescendant = open
     ? `${listboxId}-${LOCALE_IDS[activeIndex]}`
     : undefined;
@@ -98,7 +65,6 @@ export function LanguageSelect({value, onChange, label}: LanguageSelectProps) {
         aria-controls={listboxId}
         aria-activedescendant={activeDescendant}
         onClick={() => (open ? setOpen(false) : openList())}
-        onKeyDown={handleKeyDown}
       >
         <span className="language-select__value">{OPTION_LABELS[value]}</span>
         <svg

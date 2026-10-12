@@ -8,7 +8,7 @@
  * `CONFIG_RANGES`; values are clamped to stay valid.
  */
 
-import {useCallback, useState, type KeyboardEvent} from 'react';
+import {useCallback, useState} from 'react';
 import {useConfig} from '../hooks/useConfig';
 import {CONFIG_RANGES, DEFAULT_CONFIG} from '../store/configSlice';
 import {useFocusTrap} from '../hooks/useFocusTrap';
@@ -358,21 +358,6 @@ export function Settings({onClose}: SettingsProps) {
   const trapRef = useFocusTrap<HTMLDivElement>(true, close);
   const [activeTab, setActiveTab] = useState<SettingsTabId>('theme');
 
-  const handleTabKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    const idx = SETTINGS_TABS.findIndex(t => t.id === activeTab);
-    let next = -1;
-    if (e.key === 'ArrowRight') next = (idx + 1) % SETTINGS_TABS.length;
-    else if (e.key === 'ArrowLeft')
-      next = (idx - 1 + SETTINGS_TABS.length) % SETTINGS_TABS.length;
-    else if (e.key === 'Home') next = 0;
-    else if (e.key === 'End') next = SETTINGS_TABS.length - 1;
-    else return;
-    e.preventDefault();
-    const tabId = SETTINGS_TABS[next].id;
-    setActiveTab(tabId);
-    document.getElementById(`settings-tab-${tabId}`)?.focus();
-  };
-
   return (
     <div className="settings-overlay" onClick={onClose}>
       <div
@@ -396,7 +381,6 @@ export function Settings({onClose}: SettingsProps) {
           className="settings-tabs"
           role="tablist"
           aria-label={t('settings.sectionsLabel')}
-          onKeyDown={handleTabKeyDown}
         >
           {SETTINGS_TABS.map(({id}) => (
             <button
