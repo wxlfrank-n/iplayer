@@ -15,7 +15,7 @@ describe('i18n', () => {
     expect(t('player.play')).toBe('Play');
     expect(t('settings.tabClips')).toBe('Clip detection');
     expect(translate(en, 'emptyState.subtitle')).toBe(
-      'Drop audio files anywhere in this window, or choose them from your device.',
+      'Choose audio files from your device.',
     );
   });
 

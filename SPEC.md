@@ -16,7 +16,7 @@
 - **Error Handling**: Falls back to original URL playback when decoding fails
 
 ### 1.3 Playlist Management
-- **Add Files**: Support for adding MP3 files to playlist via file picker or drag-and-drop
+- **Add Files**: Support for adding MP3 files to playlist via the file picker
 - **Remove Files**: Ability to remove specific audio from playlist
 - **Select and Play**: Can select any audio in the playlist to play
 - **Auto-play Option**: Option to automatically play after adding new files
@@ -67,7 +67,6 @@
 ## 5. File Handling Features
 
 ### 5.1 File Addition
-- **Drag and Drop**: Supports dragging and dropping files to the application interface to add to playlist
 - **File Picker**: Traditional file picker for adding files
 - **Format Filtering**: Automatically filters non-MP3 format files
 - **Batch Addition**: Supports adding multiple files at once
@@ -91,17 +90,10 @@
 
 ## 7. Accessibility Features
 
-### 7.1 Keyboard Shortcuts
-- **Play/Pause**: Space bar support for toggling play/pause
-- **Previous/Next**: Support for switching previous/next track
-- **Fast Forward/Rewind**: Keyboard shortcuts for fast forward/rewind
-
-### 7.2 Accessibility Support
-- **Focus Management**: Manages UI focus to ensure smooth keyboard navigation
+### 7.1 Accessibility Support
 - **ARIA Labels**: Provides appropriate ARIA labels for screen reader support
-- **Keyboard Navigation**: Supports keyboard operation of all functions
 
-### 7.3 Error Handling
+### 7.2 Error Handling
 - **Error Boundaries**: Uses React error boundaries to catch component errors
 - **Error Recovery**: Provides appropriate error recovery mechanisms
 - **Error Messages**: Displays user-friendly error messages
@@ -132,7 +124,7 @@ A browser-based music player for MP3 files that automatically breaks each track 
 - **Merge control** — combine neighboring clips into one with a single slider
 - **Two waveform views** — a stacked multi-row overview or a single horizontally-scrollable row
 - **Configurable skip** — jump forward/back by 5–60 seconds
-- **Drag-and-drop and file picker** — load multiple MP3 files at once
+- **File picker** — load multiple MP3 files at once
 - **Live frequency visualizer** ("dancing lines")
 - **Settings persist** automatically in your browser's local storage
 
@@ -174,8 +166,7 @@ npm run preview      # serves the built app to verify it
 ## Loading music
 
 1. Click the **playlist** button in the top-left corner to open the playlist panel.
-2. Click the **`+`** button and select one or more MP3 files, **or**
-3. Simply **drag and drop** MP3 files anywhere onto the app window.
+2. Click the **`+`** button and select one or more MP3 files.
 
 Notes:
 
@@ -220,7 +211,7 @@ The waveform is drawn from the decoded audio and shows:
 #### Two views
 
 - **Stacked** — each ~10-second group of clips is shown as its own row so you can see the whole track at once. The container scrolls to keep the playhead in view while playing.
-- **Single row** — one horizontally-scrollable row you can **pan** (drag), **wheel** horizontally, or **resize**; it automatically follows the playhead during playback (auto-follow pauses for 1.5s after you manually navigate).
+- **Single row** — one horizontally-scrollable row you can **pan** (drag) or **resize**; it automatically follows the playhead during playback (auto-follow pauses for 1.5s after you manually navigate).
 
 Switch views in **Settings → Waveform view**.
 

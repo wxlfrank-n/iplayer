@@ -43,14 +43,13 @@ export const en = {
 
   trackList: {
     empty: 'No tracks yet',
-    hint: 'Drop audio files here or use the button above',
+    hint: 'Use the button above to add audio files',
     removeTrack: 'Remove track',
   },
 
   emptyState: {
     title: 'Add an audio file to get started',
-    subtitle:
-      'Drop audio files anywhere in this window, or choose them from your device.',
+    subtitle: 'Choose audio files from your device.',
     addFiles: 'Add audio files',
   },
 
@@ -199,14 +198,13 @@ export const no: Messages = {
 
   trackList: {
     empty: 'Ingen l\u00e5ter enn\u00e5',
-    hint: 'Dra lydfiler hit eller bruk knappen over',
+    hint: 'Bruk knappen over til \u00e5 legge til lydfiler',
     removeTrack: 'Fjern l\u00e5t',
   },
 
   emptyState: {
     title: 'Legg til en lydfil for \u00e5 komme i gang',
-    subtitle:
-      'Dra lydfiler hvor som helst i dette vinduet, eller velg dem fra enheten din.',
+    subtitle: 'Velg lydfiler fra enheten din.',
     addFiles: 'Legg til lydfiler',
   },
 
@@ -357,13 +355,13 @@ export const zh: Messages = {
 
   trackList: {
     empty: '还没有添加音频',
-    hint: '将音频文件拖到这里，或使用下方按钮添加',
+    hint: '使用上方按钮添加音频文件',
     removeTrack: '移除音频',
   },
 
   emptyState: {
     title: '添加音频文件开始使用',
-    subtitle: '将音频文件拖到窗口中的任意位置，或从设备中选择文件。',
+    subtitle: '从设备中选择音频文件。',
     addFiles: '添加音频文件',
   },
 

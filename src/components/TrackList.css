@@ -25,7 +25,6 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 24px;
-  cursor: pointer;
   transition: background 0.15s;
 }
 
@@ -97,7 +96,6 @@
   border: none;
   color: var(--text-secondary);
   font-size: 0.85rem;
-  cursor: pointer;
   padding: 4px 8px;
   border-radius: 4px;
   opacity: 0.6;

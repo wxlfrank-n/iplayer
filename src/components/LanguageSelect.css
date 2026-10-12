@@ -16,7 +16,6 @@
   padding: 7px 12px;
   font: inherit;
   font-size: 0.8rem;
-  cursor: pointer;
   transition:
     background 0.15s,
     border-color 0.15s;
@@ -81,14 +80,9 @@
   border-radius: var(--radius-sm);
   font-size: 0.8rem;
   color: var(--text-primary);
-  cursor: pointer;
   transition:
     background 0.12s,
     color 0.12s;
-}
-
-.language-select__option--active {
-  background: var(--bg-hover);
 }
 
 .language-select__option--selected {

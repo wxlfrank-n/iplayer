@@ -37,13 +37,12 @@ export function RepsStepper({
     onChange(Math.min(max, Math.max(min, value + delta)));
 
   return (
-    <div className="clip-reps" title={t('reps.title', {count: value})}>
+    <div className="clip-reps">
       <span className="clip-reps__label">{t('reps.label')}</span>
       <div className="clip-reps__stepper">
         <button
           type="button"
           aria-label={t('reps.decrease')}
-          title={t('reps.decreaseHint')}
           disabled={disabled || value <= min}
           onClick={() => step(-1)}
         >
@@ -53,7 +52,6 @@ export function RepsStepper({
         <button
           type="button"
           aria-label={t('reps.increase')}
-          title={t('reps.increaseHint')}
           disabled={disabled || value >= max}
           onClick={() => step(1)}
         >

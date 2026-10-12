@@ -49,13 +49,4 @@ describe('LanguageSelect', () => {
       'false',
     );
   });
-
-  it('closes on Escape', () => {
-    render(<LanguageSelect value="en" onChange={() => {}} label="Language" />);
-    const button = screen.getByRole('button');
-    fireEvent.click(button);
-    expect(screen.getAllByRole('option')).toHaveLength(3);
-    fireEvent.keyDown(button, {key: 'Escape'});
-    expect(screen.queryByRole('option')).toBeNull();
-  });
 });

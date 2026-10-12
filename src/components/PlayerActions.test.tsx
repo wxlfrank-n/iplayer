@@ -55,13 +55,4 @@ describe('PlayerActions', () => {
     expect(onOpenSettings).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('menu')).toBeNull();
   });
-
-  it('closes on Escape', () => {
-    setup();
-    const button = screen.getByRole('button');
-    fireEvent.click(button);
-    expect(screen.queryByRole('menu')).toBeTruthy();
-    fireEvent.keyDown(button, {key: 'Escape'});
-    expect(screen.queryByRole('menu')).toBeNull();
-  });
 });

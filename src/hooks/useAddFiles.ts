@@ -1,16 +1,11 @@
 /**
- * Adds MP3 files to the player from a file picker or a drag-and-drop target.
+ * Adds files to the player from the file picker.
  *
- * Owns the "add files" reaction (passing the selection to the player's track
- * loader and reporting how many non-MP3 files were skipped) together with the
- * whole-window drag-and-drop wiring. Returns a `drop` ref to attach to the
- * element that should accept file drops, plus `isOver` to drive its visual
- * drag state.
+ * Owns the "add files" reaction: passing the selection to the player's track
+ * loader and reporting how many unsupported files were skipped.
  */
 
 import {useCallback} from 'react';
-import {useDrop} from 'react-dnd';
-import {NativeTypes} from 'react-dnd-html5-backend';
 
 interface AddTracksResult {
   added: number;
@@ -29,16 +24,5 @@ export function useAddFiles(
     [addTracks, onSkipped],
   );
 
-  const [{isOver}, drop] = useDrop(
-    () => ({
-      accept: [NativeTypes.FILE],
-      drop: (item: {files?: FileList}) => {
-        if (item.files && item.files.length > 0) handleFiles(item.files);
-      },
-      collect: monitor => ({isOver: monitor.isOver()}),
-    }),
-    [handleFiles],
-  );
-
-  return {handleFiles, isOver, drop};
+  return {handleFiles};
 }

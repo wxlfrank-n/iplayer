@@ -37,7 +37,6 @@ import {clipGestureLedger} from './clipPinch';
 import type {Clip as InitClipData} from '../utils/clips';
 import type {SwipeDirection, WaveWindow} from '../types';
 
-import {formatTimePrecise} from '../utils/time';
 import './Clip.css';
 
 export interface ClipProps {
@@ -454,9 +453,6 @@ export const Clip = memo(
           width: `${widthPct}%`,
           height: `${heightPct}%`,
         }}
-        title={`${formatTimePrecise(clip.vStart)} - ${formatTimePrecise(
-          clip.vEnd,
-        )}`}
         onClick={handleClick}
         {...bindClip()}
       >
@@ -465,7 +461,6 @@ export const Clip = memo(
             className="waveform-clip__split-hint waveform-clip__action-chip"
             role="img"
             aria-label="Splittable"
-            title="Splittable"
           >
             ✂️
           </span>

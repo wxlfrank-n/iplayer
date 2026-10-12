@@ -29,6 +29,7 @@ async function playedPercent(page: import('@playwright/test').Page) {
 test.describe('playing audio', () => {
   test.beforeEach(async ({page}) => {
     await hookMedia(page);
+    await seedConfig(page, {});
   });
 
   test('plays the track and advances the audio clock', async ({page}) => {
@@ -183,6 +184,7 @@ test.describe('clip playback', () => {
   });
 
   test('clicking a clip plays that clip only', async ({page}) => {
+    await seedConfig(page, {});
     await page.goto('/');
     await waitForClips(page);
 
@@ -205,6 +207,7 @@ test.describe('clip playback', () => {
   });
 
   test('clicking the active clip again stops it', async ({page}) => {
+    await seedConfig(page, {});
     await page.goto('/');
     await waitForClips(page);
 
@@ -223,6 +226,7 @@ test.describe('clip playback', () => {
   });
 
   test('stopping playback leaves the clicked clip active', async ({page}) => {
+    await seedConfig(page, {});
     await page.goto('/');
     await waitForClips(page);
 
@@ -237,7 +241,9 @@ test.describe('clip playback', () => {
     expect(await clipCount(page)).toBe(before);
   });
 
-  test('clip gestures are ignored while a clip is playing', async ({page}) => {
+  test('clip gestures still edit the track while a clip is playing', async ({
+    page,
+  }) => {
     await seedConfig(page, {showAdvancedControls: true, mergeScope: 'global'});
     await page.goto('/');
     await waitForClips(page);
@@ -250,10 +256,10 @@ test.describe('clip playback', () => {
     await page.locator('.waveform-clip').nth(1).click();
     await expect(playButton(page)).toHaveAttribute('aria-label', 'Pause');
 
+    // Gestures are no longer swallowed just because a clip owns playback: the
+    // merge is applied and the reported clip count changes.
     await swipeClip(page, 1, 'down');
-    await swipeClip(page, 1, 'up');
 
-    // Neither swipe edited the track while playback owned the gestures.
-    await expect(bubble).toHaveText(before);
+    await expect(bubble).not.toHaveText(before);
   });
 });

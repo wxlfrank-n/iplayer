@@ -3,11 +3,10 @@
  *
  * Rendered below the waveform when clips exist and advanced controls are
  * expanded (store `showAdvancedControls`). Holds the merge-gap slider and the
- * repeat stepper. Collapses via double-click on its background or a swipe up;
+ * repeat stepper. Collapses via a swipe up; the collapsed hit area that
  * the collapsed hit area that re-expands it lives inside progress-container.
  */
 import {useDrag} from '@use-gesture/react';
-import type {MouseEvent} from 'react';
 
 import {MergeSlider} from './MergeSlider';
 import {RepsStepper} from './RepsStepper';
@@ -53,22 +52,6 @@ export function ClipToolbar({
 }: ClipToolbarProps) {
   const dispatch = useAppDispatch();
 
-  const handleDoubleClick = (e: MouseEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLElement;
-
-    const interactive = target.closest(
-      "button, input, select, textarea, a, [role='button'], [role='slider']",
-    );
-
-    if (interactive) return;
-
-    dispatch(
-      updateConfig({
-        showAdvancedControls: false,
-      }),
-    );
-  };
-
   /*
    * Swipe up (vertical, upward) hides the toolbar.
    */
@@ -103,7 +86,6 @@ export function ClipToolbar({
   return (
     <div
       className={`clip-toolbar ${disabled ? 'clip-toolbar--disabled' : ''}`}
-      onDoubleClick={handleDoubleClick}
       {...bindToolbar()}
     >
       {showMergeSlider && (

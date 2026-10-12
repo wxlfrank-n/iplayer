@@ -4,7 +4,6 @@ import {afterEach, describe, expect, it, vi} from 'vitest';
 import {
   addListener,
   addListeners,
-  isEscapeKey,
   isOutside,
   onOutsideDismiss,
 } from './listener';
@@ -108,17 +107,6 @@ describe('isOutside', () => {
   });
 });
 
-describe('isEscapeKey', () => {
-  it('only matches Escape', () => {
-    expect(isEscapeKey(new KeyboardEvent('keydown', {key: 'Escape'}))).toBe(
-      true,
-    );
-    expect(isEscapeKey(new KeyboardEvent('keydown', {key: 'Enter'}))).toBe(
-      false,
-    );
-  });
-});
-
 describe('onOutsideDismiss', () => {
   it('dismisses on an outside pointer press only', () => {
     const container = document.createElement('div');
@@ -137,19 +125,6 @@ describe('onOutsideDismiss', () => {
 
     remove();
     outside.dispatchEvent(new PointerEvent('pointerdown', {bubbles: true}));
-    expect(onDismiss).toHaveBeenCalledTimes(1);
-  });
-
-  it('dismisses on Escape', () => {
-    const container = document.createElement('div');
-    document.body.append(container);
-    const onDismiss = vi.fn();
-    onOutsideDismiss(container, onDismiss);
-
-    document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape'}));
-    expect(onDismiss).toHaveBeenCalledTimes(1);
-
-    document.dispatchEvent(new KeyboardEvent('keydown', {key: 'a'}));
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 });

@@ -11,7 +11,6 @@
 import {useCallback, useState} from 'react';
 import {useConfig} from '../hooks/useConfig';
 import {CONFIG_RANGES, DEFAULT_CONFIG} from '../store/configSlice';
-import {useFocusTrap} from '../hooks/useFocusTrap';
 import {THEMES, THEME_IDS, type ThemeId} from '../themes';
 import {LanguageSelect} from './LanguageSelect';
 import {useT, type TranslationKey} from '../i18n';
@@ -355,24 +354,17 @@ export function Settings({onClose}: SettingsProps) {
   const {updateConfig} = useConfig();
   const t = useT();
   const close = useCallback(() => onClose(), [onClose]);
-  const trapRef = useFocusTrap<HTMLDivElement>(true, close);
   const [activeTab, setActiveTab] = useState<SettingsTabId>('theme');
 
   return (
     <div className="settings-overlay" onClick={onClose}>
-      <div
-        className="settings-panel"
-        ref={trapRef}
-        tabIndex={-1}
-        onClick={e => e.stopPropagation()}
-      >
+      <div className="settings-panel" onClick={e => e.stopPropagation()}>
         <div className="settings-header">
           <h2>{t('settings.title')}</h2>
           <button
             className="settings-close"
             onClick={close}
             aria-label={t('settings.close')}
-            title={t('common.close')}
           >
             <CloseIcon width={18} height={18} />
           </button>

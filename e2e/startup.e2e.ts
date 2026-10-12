@@ -1,6 +1,6 @@
 import {expect, test} from '@playwright/test';
 
-import {waitForClips} from './helpers';
+import {seedConfig, waitForClips} from './helpers';
 
 /**
  * The app boots on a bundled track, so these cover the pipeline that jsdom
@@ -8,6 +8,10 @@ import {waitForClips} from './helpers';
  * the samples into clips, and drawing them.
  */
 test.describe('startup', () => {
+  test.beforeEach(async ({page}) => {
+    await seedConfig(page, {});
+  });
+
   test('decodes the default track and renders its clips', async ({page}) => {
     await page.goto('/');
 

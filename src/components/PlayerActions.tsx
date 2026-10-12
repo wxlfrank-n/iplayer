@@ -23,14 +23,10 @@ export const PlayerActions = memo(
   ({onTogglePlaylist, onOpenSettings}: PlayerActionsProps) => {
     const t = useT();
     const [open, setOpen] = useState(false);
-    const [activeIndex, setActiveIndex] = useState(0);
     const rootRef = useRef<HTMLDivElement>(null);
     const menuId = useId();
 
-    const openMenu = () => {
-      setActiveIndex(0);
-      setOpen(true);
-    };
+    const openMenu = () => setOpen(true);
 
     useEffect(() => {
       if (!open) return;
@@ -54,9 +50,7 @@ export const PlayerActions = memo(
           aria-haspopup="menu"
           aria-expanded={open}
           aria-controls={menuId}
-          aria-activedescendant={open ? `${menuId}-${activeIndex}` : undefined}
           onClick={() => (open ? setOpen(false) : openMenu())}
-          title={t('actions.more')}
         >
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
             <circle cx="12" cy="5" r="1.7" fill="currentColor" />
@@ -75,12 +69,8 @@ export const PlayerActions = memo(
             {MENU_LABELS.map((label, i) => (
               <li
                 key={label}
-                id={`${menuId}-${i}`}
                 role="menuitem"
-                className={`player-actions__item ${
-                  activeIndex === i ? 'player-actions__item--active' : ''
-                }`}
-                onPointerEnter={() => setActiveIndex(i)}
+                className="player-actions__item"
                 onClick={() => activate(i)}
               >
                 {i === 0 ? (

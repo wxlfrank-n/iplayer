@@ -26,7 +26,6 @@ import {
   updatePlayedStyle,
   updateTrackStyle,
 } from '../utils/waveform';
-import {calculateWheelChange} from '../utils/rowHandler';
 import type {Clip} from '../utils/clips';
 import type {MergeScope} from '../types';
 import {DIAGONAL_MIN_TAN} from '../components/Clip';
@@ -601,23 +600,6 @@ export function useRowWaveformScroll({
     },
     [markManualScroll, setLiveAnchor],
   );
-  useEffect(() => {
-    const element = hsRef.current;
-    if (!element) return;
-    const onWheel = (e: WheelEvent) => {
-      const dSec = calculateWheelChange(
-        e,
-        trackRef.current,
-        element,
-        hsWinLenRef.current,
-      );
-      if (dSec) {
-        setLiveAnchor(viewportAnchorRef.current + dSec);
-        markManualScroll();
-      }
-    };
-    return addListener(element, 'wheel', onWheel, {passive: false});
-  }, [markManualScroll, setLiveAnchor]);
   const onWaveformClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (suppressClickRef.current) {

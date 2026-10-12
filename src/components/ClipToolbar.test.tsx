@@ -67,24 +67,6 @@ describe('ClipToolbar', () => {
     expect(container.querySelector('.clip-reps')).not.toBeNull();
   });
 
-  it('collapses the toolbar when double-clicking its background', () => {
-    const store = makeStore();
-    renderToolbar(store);
-
-    const bar = document.querySelector('.clip-toolbar')!;
-    fireEvent.doubleClick(bar);
-    expect(store.getState().config.showAdvancedControls).toBe(false);
-  });
-
-  it('does not collapse when double-clicking an interactive control', () => {
-    const store = makeStore();
-    renderToolbar(store);
-
-    const button = document.querySelector('.clip-reps__stepper button')!;
-    fireEvent.doubleClick(button);
-    expect(store.getState().config.showAdvancedControls).toBe(true);
-  });
-
   it('hides the toolbar on a swipe up', () => {
     const store = makeStore();
     renderToolbar(store);

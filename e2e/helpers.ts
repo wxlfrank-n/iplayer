@@ -13,6 +13,9 @@ export const CONFIG_KEY = 'Listeenoop_config';
  * Seeding is skipped once a value exists. `addInitScript` re-runs on every
  * navigation, including reloads, so an unconditional write would silently
  * clobber whatever the app persisted and make persistence untestable.
+ *
+ * The suite asserts English labels, so the seeded config always pins
+ * `language: 'en'` regardless of the app's default locale.
  */
 export async function seedConfig(
   page: Page,
@@ -24,7 +27,7 @@ export async function seedConfig(
         window.localStorage.setItem(key as string, value as string);
       }
     },
-    [CONFIG_KEY, JSON.stringify(config)] as const,
+    [CONFIG_KEY, JSON.stringify({language: 'en', ...config})] as const,
   );
 }
 

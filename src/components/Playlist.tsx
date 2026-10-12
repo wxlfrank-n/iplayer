@@ -1,14 +1,13 @@
 /**
  * Playlist panel - shows all loaded tracks and allows adding/removing files.
  * Slides out as a sidebar overlay. Shows current track highlight.
- * Supports drag-and-drop and file input for adding new tracks.
+ * Supports file input for adding new tracks.
  */
 
 import {useRef, useCallback} from 'react';
 import {TrackList} from './TrackList';
 import {useAppSelector} from '../store/hooks';
 import {selectTracks, selectCurrentTrackIndex} from '../store/selectors';
-import {useFocusTrap} from '../hooks/useFocusTrap';
 import {useT} from '../i18n';
 import CloseIcon from '../assets/icons/close.svg?react';
 import './Playlist.css';
@@ -32,16 +31,10 @@ export function Playlist({
   const t = useT();
 
   const handleClose = useCallback(() => onClose(), [onClose]);
-  const trapRef = useFocusTrap<HTMLDivElement>(true, handleClose);
 
   return (
     <div className="playlist-overlay" onClick={onClose}>
-      <div
-        className="playlist-panel"
-        ref={trapRef}
-        tabIndex={-1}
-        onClick={e => e.stopPropagation()}
-      >
+      <div className="playlist-panel" onClick={e => e.stopPropagation()}>
         <div className="playlist-header">
           <h2 id="playlist-title">
             {t('playlist.title', {count: tracks.length})}
@@ -58,7 +51,6 @@ export function Playlist({
               className="playlist-close"
               onClick={handleClose}
               aria-label={t('playlist.close')}
-              title={t('common.close')}
             >
               <CloseIcon width={18} height={18} />
             </button>

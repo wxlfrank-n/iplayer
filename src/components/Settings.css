@@ -35,7 +35,6 @@
   background: none;
   border: none;
   color: var(--text-secondary);
-  cursor: pointer;
   padding: 4px;
   border-radius: 4px;
   display: flex;
@@ -128,7 +127,6 @@
   min-width: 11ch;
   text-align: center;
   padding: 11px 12px;
-  cursor: pointer;
   position: relative;
   transition:
     color 0.15s,
@@ -194,7 +192,6 @@
   padding: 6px 14px;
   border-radius: var(--radius-pill);
   font-size: 0.8rem;
-  cursor: pointer;
   transition:
     background 0.15s,
     color 0.15s,
@@ -231,7 +228,6 @@
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  cursor: pointer;
   font-size: 0.8rem;
   color: var(--text-primary);
 }
@@ -241,7 +237,6 @@
   width: 16px;
   height: 16px;
   margin: 1px 0 0;
-  cursor: pointer;
   flex: none;
 }
 
@@ -258,7 +253,6 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  cursor: pointer;
   font-size: 0.8rem;
   color: var(--text-primary);
 }
@@ -356,7 +350,6 @@
   border-radius: var(--radius-md);
   color: var(--text-primary);
   font-size: 0.7rem;
-  cursor: pointer;
   transition:
     border-color 0.15s,
     background 0.15s,
@@ -445,7 +438,6 @@
   padding: 6px 14px;
   border-radius: 16px;
   font-size: 0.75rem;
-  cursor: pointer;
   flex: none;
   white-space: nowrap;
   transition:

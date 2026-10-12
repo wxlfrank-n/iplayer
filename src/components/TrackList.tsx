@@ -48,11 +48,11 @@ export function TrackList({
           </div>
           <button
             className="track-item__remove"
+            aria-label={t('trackList.removeTrack')}
             onClick={e => {
               e.stopPropagation();
               onRemoveTrack(index);
             }}
-            title={t('trackList.removeTrack')}
           >
             {'\u2715'}
           </button>

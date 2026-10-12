@@ -85,17 +85,6 @@ body {
   transition: background 0.2s;
 }
 
-.app.drag-over {
-  background: var(--bg-secondary);
-  outline: 2px dashed var(--accent);
-  outline-offset: -8px;
-}
-
-.settings-panel:focus,
-.playlist-panel:focus {
-  outline: none;
-}
-
 .player-layout {
   display: flex;
   flex-direction: column;
@@ -135,7 +124,6 @@ body {
   background: none;
   border: none;
   color: var(--text-primary);
-  cursor: pointer;
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -174,7 +162,6 @@ body {
 
 .control-btn:disabled {
   color: var(--bg-tertiary);
-  cursor: not-allowed;
 }
 
 @media (min-width: 768px) {

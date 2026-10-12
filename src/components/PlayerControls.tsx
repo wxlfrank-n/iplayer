@@ -61,7 +61,6 @@ export const PlayerControls = memo(
           onClick={onSkipBackward}
           disabled={!hasTrack || atStart}
           aria-label={t('player.backSeconds', {seconds: skipSeconds})}
-          title={t('player.backSecondsShort', {seconds: skipSeconds})}
         >
           <SkipBackIcon width={36} height={36} />
           <span className="control-btn__label" aria-hidden="true">
@@ -73,7 +72,6 @@ export const PlayerControls = memo(
           onClick={onPrev}
           disabled={!hasTrack}
           aria-label={t('player.backToStart')}
-          title={t('player.backToStart')}
         >
           <PrevIcon width={20} height={20} />
         </button>
@@ -82,7 +80,6 @@ export const PlayerControls = memo(
           onClick={onTogglePlay}
           disabled={!hasTrack}
           aria-label={isPlaying ? t('player.pause') : t('player.play')}
-          title={isPlaying ? t('player.pause') : t('player.play')}
         >
           {isPlaying ? (
             <PauseIcon width={22} height={22} />
@@ -95,7 +92,6 @@ export const PlayerControls = memo(
           onClick={onNext}
           disabled={!hasTrack}
           aria-label={t('player.skipToEnd')}
-          title={t('player.skipToEnd')}
         >
           <NextIcon width={20} height={20} />
         </button>
@@ -104,7 +100,6 @@ export const PlayerControls = memo(
           onClick={onSkipForward}
           disabled={!hasTrack || atEnd}
           aria-label={t('player.forwardSeconds', {seconds: skipSeconds})}
-          title={t('player.forwardSecondsShort', {seconds: skipSeconds})}
         >
           <SkipForwardIcon width={36} height={36} />
           <span className="control-btn__label" aria-hidden="true">

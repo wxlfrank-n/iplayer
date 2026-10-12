@@ -1,6 +1,5 @@
 .waveform-clip {
   position: absolute;
-  cursor: pointer;
   background: rgba(var(--accent-rgb), 0.32);
   border-radius: 4px;
   /* JS owns every clip gesture: vertical/diagonal swipes split/merge, and the

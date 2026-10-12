@@ -12,7 +12,7 @@ A browser-based music player for MP3 files that automatically breaks each track 
 - **Merge control** — combine neighboring clips into one with a single slider
 - **Two waveform views** — a stacked multi-row overview or a single horizontally-scrollable row
 - **Configurable skip** — jump forward/back by 5–60 seconds
-- **Drag-and-drop and file picker** — load multiple MP3 files at once
+- **File picker** — load multiple MP3 files at once
 - **Live frequency visualizer** ("dancing lines")
 - **Settings persist** automatically in your browser's local storage
 
@@ -54,8 +54,7 @@ npm run preview      # serves the built app to verify it
 ## Loading music
 
 1. Click the **playlist** button in the top-left corner to open the playlist panel.
-2. Click the **`+`** button and select one or more MP3 files, **or**
-3. Simply **drag and drop** MP3 files anywhere onto the app window.
+2. Click the **`+`** button and select one or more MP3 files.
 
 Notes:
 
@@ -100,7 +99,7 @@ The waveform is drawn from the decoded audio and shows:
 #### Two views
 
 - **Stacked** — each ~10-second group of clips is shown as its own row so you can see the whole track at once. The container scrolls to keep the playhead in view while playing.
-- **Single row** — one horizontally-scrollable row you can **pan** (drag), **wheel** horizontally, or **resize**; it automatically follows the playhead during playback (auto-follow pauses for 1.5s after you manually navigate).
+- **Single row** — one horizontally-scrollable row you can **pan** (drag) or **resize**; it automatically follows the playhead during playback (auto-follow pauses for 1.5s after you manually navigate).
 
 Switch views in **Settings → Waveform view**.
 

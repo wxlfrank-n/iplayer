@@ -60,8 +60,7 @@ export function addListeners(
   return () => removals.forEach(remove => remove());
 }
 
-/**
- * True when the event landed outside `container`.
+/** True when the event landed outside `container`.
  *
  * A missing container counts as outside, matching the usual
  * `!container?.contains(event.target)` guard: if the element is gone there is
@@ -73,14 +72,9 @@ export function isOutside(container: Node | null, event: Event): boolean {
   return !container.contains(node);
 }
 
-/** True for the Escape key, the standard dismiss gesture. */
-export function isEscapeKey(event: KeyboardEvent): boolean {
-  return event.key === 'Escape';
-}
-
 /**
  * Dismisses an overlay, menu or dropdown: calls `onDismiss` on a pointer press
- * outside `container`, or on Escape. Runs until the returned cleanup is called.
+ * outside `container`. Runs until the returned cleanup is called.
  *
  * `container` is captured when this is called, so call it from an effect that
  * runs while the element is mounted.
@@ -95,12 +89,6 @@ export function onOutsideDismiss(
       'pointerdown',
       event => {
         if (isOutside(container, event as Event)) onDismiss();
-      },
-    ],
-    [
-      'keydown',
-      event => {
-        if (isEscapeKey(event as KeyboardEvent)) onDismiss();
       },
     ],
   ]);

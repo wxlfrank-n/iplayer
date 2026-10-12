@@ -7,6 +7,7 @@ import {
   pageCounts,
   pageIndicator,
   playButton,
+  seedConfig,
   skipForward,
   waitForClips,
 } from './helpers';
@@ -17,6 +18,11 @@ import {
  * the playhead only has to advance a couple of seconds to cross a boundary.
  */
 test.use({viewport: {width: 1280, height: 360}});
+
+/** Seed English labels so the transport selectors stay locale-independent. */
+test.beforeEach(async ({page}) => {
+  await seedConfig(page, {});
+});
 
 /** Horizontal offset of the stacked pager. */
 function scrollLeft(page: import('@playwright/test').Page): Promise<number> {

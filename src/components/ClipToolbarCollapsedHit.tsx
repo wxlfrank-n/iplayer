@@ -3,9 +3,8 @@
  *
  * When the clip toolbar is collapsed its box leaves the layout, so this renders
  * an absolutely positioned strip at the bottom edge of progress-container
- * (see .clip-toolbar__collapsed-hit in ClipToolbar.css). Double-click or a
- * swipe down brings the toolbar back, mirroring how the toolbar hides itself on
- * a double-click or swipe up.
+ * (see .clip-toolbar__collapsed-hit in ClipToolbar.css). A swipe down brings
+ * the toolbar back, mirroring how the toolbar hides itself on a swipe up.
  *
  * The strip is invisible and reserves no layout space, so the collapsed
  * waveform keeps its full height.
@@ -28,10 +27,6 @@ export function ClipToolbarCollapsedHit() {
         showAdvancedControls: true,
       }),
     );
-  };
-
-  const handleDoubleClick = () => {
-    expand();
   };
 
   /*
@@ -61,11 +56,5 @@ export function ClipToolbarCollapsedHit() {
     },
   );
 
-  return (
-    <div
-      className="clip-toolbar__collapsed-hit"
-      onDoubleClick={handleDoubleClick}
-      {...bindHit()}
-    />
-  );
+  return <div className="clip-toolbar__collapsed-hit" {...bindHit()} />;
 }

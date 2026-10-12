@@ -6,8 +6,8 @@
  * - Playlist management
  * - Waveform visualization and analysis
  * - Settings panel
- * - Drag-and-drop file loading
- * - Keyboard shortcuts and playback controls
+ * - File loading (file picker)
+ * - Playback controls
  *
  * Layout:
  * - Main player card with waveform and controls
@@ -15,7 +15,7 @@
  * - Settings overlay (toggleable)
  *
  * Features:
- * - Load MP3 files via file input or drag-drop
+ * - Load MP3 files via file input
  * - Play/pause with Web Audio for waveform visualization
  * - Skip forward/backward by configurable interval
  * - Seek via waveform click
@@ -143,9 +143,8 @@ export default function App() {
     [],
   );
 
-  // Adding files (file picker + drag-and-drop) with a skip notice for
-  // non-MP3 files.
-  const {handleFiles, isOver, drop} = useAddFiles(
+  // Adding files (file picker) with a skip notice for non-MP3 files.
+  const {handleFiles} = useAddFiles(
     addTracks,
     useCallback(
       (skipped: number) =>
@@ -159,12 +158,7 @@ export default function App() {
   );
 
   return (
-    <div
-      className={`app ${isOver ? 'drag-over' : ''}`}
-      ref={node => {
-        if (node) drop(node);
-      }}
-    >
+    <div className="app">
       <div className="player-layout">
         <div className="player-main">
           {currentTrack ? (

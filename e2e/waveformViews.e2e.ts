@@ -1,12 +1,16 @@
 import {expect, test} from '@playwright/test';
 
-import {flipWaveformView, waitForClips} from './helpers';
+import {flipWaveformView, seedConfig, waitForClips} from './helpers';
 
 /**
  * The two waveform views render different trees from the same clip list, and
  * the page-flip control is the only way to move between them.
  */
 test.describe('waveform views', () => {
+  test.beforeEach(async ({page}) => {
+    await seedConfig(page, {});
+  });
+
   test('starts in the row view', async ({page}) => {
     await page.goto('/');
     await waitForClips(page);

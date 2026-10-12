@@ -1,9 +1,8 @@
 /**
  * Full-card empty state shown when no track is loaded.
  *
- * Makes the two entry points explicit: drop files anywhere on the window, or
- * press the Add MP3 button (hidden file input). This doubles as the primary
- * add affordance on small screens.
+ * Makes the entry point explicit: press the Add MP3 button (hidden file input).
+ * This is the primary add affordance on small screens.
  */
 
 import {useRef} from 'react';

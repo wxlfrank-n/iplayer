@@ -7,8 +7,8 @@ import './LanguageSelect.css';
  * Custom language dropdown (button + listbox).
  *
  * Native <option> styling is unreliable across browsers, so the picker is a
- * keyboard-accessible listbox: a trigger button showing the selected locale in
- * its own endonym, and a themed popup list with arrow-key navigation.
+ * custom listbox: a trigger button showing the selected locale in its own
+ * endonym, and a themed popup list.
  */
 
 const OPTION_LABELS: Record<LocaleId, string> = {
@@ -28,18 +28,9 @@ export function LanguageSelect({value, onChange, label}: LanguageSelectProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const listboxId = useId();
 
-  const [activeIndex, setActiveIndex] = useState(() =>
-    Math.max(0, LOCALE_IDS.indexOf(value)),
-  );
+  const openList = () => setOpen(true);
 
-  // Reset the highlight to the current value whenever the list opens, so an
-  // externally changed value (e.g. "Reset all") is reflected on the next open.
-  const openList = () => {
-    setActiveIndex(Math.max(0, LOCALE_IDS.indexOf(value)));
-    setOpen(true);
-  };
-
-  // Close on outside pointer press and on Escape.
+  // Close on an outside pointer press.
   useEffect(() => {
     if (!open) return;
     return onOutsideDismiss(rootRef.current, () => setOpen(false));
@@ -50,10 +41,6 @@ export function LanguageSelect({value, onChange, label}: LanguageSelectProps) {
     setOpen(false);
   };
 
-  const activeDescendant = open
-    ? `${listboxId}-${LOCALE_IDS[activeIndex]}`
-    : undefined;
-
   return (
     <div className="language-select" ref={rootRef}>
       <button
@@ -63,7 +50,6 @@ export function LanguageSelect({value, onChange, label}: LanguageSelectProps) {
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={listboxId}
-        aria-activedescendant={activeDescendant}
         onClick={() => (open ? setOpen(false) : openList())}
       >
         <span className="language-select__value">{OPTION_LABELS[value]}</span>
@@ -92,16 +78,14 @@ export function LanguageSelect({value, onChange, label}: LanguageSelectProps) {
           className="language-select__list"
           aria-label={label}
         >
-          {LOCALE_IDS.map((id, i) => (
+          {LOCALE_IDS.map(id => (
             <li
               key={id}
-              id={`${listboxId}-${id}`}
               role="option"
               aria-selected={id === value}
               className={`language-select__option ${
-                i === activeIndex ? 'language-select__option--active' : ''
-              } ${id === value ? 'language-select__option--selected' : ''}`}
-              onPointerEnter={() => setActiveIndex(i)}
+                id === value ? 'language-select__option--selected' : ''
+              }`}
               onClick={() => select(id)}
             >
               <span>{OPTION_LABELS[id]}</span>

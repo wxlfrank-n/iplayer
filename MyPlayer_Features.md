@@ -16,7 +16,7 @@
 - **Error Handling**: Falls back to original URL playback when decoding fails
 
 ### 1.3 Playlist Management
-- **Add Files**: Support for adding MP3 files to playlist via file picker or drag-and-drop
+- **Add Files**: Support for adding MP3 files to playlist via the file picker
 - **Remove Files**: Ability to remove specific audio from playlist
 - **Select and Play**: Can select any audio in the playlist to play
 - **Auto-play Option**: Option to automatically play after adding new files
@@ -67,7 +67,6 @@
 ## 5. File Handling Features
 
 ### 5.1 File Addition
-- **Drag and Drop**: Supports dragging and dropping files to the application interface to add to playlist
 - **File Picker**: Traditional file picker for adding files
 - **Format Filtering**: Automatically filters non-MP3 format files
 - **Batch Addition**: Supports adding multiple files at once
@@ -91,17 +90,10 @@
 
 ## 7. Accessibility Features
 
-### 7.1 Keyboard Shortcuts
-- **Play/Pause**: Space bar support for toggling play/pause
-- **Previous/Next**: Support for switching previous/next track
-- **Fast Forward/Rewind**: Keyboard shortcuts for fast forward/rewind
-
-### 7.2 Accessibility Support
-- **Focus Management**: Manages UI focus to ensure smooth keyboard navigation
+### 7.1 Accessibility Support
 - **ARIA Labels**: Provides appropriate ARIA labels for screen reader support
-- **Keyboard Navigation**: Supports keyboard operation of all functions
 
-### 7.3 Error Handling
+### 7.2 Error Handling
 - **Error Boundaries**: Uses React error boundaries to catch component errors
 - **Error Recovery**: Provides appropriate error recovery mechanisms
 - **Error Messages**: Displays user-friendly error messages

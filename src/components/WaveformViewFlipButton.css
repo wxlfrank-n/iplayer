@@ -47,7 +47,6 @@
 
   background: transparent;
 
-  cursor: pointer;
 
   /*
    * The reflected page can extend outside the original
@@ -834,7 +833,6 @@
  * ========================================================= */
 
 .waveform-view-flip:disabled {
-  cursor: default;
 
   opacity: 0.45;
 }

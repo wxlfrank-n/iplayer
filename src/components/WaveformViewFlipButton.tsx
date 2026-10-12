@@ -116,9 +116,6 @@ export const WaveformViewFlipButton = memo(
             ? t('viewFlip.toStacked')
             : t('viewFlip.toSingle')
         }
-        title={
-          nextView === 'stacked' ? t('viewFlip.stacked') : t('viewFlip.single')
-        }
       >
         {/*
          * Permanent top-right corner.

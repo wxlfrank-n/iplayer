@@ -3,7 +3,6 @@
  *
  * Sets up:
  * - React StrictMode for development warnings
- * - React Dnd (Drag and Drop) for file/track dragging
  * - Error Boundary to catch and display render errors
  * - Global error handlers for uncaught exceptions
  * - Error logging to localStorage for debugging on mobile
@@ -12,8 +11,6 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import {Provider} from 'react-redux';
-import {DndProvider} from 'react-dnd';
-import {HTML5Backend} from 'react-dnd-html5-backend';
 import './index.css';
 import App from './App.tsx';
 import {ThemeProvider} from './ThemeProvider.tsx';
@@ -46,11 +43,9 @@ createRoot(document.getElementById('root')!).render(
     <Provider store={store}>
       <ConfiguredI18nProvider>
         <ThemeProvider>
-          <DndProvider backend={HTML5Backend}>
-            <ErrorBoundary>
-              <App />
-            </ErrorBoundary>
-          </DndProvider>
+          <ErrorBoundary>
+            <App />
+          </ErrorBoundary>
         </ThemeProvider>
       </ConfiguredI18nProvider>
     </Provider>

@@ -472,12 +472,7 @@ export function ProgressBar({
 
   return (
     <>
-      <div
-        className="progress-container"
-        onWheel={e => {
-          e.stopPropagation();
-        }}
-      >
+      <div className="progress-container">
         {/*
          * -----------------------------------------------------
          * PAGE-FLIP VIEW SWITCH

@@ -85,7 +85,6 @@
   height: 4px;
   background: var(--bg-tertiary);
   border-radius: 2px;
-  cursor: pointer;
   position: relative;
   transition: height 0.1s;
 }

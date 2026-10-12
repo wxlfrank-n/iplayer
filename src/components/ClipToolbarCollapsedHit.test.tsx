@@ -38,16 +38,6 @@ describe('ClipToolbarCollapsedHit', () => {
     );
   });
 
-  it('expands the toolbar on a double-click', () => {
-    const store = makeStore();
-    const {container} = renderHit(store);
-
-    fireEvent.doubleClick(
-      container.querySelector('.clip-toolbar__collapsed-hit')!,
-    );
-    expect(store.getState().config.showAdvancedControls).toBe(true);
-  });
-
   it('expands the toolbar on a swipe down', () => {
     const store = makeStore();
     const {container} = renderHit(store);

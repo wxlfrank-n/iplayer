@@ -258,31 +258,6 @@ export const StackedWaveform = memo(
 
     /*
      * =========================================================
-     * WHEEL -> HORIZONTAL SCROLL
-     * =========================================================
-     */
-
-    useEffect(() => {
-      const el = scrollerRef.current;
-
-      if (!el) return;
-
-      const onWheel = (e: WheelEvent) => {
-        const dx = Math.abs(e.deltaX);
-        const dy = Math.abs(e.deltaY);
-
-        if (dy > dx) {
-          e.preventDefault();
-
-          el.scrollLeft += e.deltaY;
-        }
-      };
-
-      return addListener(el, 'wheel', onWheel, {passive: false});
-    }, []);
-
-    /*
-     * =========================================================
      * CONTAINER SIZE
      * =========================================================
      */
