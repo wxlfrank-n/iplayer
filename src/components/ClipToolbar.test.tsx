@@ -67,23 +67,23 @@ describe('ClipToolbar', () => {
     expect(container.querySelector('.clip-reps')).not.toBeNull();
   });
 
-  it('hides the toolbar on a swipe up', () => {
-    const store = makeStore();
-    renderToolbar(store);
-
-    const bar = document.querySelector('.clip-toolbar')!;
-    fireEvent.pointerDown(bar, {clientX: 100, clientY: 40});
-    fireEvent.pointerUp(bar, {clientX: 100, clientY: 0});
-    expect(store.getState().config.showAdvancedControls).toBe(false);
-  });
-
-  it('does not hide the toolbar on a swipe down', () => {
+  it('hides the toolbar on a swipe down', () => {
     const store = makeStore();
     renderToolbar(store);
 
     const bar = document.querySelector('.clip-toolbar')!;
     fireEvent.pointerDown(bar, {clientX: 100, clientY: 0});
     fireEvent.pointerUp(bar, {clientX: 100, clientY: 40});
+    expect(store.getState().config.showAdvancedControls).toBe(false);
+  });
+
+  it('does not hide the toolbar on a swipe up', () => {
+    const store = makeStore();
+    renderToolbar(store);
+
+    const bar = document.querySelector('.clip-toolbar')!;
+    fireEvent.pointerDown(bar, {clientX: 100, clientY: 40});
+    fireEvent.pointerUp(bar, {clientX: 100, clientY: 0});
     expect(store.getState().config.showAdvancedControls).toBe(true);
   });
 });

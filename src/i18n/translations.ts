@@ -157,7 +157,7 @@ export const en = {
   },
 
   errorBoundary: {
-    crashed: 'Noe gikk galt',
+    crashed: 'Something went wrong',
   },
 };
 

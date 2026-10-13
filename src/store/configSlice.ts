@@ -3,7 +3,8 @@
  *
  * Persisted settings (auto-saved to localStorage under Listeenoop_config):
  * - skipSeconds: Skip duration for forward/backward buttons (default: 10s)
- * - waveformView: Waveform display mode ("stacked" or "horizontal")
+ * - waveformView: Waveform display mode ("stacked" or "horizontal",
+ *   default: "horizontal")
  * - blockMs: Silence-detection block size in milliseconds (default: 12)
  * - silenceRatio: Silence cutoff as a ratio of the track peak (default: 0.01)
  * - minClipLength: Minimum clip length detection attempts to achieve by
@@ -15,12 +16,13 @@
  *   see `MIN_SPLIT_PIECE_SEC`).
  * - repetitions: How many times a clicked clip is repeated (default: 3).
  * - showAdvancedControls: Whether the clip toolbar (merge gap + repeat
- *   controls) is shown below the waveform (default: true).
+ *   controls) is shown below the waveform (default: false).
  * - mergeScope: Whether a merge/split gesture applies to every clip in the
  *   track ("global") or only the selected clip ("clip") (default: "clip").
- * - theme: Appearance palette (dark/light/midnight/paper/rose/nova). Each theme
- *   carries its own accent color, so there is no separate accent setting.
- * - language: UI locale ("en" | "zh", default: "en").
+ * - theme: Appearance palette (dark/light/midnight/paper/nova/rose/qinghua/
+ *   zhusha/yingluo/norge). Each theme carries its own accent color, so there
+ *   is no separate accent setting.
+ * - language: UI locale ("en" | "zh" | "no", default: "no").
  *
  * Changes persist to localStorage immediately.
  */
@@ -73,7 +75,10 @@ export const DEFAULT_CONFIG: ConfigState = {
 export const CONFIG_RANGES = {
   skipSeconds: {min: 1, max: 60},
   blockMs: {min: 2, max: 64},
-  silenceRatio: {min: 0.005, max: 0.1},
+  // Capped at the detector's own ceiling (`clips.ts` clamps to 0.01): higher
+  // values behave identically, so the slider stops here instead of offering a
+  // dead range.
+  silenceRatio: {min: 0.005, max: 0.01},
   minClipLength: {min: 0.2, max: 1},
   minSplitPieceSec: {min: 0.01, max: 0.5},
   repetitions: {min: 1, max: 20},
@@ -107,6 +112,14 @@ function loadConfig(): ConfigState {
         mergeScope: isMergeScope(parsed.mergeScope)
           ? parsed.mergeScope
           : DEFAULT_CONFIG.mergeScope,
+        // Stored values from when the slider ran past the detector ceiling
+        // still clamp to identical behavior.
+        silenceRatio: Number.isFinite(parsed.silenceRatio)
+          ? Math.min(
+              CONFIG_RANGES.silenceRatio.max,
+              Math.max(CONFIG_RANGES.silenceRatio.min, parsed.silenceRatio),
+            )
+          : DEFAULT_CONFIG.silenceRatio,
       };
     }
   } catch {

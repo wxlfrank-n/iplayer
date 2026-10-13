@@ -1,18 +1,18 @@
 # <img src="public/favicon.svg" width="28" height="28" alt="Listeenoop icon" style="vertical-align: middle;"> Listenoop
 
-A browser-based music player for MP3 files that automatically breaks each track into **clips** (segments separated by silence) so you can practice, loop, and repeat specific parts.
+A browser-based music player for audio files that automatically breaks each track into **clips** (segments separated by silence) so you can practice, loop, and repeat specific parts.
 
 ![GitHub language](https://img.shields.io/badge/react-19-blue) ![typescript](https://img.shields.io/badge/typescript-6-blue) ![vite](https://img.shields.io/badge/vite-8-purple)
 
 ## Features
 
-- **MP3 playback** with waveform visualization
+- **Audio playback** (MP3, WAV, OGG, M4A, FLAC, WebM) with waveform visualization
 - **Automatic clip detection** — the player splits each track at silent gaps and highlights the resulting clips on the waveform
 - **Clip looping** — click any clip to play it, repeating it up to 20 times
 - **Merge control** — combine neighboring clips into one with a single slider
 - **Two waveform views** — a stacked multi-row overview or a single horizontally-scrollable row
 - **Configurable skip** — jump forward/back by 5–60 seconds
-- **File picker** — load multiple MP3 files at once
+- **File picker** — load multiple audio files at once
 - **Live frequency visualizer** ("dancing lines")
 - **Settings persist** automatically in your browser's local storage
 
@@ -54,11 +54,11 @@ npm run preview      # serves the built app to verify it
 ## Loading music
 
 1. Click the **playlist** button in the top-left corner to open the playlist panel.
-2. Click the **`+`** button and select one or more MP3 files.
+2. Click the **`+`** button and select one or more audio files.
 
 Notes:
 
-- Only **MP3** files are supported. Non-MP3 files are skipped and a notice tells you how many were ignored.
+- Supported formats are **MP3, WAV, OGG, M4A, FLAC, WebM**. Other files are skipped and a notice tells you how many were ignored.
 - A built-in sample track (`01A.mp3`) is loaded on startup so you can explore the player immediately.
 - All files are processed locally in your browser — nothing is uploaded.
 
@@ -99,7 +99,7 @@ The waveform is drawn from the decoded audio and shows:
 #### Two views
 
 - **Stacked** — each ~10-second group of clips is shown as its own row so you can see the whole track at once. The container scrolls to keep the playhead in view while playing.
-- **Single row** — one horizontally-scrollable row you can **pan** (drag) or **resize**; it automatically follows the playhead during playback (auto-follow pauses for 1.5s after you manually navigate).
+- **Single row** — one horizontally-scrollable row you can **pan** (drag); it automatically follows the playhead during playback (auto-follow pauses for 1.5s after you manually navigate).
 
 Switch views in **Settings → Waveform view**.
 
@@ -115,7 +115,7 @@ This is the heart of Listeenoop. The player detects quiet gaps in the audio and 
 2. Set how many times the clip should play with the **Repeat** stepper (`1`–`20`).
 3. **Click a clip** on the waveform. It plays from that clip's start to its end, then restarts until the repeat count is reached.
 
-- Clicking anywhere on the waveform (outside a clip) seeks the playhead. Clicking an empty clip area during playback just stops it.
+- Clicking anywhere on the waveform (outside a clip) seeks the playhead. While a clip is looping, background taps are ignored — tap the active clip to stop it.
 - While a clip is looping, the toolbar (merge slider + repeat stepper) is locked; pause/stop to change settings.
 
 ### Merging clips
@@ -143,11 +143,11 @@ Open the **Settings** panel with the gear button in the top-right. Every option 
 
 | Setting                | Options                     | Default | Description |
 | ---------------------- | --------------------------- | ------- | ----------- |
-| **Waveform view**      | Stacked / Single row        | Stacked | How clips and audio are displayed |
+| **Waveform view**      | Stacked / Single row        | Single row | How clips and audio are displayed |
 | **Skip forward / back**| 5, 10, 15, 20, 30s (or 1–60s custom) | 10s | Interval used by the large skip buttons |
-| **Silence threshold**  | 0.005 / 0.01 / 0.02 / 0.05 (or 0.001–0.1) | 0.01 | How quiet a block must be to count as silence. **Lower** values only treat very quiet parts as silence |
-| **Analysis detail**    | 64 / 128 / 256 / 512 (or 32–1024) blocks | 512 | Audio chunk size used for detection. **Smaller** = more precise splits, **larger** = faster processing |
-| **Minimum gap between clips** | 0.01 / 0.02 / 0.05 / 0.1 / 0.2s (or 0.001–0.5s) | 0.05s | Shortest silence that splits two clips apart. **Lower** = more granular splits |
+| **Silence threshold**  | 0.005 / 0.01 (or 0.005–0.01) | 0.01 | How quiet a block must be to count as silence. **Lower** values only treat very quiet parts as silence (capped at the detector ceiling) |
+| **Analysis detail**    | 4 / 8 / 12 / 24 (or 2–64ms) | 12ms | Audio chunk size used for detection. **Smaller** = more precise splits, **larger** = faster processing |
+| **Minimum clip length** | 0.1 / 0.2 / 0.3 / 0.5s (or 0.2–1s) | 0.3s | Detection tries to join shorter clips with a neighbor |
 
 > Tip: after changing **silence threshold**, **analysis detail**, or **minimum gap**, a new track must be (re)loaded for the splits to recompute.
 
@@ -164,7 +164,7 @@ Open the **Settings** panel with the gear button in the top-right. Every option 
 
 ## Notes & troubleshooting
 
-- **MP3 only** — non-MP3 files are silently skipped (a notice shows the count).
+- **Audio formats** — MP3, WAV, OGG, M4A, FLAC, and WebM are accepted; other files are skipped and a notice shows the count.
 - **Data stays on your device** — music and settings are processed and stored locally in the browser. Clearing site data removes your settings and uploaded files.
 - **iOS / iPhone** — WebKit's audio-routing limitation means the live frequency visualizer has no live analyser data; as a fallback the dancing lines are derived from the decoded waveform around the playhead, so they still animate.
 - **Audio playback** may require a user gesture (browser autoplay policy) — tap Play to start.

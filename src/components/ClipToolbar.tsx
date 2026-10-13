@@ -3,8 +3,8 @@
  *
  * Rendered below the waveform when clips exist and advanced controls are
  * expanded (store `showAdvancedControls`). Holds the merge-gap slider and the
- * repeat stepper. Collapses via a swipe up; the collapsed hit area that
- * the collapsed hit area that re-expands it lives inside progress-container.
+ * repeat stepper. Collapses via a swipe down; the collapsed hit area that
+ * re-expands it lives inside progress-container.
  */
 import {useDrag} from '@use-gesture/react';
 
@@ -53,7 +53,7 @@ export function ClipToolbar({
   const dispatch = useAppDispatch();
 
   /*
-   * Swipe up (vertical, upward) hides the toolbar.
+   * Swipe down (vertical, downward) hides the toolbar.
    */
   const bindToolbar = useDrag(
     ({last, event, initial}) => {
@@ -70,7 +70,7 @@ export function ClipToolbar({
       const absY = Math.abs(dy);
       const absX = Math.abs(pointer.clientX - initial[0]);
 
-      if (absY >= TOOLBAR_SWIPE_THRESHOLD_PX && absY > absX && dy < 0) {
+      if (absY >= TOOLBAR_SWIPE_THRESHOLD_PX && absY > absX && dy > 0) {
         dispatch(
           updateConfig({
             showAdvancedControls: false,

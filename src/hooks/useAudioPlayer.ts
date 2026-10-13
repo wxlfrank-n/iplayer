@@ -881,6 +881,71 @@ export function useAudioPlayer(skipSeconds: number) {
     },
     [dispatch, getAnalyser, stopRangeMonitoring],
   );
+
+  /*
+   * System media integration (parity with the native MediaSession): the OS /
+   * lock screen shows the current track and its controls drive the same
+   * handlers as the UI buttons. Everything is guarded — environments without
+   * the Media Session API ignore it, and teardown clears the handlers.
+   */
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+    const session = navigator.mediaSession;
+    const s = getPlayer();
+    const track = s.tracks[s.currentTrackIndex];
+    try {
+      session.metadata = track
+        ? new MediaMetadata({
+            title: track.title,
+            artist: track.artist,
+            album: '',
+          })
+        : null;
+    } catch {
+      // Metadata is best-effort (e.g. privacy-restricted contexts).
+    }
+    session.playbackState = s.isPlaying ? 'playing' : 'paused';
+    session.setActionHandler('play', () => play());
+    session.setActionHandler('pause', () => pause());
+    session.setActionHandler('previoustrack', () => prev());
+    session.setActionHandler('nexttrack', () => next());
+    session.setActionHandler('seekto', details => {
+      if (typeof details.seekTime === 'number') seek(details.seekTime);
+    });
+    // Skip actions use the configured interval (any fixed OS default is
+    // ignored), matching the native skip commands.
+    session.setActionHandler('seekbackward', () => skipBackward());
+    session.setActionHandler('seekforward', () => skipForward());
+    return () => {
+      for (const action of [
+        'play',
+        'pause',
+        'previoustrack',
+        'nexttrack',
+        'seekto',
+        'seekbackward',
+        'seekforward',
+      ] as const) {
+        try {
+          session.setActionHandler(action, null);
+        } catch {
+          // Ignore teardown errors.
+        }
+      }
+    };
+  }, [
+    pause,
+    play,
+    prev,
+    next,
+    seek,
+    skipBackward,
+    skipForward,
+    state.tracks,
+    state.currentTrackIndex,
+    state.isPlaying,
+  ]);
+
   return {
     state,
     play,
