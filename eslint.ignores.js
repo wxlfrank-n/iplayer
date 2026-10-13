@@ -1,5 +1,5 @@
 export default [
-    "iplayer/**",
+    "listenoop/**",
     "docs/**",
     "eslint*",
 ]

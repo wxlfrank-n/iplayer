@@ -5,7 +5,7 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", "docs", "iplayer"] },
+  { ignores: ["dist", "docs", "listenoop"] },
   {
     extends: [
       js.configs.recommended,
