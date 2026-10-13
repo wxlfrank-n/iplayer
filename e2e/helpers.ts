@@ -46,41 +46,33 @@ export async function openClipDetectionTab(page: Page): Promise<void> {
 }
 
 /**
- * The "Selected clip" merge-scope control inside the clip detection tab.
- *
- * Located by its visible label rather than a test id: it is a real checkbox
- * wrapped in a label, so the label text is the stable handle.
+ * One option of the merge-scope segmented control inside the clip detection
+ * tab. Two pill buttons ("Whole track" / "Selected clip"); the active one is
+ * pressed. Located by visible label with `exact` for the usual reasons.
  */
-export function mergeScopeSwitch(page: Page) {
-  return page
-    .getByRole('tabpanel')
-    .locator('.settings-switch', {hasText: 'Selected clip'});
-}
-
-/** The underlying checkbox, for asserting state. */
-export function mergeScopeCheckbox(page: Page) {
-  return mergeScopeSwitch(page).locator('input[type="checkbox"]');
+export function mergeScopeOption(page: Page, scope: 'clip' | 'global') {
+  return page.getByRole('tabpanel').getByRole('button', {
+    name: scope === 'clip' ? 'Selected clip' : 'Whole track',
+    exact: true,
+  });
 }
 
 /**
- * Set the merge scope by clicking, the way a user does.
- *
- * The checkbox is visually hidden beneath the styled `.settings-switch__track`
- * span, so Playwright refuses to click it directly; the wrapping label is the
- * real hit target. Clicks only when the value actually differs, so this is
- * safe to call when the scope is already correct.
+ * Set the merge scope by clicking, the way a user does. Clicks only when the
+ * value actually differs, so this is safe to call when the scope is already
+ * correct.
  */
 export async function setMergeScope(
   page: Page,
   scope: 'clip' | 'global',
 ): Promise<void> {
-  const toggle = mergeScopeSwitch(page);
+  const option = mergeScopeOption(page, scope);
 
-  if ((await mergeScopeCheckbox(page).isChecked()) === (scope === 'clip')) {
+  if ((await option.getAttribute('aria-pressed')) === 'true') {
     return;
   }
 
-  await toggle.click();
+  await option.click();
 }
 
 /**

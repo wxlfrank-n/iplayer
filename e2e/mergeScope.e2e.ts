@@ -1,7 +1,7 @@
 import {expect, test} from '@playwright/test';
 
 import {
-  mergeScopeCheckbox,
+  mergeScopeOption,
   openClipDetectionTab,
   seedConfig,
   setMergeScope,
@@ -89,9 +89,12 @@ test.describe('merge scope', () => {
     await page.reload();
     await waitForClips(page);
 
-    // The switch is checked for "Selected clip" scope...
+    // The segmented control shows "Selected clip" pressed...
     await openClipDetectionTab(page);
-    await expect(mergeScopeCheckbox(page)).toBeChecked();
+    await expect(mergeScopeOption(page, 'clip')).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
 
     // ...and the slider follows it, without the seed rewriting the stored value.
     await expect(page.locator('.clip-merge')).toHaveCount(0);

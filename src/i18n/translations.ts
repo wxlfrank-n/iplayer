@@ -137,6 +137,7 @@ export const en = {
   },
 
   themes: {
+    system: 'System',
     dark: 'Slate',
     light: 'Mist',
     midnight: 'Midnight',
@@ -144,7 +145,6 @@ export const en = {
     nova: 'Nova',
     rose: 'Lilac',
     qinghua: 'Qinghua',
-    zhusha: 'Zhusha',
     yingluo: 'Yingluo',
     norge: 'Norway',
   },
@@ -294,6 +294,7 @@ export const no: Messages = {
   },
 
   themes: {
+    system: 'System',
     dark: 'Skifer',
     light: 'T\u00e5ke',
     midnight: 'Midnatt',
@@ -301,7 +302,6 @@ export const no: Messages = {
     nova: 'Nova',
     rose: 'Lysrosa',
     qinghua: 'Qinghua',
-    zhusha: 'Zhusha',
     yingluo: 'Yingluo',
     norge: 'Norge',
   },
@@ -444,6 +444,7 @@ export const zh: Messages = {
   },
 
   themes: {
+    system: '系统',
     dark: '岩灰',
     light: '薄雾',
     midnight: '午夜',
@@ -451,7 +452,6 @@ export const zh: Messages = {
     nova: '星辉',
     rose: '丁香',
     qinghua: '青花瓷',
-    zhusha: '朱砂',
     yingluo: '璎珞',
     norge: '挪威',
   },

@@ -9,6 +9,7 @@
  */
 
 export type ThemeId =
+  | 'system'
   | 'dark'
   | 'light'
   | 'midnight'
@@ -16,9 +17,11 @@ export type ThemeId =
   | 'rose'
   | 'nova'
   | 'qinghua'
-  | 'zhusha'
   | 'yingluo'
   | 'norge';
+
+/** Theme ids with a static palette (`system` follows the OS instead). */
+export type StaticThemeId = Exclude<ThemeId, 'system'>;
 
 export interface Theme {
   label: string;
@@ -61,7 +64,7 @@ export interface Theme {
   waveformBarPlayed: string;
 }
 
-export const THEMES: Record<ThemeId, Theme> = {
+export const THEMES: Record<StaticThemeId, Theme> = {
   dark: {
     label: 'Slate',
     colorScheme: 'dark',
@@ -253,34 +256,6 @@ export const THEMES: Record<ThemeId, Theme> = {
     clipSwipe: '#0038a8',
   },
 
-  zhusha: {
-    label: 'Zhusha',
-    colorScheme: 'dark',
-    bgPrimary: '#0d0d0d',
-    bgSecondary: '#1a0a0a',
-    bgTertiary: '#2d1212',
-    bgHover: '#3d1818',
-    bgPanel: '#140808',
-    textPrimary: '#fff0f0',
-    textSecondary: '#ffcccc',
-    textTertiary: '#ff9999',
-    border: '#ff4444',
-    danger: '#ff3333',
-    waveformBgTop: '#1a0a0a',
-    waveformBgMid: '#0d0505',
-    waveformBar: '#8a3333',
-    waveformBarSilent: '#802222',
-    waveformBarPlayed: '#e60012',
-    clipLabelBg: 'rgba(20, 8, 8, 0.85)',
-    clipLabelText: '#fff0f0',
-    clipLabelBorder: 'rgba(255, 68, 68, 0.25)',
-    accent: '#e60012',
-    accentDim: '#b8000e',
-    accentRgb: '230, 0, 18',
-    accentDimRgb: '184, 0, 14',
-    clipSwipe: '#e60012',
-  },
-
   yingluo: {
     label: 'Yingluo',
     colorScheme: 'light',
@@ -339,16 +314,35 @@ export const THEMES: Record<ThemeId, Theme> = {
   },
 };
 
-export const THEME_IDS = Object.keys(THEMES) as ThemeId[];
+export const THEME_IDS: ThemeId[] = [
+  'system',
+  ...(Object.keys(THEMES) as StaticThemeId[]),
+];
 
 export const DEFAULT_THEME: ThemeId = 'midnight';
+
+/** Palette backing `system`: Slate in dark mode, Mist in light mode. */
+export const SYSTEM_DARK_THEME: StaticThemeId = 'dark';
+export const SYSTEM_LIGHT_THEME: StaticThemeId = 'light';
+
+/** Whether the OS currently prefers a dark appearance. */
+export function isSystemDark(): boolean {
+  if (typeof window === 'undefined' || !window.matchMedia) return false;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
+/** Resolves `system` to its current static palette; others pass through. */
+export function resolveThemeId(theme: ThemeId): StaticThemeId {
+  if (theme !== 'system') return theme;
+  return isSystemDark() ? SYSTEM_DARK_THEME : SYSTEM_LIGHT_THEME;
+}
 
 /**
  * Applies the given theme to the document root as inline CSS custom
  * properties, overriding the static `:root` fallbacks in App.css.
  */
 export function applyThemeVars(theme: ThemeId): void {
-  const t = THEMES[theme];
+  const t = THEMES[resolveThemeId(theme)];
   if (!t) return;
 
   const root = document.documentElement;

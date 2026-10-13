@@ -4,8 +4,10 @@
  * Settings are grouped into domain sections, switched with tabs (Appearance /
  * Playback / Clip detection). Every numeric option uses the same slider field:
  * value readout on the right, slider in the middle with min/max captions
- * underneath, and quick presets as subtle ghost chips below. Ranges live in
- * `CONFIG_RANGES`; values are clamped to stay valid.
+ * underneath, and quick presets as subtle ghost chips below. Two-option
+ * choices (waveform view, merge scope) use the same segmented pill group, and
+ * on/off options use the same switch. Ranges live in `CONFIG_RANGES`; values
+ * are clamped to stay valid.
  */
 
 import {useCallback, useState} from 'react';
@@ -32,6 +34,7 @@ const TAB_LABEL_KEYS: Record<SettingsTabId, TranslationKey> = {
 };
 
 const THEME_LABEL_KEYS: Record<ThemeId, TranslationKey> = {
+  system: 'themes.system',
   dark: 'themes.dark',
   light: 'themes.light',
   midnight: 'themes.midnight',
@@ -39,7 +42,6 @@ const THEME_LABEL_KEYS: Record<ThemeId, TranslationKey> = {
   nova: 'themes.nova',
   rose: 'themes.rose',
   qinghua: 'themes.qinghua',
-  zhusha: 'themes.zhusha',
   yingluo: 'themes.yingluo',
   norge: 'themes.norge',
 };
@@ -116,34 +118,78 @@ function SliderSetting({
   );
 }
 
+interface SegmentedSettingProps<T extends string> {
+  label: string;
+  hint?: string;
+  options: {value: T; label: string}[];
+  value: T;
+  onChange: (v: T) => void;
+}
+
+function SegmentedSetting<T extends string>({
+  label,
+  hint,
+  options,
+  value,
+  onChange,
+}: SegmentedSettingProps<T>) {
+  return (
+    <div className="settings-field">
+      <div className="settings-field-head">
+        <label className="settings-label">{label}</label>
+      </div>
+      {hint && <p className="settings-hint">{hint}</p>}
+      <div className="settings-segmented" role="group" aria-label={label}>
+        {options.map(opt => (
+          <button
+            key={opt.value}
+            type="button"
+            className={`settings-segmented__option ${value === opt.value ? 'settings-segmented__option--active' : ''}`}
+            aria-pressed={value === opt.value}
+            onClick={() => onChange(opt.value)}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ThemeCardPreview({theme, label}: {theme: ThemeId; label: string}) {
+  if (theme === 'system') {
+    // No static palette of its own: preview both backing halves, mirroring
+    // the native system swatch (Slate left, Mist right).
+    return (
+      <>
+        <span
+          className="theme-card__swatch"
+          style={{
+            background: `linear-gradient(to right, ${THEMES.dark.bgPrimary} 50%, ${THEMES.light.bgPrimary} 50%)`,
+          }}
+          aria-hidden="true"
+        >
+          <span
+            className="theme-card__dot"
+            style={{background: THEMES.dark.accent}}
+          />
+        </span>
+        <span className="theme-card__label">{label}</span>
+      </>
+    );
+  }
   const t = THEMES[theme];
   return (
-    <span
-      className="theme-card__swatch"
-      style={{background: t.bgPrimary}}
-      aria-hidden="true"
-    >
+    <>
       <span
-        className="theme-card__bar"
-        style={{
-          background: t.bgSecondary,
-          border: `1px solid ${t.border}`,
-        }}
+        className="theme-card__swatch"
+        style={{background: t.bgPrimary}}
+        aria-hidden="true"
       >
-        <span
-          className="theme-card__bar-line"
-          style={{background: t.textSecondary}}
-        />
+        <span className="theme-card__dot" style={{background: t.accent}} />
       </span>
-      <span className="theme-card__dot" style={{background: t.accent}} />
-      <span
-        className="theme-card__label"
-        style={{color: t.textPrimary, background: t.bgSecondary}}
-      >
-        {label}
-      </span>
-    </span>
+      <span className="theme-card__label">{label}</span>
+    </>
   );
 }
 
@@ -152,16 +198,6 @@ function AppearanceTab() {
   const t = useT();
   return (
     <>
-      <div className="settings-field">
-        <div className="settings-field-head">
-          <label className="settings-label">{t('settings.language')}</label>
-        </div>
-        <LanguageSelect
-          value={config.language}
-          onChange={language => updateConfig({language})}
-          label={t('settings.language')}
-        />
-      </div>
       <div className="settings-field">
         <div className="settings-field-head">
           <label id="theme-label" className="settings-label">
@@ -182,6 +218,26 @@ function AppearanceTab() {
           ))}
         </div>
       </div>
+      <div className="settings-field">
+        <div className="settings-field-head">
+          <label className="settings-label">{t('settings.language')}</label>
+        </div>
+        <LanguageSelect
+          value={config.language}
+          onChange={language => updateConfig({language})}
+          label={t('settings.language')}
+        />
+      </div>
+      <SegmentedSetting
+        label={t('settings.waveformView')}
+        hint={t('settings.singleRowHint')}
+        options={[
+          {value: 'horizontal', label: t('settings.singleRow')},
+          {value: 'stacked', label: t('settings.stacked')},
+        ]}
+        value={config.waveformView}
+        onChange={waveformView => updateConfig({waveformView})}
+      />
     </>
   );
 }
@@ -189,40 +245,12 @@ function AppearanceTab() {
 function PlaybackTab() {
   const {config, updateConfig} = useConfig();
   const t = useT();
-  const {waveformView, skipSeconds, repetitions, showAdvancedControls} = config;
+  const {skipSeconds, repetitions, showAdvancedControls} = config;
   return (
     <>
-      <div className="settings-field">
-        <div className="settings-field-head">
-          <label className="settings-label">{t('settings.waveformView')}</label>
-          <output className="settings-value">
-            {waveformView === 'horizontal'
-              ? t('settings.singleRow')
-              : t('settings.stacked')}
-          </output>
-        </div>
-        <label className="settings-switch">
-          <input
-            type="checkbox"
-            checked={waveformView === 'horizontal'}
-            onChange={e =>
-              updateConfig({
-                waveformView: e.target.checked ? 'horizontal' : 'stacked',
-              })
-            }
-          />
-          <span className="settings-switch__track" aria-hidden="true">
-            <span className="settings-switch__knob" />
-          </span>
-          <span className="settings-switch__label">
-            {t('settings.singleRow')}
-            <small>{t('settings.singleRowHint')}</small>
-          </span>
-        </label>
-      </div>
       <SliderSetting
         label={t('settings.skipBy')}
-        presets={[5, 10, 15, 20, 30]}
+        presets={[5, 10, 15, 30]}
         value={skipSeconds}
         min={CONFIG_RANGES.skipSeconds.min}
         max={CONFIG_RANGES.skipSeconds.max}
@@ -233,7 +261,7 @@ function PlaybackTab() {
       <SliderSetting
         label={t('settings.repeatsPerClip')}
         hint={t('settings.repeatsHint')}
-        presets={[1, 2, 3, 5, 10]}
+        presets={[1, 2, 3, 4, 5]}
         value={repetitions}
         min={CONFIG_RANGES.repetitions.min}
         max={CONFIG_RANGES.repetitions.max}
@@ -241,7 +269,7 @@ function PlaybackTab() {
         onChange={v => updateConfig({repetitions: v})}
       />
       <div className="settings-field">
-        <label className="settings-checkbox">
+        <label className="settings-switch">
           <input
             type="checkbox"
             checked={showAdvancedControls}
@@ -249,7 +277,10 @@ function PlaybackTab() {
               updateConfig({showAdvancedControls: e.target.checked})
             }
           />
-          <span>
+          <span className="settings-switch__track" aria-hidden="true">
+            <span className="settings-switch__knob" />
+          </span>
+          <span className="settings-switch__label">
             {t('settings.showAdvanced')}
             <small>{t('settings.showAdvancedHint')}</small>
           </span>
@@ -266,43 +297,6 @@ function ClipDetectionTab() {
     config;
   return (
     <>
-      <div className="settings-field">
-        <div className="settings-field-head">
-          <label className="settings-label">{t('settings.mergeScope')}</label>
-          <output className="settings-value">
-            {t(
-              mergeScope === 'clip'
-                ? 'settings.mergeScopeClip'
-                : 'settings.mergeScopeGlobal',
-            )}
-          </output>
-        </div>
-        <p className="settings-hint">{t('settings.mergeScopeHint')}</p>
-        <label className="settings-switch">
-          <input
-            type="checkbox"
-            checked={mergeScope === 'clip'}
-            onChange={e =>
-              updateConfig({
-                mergeScope: e.target.checked ? 'clip' : 'global',
-              })
-            }
-          />
-          <span className="settings-switch__track" aria-hidden="true">
-            <span className="settings-switch__knob" />
-          </span>
-          <span className="settings-switch__label">
-            {t('settings.mergeScopeClip')}
-            <small>
-              {t(
-                mergeScope === 'clip'
-                  ? 'settings.mergeScopeClipHint'
-                  : 'settings.mergeScopeGlobalHint',
-              )}
-            </small>
-          </span>
-        </label>
-      </div>
       <SliderSetting
         label={t('settings.silenceThreshold')}
         hint={t('settings.silenceHint')}
@@ -316,7 +310,7 @@ function ClipDetectionTab() {
       <SliderSetting
         label={t('settings.analysisDetail')}
         hint={t('settings.analysisHint')}
-        presets={[4, 8, 12, 24]}
+        presets={[6, 12, 24, 48]}
         value={blockMs}
         min={CONFIG_RANGES.blockMs.min}
         max={CONFIG_RANGES.blockMs.max}
@@ -327,7 +321,7 @@ function ClipDetectionTab() {
       <SliderSetting
         label={t('settings.minClipLength')}
         hint={t('settings.minClipLengthHint')}
-        presets={[0.1, 0.2, 0.3, 0.5]}
+        presets={[0.1, 0.2, 0.3, 0.5, 1.0]}
         value={minClipLength}
         min={CONFIG_RANGES.minClipLength.min}
         max={CONFIG_RANGES.minClipLength.max}
@@ -345,6 +339,20 @@ function ClipDetectionTab() {
         step={0.05}
         unit="s"
         onChange={v => updateConfig({minSplitPieceSec: v})}
+      />
+      <SegmentedSetting
+        label={t('settings.mergeScope')}
+        hint={`${t('settings.mergeScopeHint')} ${t(
+          mergeScope === 'clip'
+            ? 'settings.mergeScopeClipHint'
+            : 'settings.mergeScopeGlobalHint',
+        )}`}
+        options={[
+          {value: 'global', label: t('settings.mergeScopeGlobal')},
+          {value: 'clip', label: t('settings.mergeScopeClip')},
+        ]}
+        value={mergeScope}
+        onChange={mergeScope => updateConfig({mergeScope})}
       />
     </>
   );

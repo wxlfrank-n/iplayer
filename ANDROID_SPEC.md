@@ -470,11 +470,12 @@ Bars algorithm (row `VB 500×100 PAD 4`; stacked row `VB 1000×200 PAD 4`):
 
 ## 17. Themes (port verbatim — do not redesign)
 
-10 themes, 22 variables each — copy exact values from web `src/themes.ts`
+10 themes (system + 9 palettes), 22 variables each — copy exact values from web `src/themes.ts`
 (iOS `Theme/Theme.swift` is the same data in Swift):
 
 | id | name key | light/dark |
 |---|---|---|
+| system | System (follows OS → `dark` when dark, `light` when light) | dynamic |
 | dark | Slate | dark |
 | light | Mist | light |
 | midnight (default) | Midnight | dark |
@@ -482,7 +483,6 @@ Bars algorithm (row `VB 500×100 PAD 4`; stacked row `VB 1000×200 PAD 4`):
 | nova | Nova | dark |
 | rose | Lilac | light |
 | qinghua | Qinghua | dark |
-| zhusha | Zhusha | dark |
 | yingluo | Yingluo | light |
 | norge | Norway | light |
 

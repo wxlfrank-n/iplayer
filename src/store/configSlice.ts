@@ -19,8 +19,8 @@
  *   controls) is shown below the waveform (default: false).
  * - mergeScope: Whether a merge/split gesture applies to every clip in the
  *   track ("global") or only the selected clip ("clip") (default: "clip").
- * - theme: Appearance palette (dark/light/midnight/paper/nova/rose/qinghua/
- *   zhusha/yingluo/norge). Each theme carries its own accent color, so there
+ * - theme: Appearance palette (system/dark/light/midnight/paper/nova/rose/
+ *   qinghua/yingluo/norge). Each theme carries its own accent color, so there is no
  *   is no separate accent setting.
  * - language: UI locale ("en" | "zh" | "no", default: "no").
  *
